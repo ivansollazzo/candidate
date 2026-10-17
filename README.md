@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.0 (build 20261017.2230), by Ivan Sollazzo.
+Version 1.0 (build 20261017.2350), by Ivan Sollazzo.
 
 ## Features
 
@@ -131,7 +131,7 @@ The `llm` service detects the available hardware and starts Ollama with the best
 |---|---|---|
 | NVIDIA GPU | CUDA | NVIDIA Container Toolkit (Linux) or Docker Desktop with WSL2 (Windows) |
 | AMD GPU | ROCm | ROCm drivers (Linux) |
-| Intel GPU (or AMD without ROCm) | Vulkan | Drivers with Vulkan support (Linux) |
+| Intel or AMD GPU without ROCm, integrated GPUs included | Vulkan | Drivers with Vulkan support (Linux) |
 | Anything else | CPU | none |
 
 Hardware acceleration is not currently supported on Mac, where the model runs on the CPU. Settings › System shows

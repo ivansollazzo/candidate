@@ -136,7 +136,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("1.0", "20261017.2230")
+    assert (health["version"], health["build"]) == ("1.0", "20261017.2350")
 
     r = client.post("/api/ai/job-posting", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
@@ -299,3 +299,14 @@ def test_experience_technologies_become_skills(client):
     ]}).json()
     assert profile["skills"] == [{"name": "ROS 2", "category": None, "level": None,
                                   "evidence": "Esperienza Robotics engineer · Acme"}]
+
+
+def test_list_reports_last_event(client):
+    first = client.post("/api/applications", json={"title": "A"}).json()["id"]
+    second = client.post("/api/applications", json={"title": "B"}).json()["id"]
+    for day in ("2026-03-01", "2026-05-10"):
+        client.post("/api/events", json={"application_id": first, "type": "interview", "occurred_on": day, "title": "x"})
+    # Status changes don't count as events
+    client.patch(f"/api/applications/{second}", json={"status": "interview"})
+    last = {a["id"]: a["last_event_on"] for a in client.get("/api/applications").json()}
+    assert last == {first: "2026-05-10", second: None}

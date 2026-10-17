@@ -81,7 +81,8 @@ start_ollama() { # accelerator
   case $accelerator in
     cuda) image=ollama/ollama:latest; set -- --gpus all ;;
     rocm) image=ollama/ollama:rocm; set -- --device /dev/kfd --device /dev/dri ;;
-    vulkan) image=ollama/ollama:latest; set -- --device /dev/dri -e OLLAMA_VULKAN=1 ;;
+    # OLLAMA_IGPU_ENABLE lets Vulkan use integrated GPUs too
+    vulkan) image=ollama/ollama:latest; set -- --device /dev/dri -e OLLAMA_VULKAN=1 -e OLLAMA_IGPU_ENABLE=1 ;;
     *) image=ollama/ollama:latest; set -- ;;
   esac
   docker rm -f "$NAME" >/dev/null 2>&1

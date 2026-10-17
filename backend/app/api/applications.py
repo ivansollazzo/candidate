@@ -1,14 +1,14 @@
 from datetime import date
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from sqlmodel import Session, select
+from sqlmodel import Session, func, select
 
 from app.db import get_session, save
 from app.i18n import t
 from app.models import Application, ApplicationEvent, EventType, TaskStatus, User
 from app.schemas import (
+    ApplicationListItem,
     ApplicationRead,
-    ApplicationSummary,
     ApplicationUpdate,
     MatchResult,
 )
@@ -29,11 +29,25 @@ def get_owned(session: Session, application_id: int, user: User) -> Application:
     return app
 
 
-@router.get("", response_model=list[ApplicationSummary])
+@router.get("", response_model=list[ApplicationListItem])
 def list_applications(user: User = Depends(security.current_user), session: Session = Depends(get_session)):
-    # Search and status filtering happen in the frontend
-    query = select(Application).where(Application.user_id == user.id).order_by(Application.updated_at.desc())
-    return session.exec(query).all()
+    # Search, status filtering and sorting happen in the frontend
+    last_event = (
+        select(ApplicationEvent.application_id, func.max(ApplicationEvent.occurred_on).label("last_event_on"))
+        .where(ApplicationEvent.type != EventType.STATUS_CHANGE)
+        .group_by(ApplicationEvent.application_id)
+        .subquery()
+    )
+    query = (
+        select(Application, last_event.c.last_event_on)
+        .outerjoin(last_event, last_event.c.application_id == Application.id)
+        .where(Application.user_id == user.id)
+        .order_by(Application.updated_at.desc())
+    )
+    return [
+        ApplicationListItem.model_validate(app).model_copy(update={"last_event_on": last_on})
+        for app, last_on in session.exec(query).all()
+    ]
 
 
 @router.post("", response_model=ApplicationRead, status_code=status.HTTP_201_CREATED)

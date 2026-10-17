@@ -19,6 +19,11 @@ export interface ApplicationSummary {
   updated_at: string
 }
 
+export interface ApplicationListItem extends ApplicationSummary {
+  /** Date of the latest agenda event, status changes excluded */
+  last_event_on: string | null
+}
+
 export interface ApplicationEvent {
   id: number
   application_id: number
@@ -300,7 +305,7 @@ export const api = {
   updateUser: (id: number, changes: UserChanges) => request<User>(`/api/users/${id}`, json("PATCH", changes)),
   deleteUser: (id: number) => request<void>(`/api/users/${id}`, { method: "DELETE" }),
 
-  listApplications: () => request<ApplicationSummary[]>("/api/applications"),
+  listApplications: () => request<ApplicationListItem[]>("/api/applications"),
   getApplication: (id: number) => request<Application>(`/api/applications/${id}`),
   createApplication: (fields: ApplicationChanges) => request<Application>("/api/applications", json("POST", fields)),
   updateApplication: (id: number, changes: ApplicationChanges) =>

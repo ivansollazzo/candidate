@@ -274,6 +274,11 @@ class ApplicationSummary(BaseModel):
     updated_at: datetime
 
 
+class ApplicationListItem(ApplicationSummary):
+    # Date of the latest agenda event (status changes excluded), for sorting the list
+    last_event_on: date | None = None
+
+
 class ApplicationRead(ApplicationSummary):
     contract_type: str | None
     seniority: str | None

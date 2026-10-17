@@ -181,6 +181,12 @@ const it = {
   "list.all": "Tutte",
   "list.empty": "Nessuna candidatura. Aggiungine una con \"Nuova candidatura\".",
   "list.noMatch": "Nessuna candidatura corrisponde ai filtri.",
+  "list.sortLabel": "Ordina per",
+  "list.sort.applied": "Data di invio",
+  "list.sort.status": "Stato",
+  "list.sort.name": "Ordine alfabetico",
+  "list.sort.event": "Ultimo evento",
+  "list.lastEvent": "Ultimo evento {date}",
 
   "match.title": "Compatibilità",
   "match.addSkills": "Aggiungi le skill richieste per vedere la compatibilità.",
@@ -332,7 +338,7 @@ const it = {
 
   "hardware.cuda": "GPU NVIDIA",
   "hardware.rocm": "GPU AMD",
-  "hardware.vulkan": "GPU Intel o AMD",
+  "hardware.vulkan": "GPU Intel o AMD, anche integrata",
   "hardware.cpu": "Processore",
   "hardware.available": "Disponibile",
   "hardware.unavailable": "Non disponibile",
@@ -637,6 +643,12 @@ const en: Record<MessageKey, string> = {
   "list.all": "All",
   "list.empty": "No applications yet. Add one with \"New application\".",
   "list.noMatch": "No applications match the filters.",
+  "list.sortLabel": "Sort by",
+  "list.sort.applied": "Date applied",
+  "list.sort.status": "Status",
+  "list.sort.name": "Alphabetical",
+  "list.sort.event": "Latest event",
+  "list.lastEvent": "Last event {date}",
 
   "match.title": "Match",
   "match.addSkills": "Add the required skills to see how well you match.",
@@ -787,7 +799,7 @@ const en: Record<MessageKey, string> = {
 
   "hardware.cuda": "NVIDIA GPU",
   "hardware.rocm": "AMD GPU",
-  "hardware.vulkan": "Intel or AMD GPU",
+  "hardware.vulkan": "Intel or AMD GPU, integrated included",
   "hardware.cpu": "Processor",
   "hardware.available": "Available",
   "hardware.unavailable": "Not available",
