@@ -15,6 +15,7 @@ class ApplicationStatus(StrEnum):
     APPLIED = "applied"
     INTERVIEW = "interview"
     OFFER = "offer"
+    INACTIVE = "inactive"
     REJECTED = "rejected"
     COMPLETED = "completed"
 
@@ -112,6 +113,9 @@ class User(SQLModel, table=True):
     # Preferences
     language: str = Field(default="it", sa_type=sa.String(5), sa_column_kwargs={"server_default": "it"})
     theme: str = Field(default="system", sa_type=sa.String(10), sa_column_kwargs={"server_default": "system"})
+    # Sort order of the applications list
+    application_sort: str = Field(default="applied", sa_type=sa.String(10),
+                                  sa_column_kwargs={"server_default": "applied"})
     # False until the user completes the onboarding wizard
     onboarded: bool = _bool(False)
     avatar_path: str | None = None

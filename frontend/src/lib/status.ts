@@ -4,6 +4,7 @@ export const STATUSES = [
   { value: "applied", color: "bg-blue-500" },
   { value: "interview", color: "bg-amber-500" },
   { value: "offer", color: "bg-emerald-500" },
+  { value: "inactive", color: "bg-slate-400" },
   { value: "rejected", color: "bg-red-500" },
   { value: "completed", color: "bg-violet-500" },
 ] as const

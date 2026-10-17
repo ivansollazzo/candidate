@@ -72,7 +72,7 @@ export function Overview() {
       {error && <p className="text-sm text-red-600 dark:text-red-400">{(error as Error).message}</p>}
       {isLoading ? <p className="text-sm text-muted-foreground">{t("common.loading")}</p> : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
             <Tile to="/applications" label={t("overview.total")} count={applications.length} />
             {STATUSES.map((s) => (
               <Tile key={s.value} to={`/applications?status=${s.value}`} label={statusLabel(s.value)} color={s.color}
