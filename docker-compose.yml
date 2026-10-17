@@ -1,0 +1,57 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: candidate
+      POSTGRES_PASSWORD: candidate
+      POSTGRES_DB: candidate
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U candidate"]
+      interval: 5s
+      retries: 10
+
+  # Runs Ollama on the available GPU (NVIDIA, AMD, Intel) or CPU, see llm/launcher.sh.
+  # Uses the Docker socket to create the Ollama container with the right GPU and removes it on shutdown.
+  llm:
+    build: ./llm
+    environment:
+      LLM_MODEL: ${LLM_MODEL:-qwen3:4b}
+      OLLAMA_PORT: ${OLLAMA_PORT:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - llm-runtime:/runtime
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  backend:
+    build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://candidate:candidate@db:5432/candidate
+      # The backend uses the model started by the llm service
+      LLM_PROVIDER: auto
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend-data:/app/data
+      # Reads the running model, writes settings.json (LLM on/off)
+      - llm-runtime:/runtime
+
+  frontend:
+    build: ./frontend
+    depends_on: [backend]
+    environment:
+      API_URL: http://backend:8000
+    ports:
+      - "5173:5173"
+
+volumes:
+  pgdata:
+  backend-data:
+  llm-runtime:
