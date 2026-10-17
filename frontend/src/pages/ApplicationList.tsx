@@ -5,16 +5,18 @@ import { Link, useSearchParams } from "react-router"
 
 import { buttonVariants } from "@/components/ui/button"
 import { Input, Select } from "@/components/ui/input"
-import { api, type ApplicationListItem } from "@/lib/api"
+import { api, type ApplicationListItem, type ApplicationSort } from "@/lib/api"
+import { useCurrentUser, useUpdateMe } from "@/lib/auth"
 import { useT } from "@/lib/i18n"
 import { STATUSES, statusInfo, statusLabel, type ApplicationStatus } from "@/lib/status"
 import { usePageTitle } from "@/lib/title"
 import { cn, formatDate, formatSalary } from "@/lib/utils"
 
-type Sort = "applied" | "status" | "name" | "event"
-const SORTS: Sort[] = ["applied", "status", "name", "event"]
-// Most advanced first: completed > offer > interview > applied > rejected
-const STATUS_RANK: Record<ApplicationStatus, number> = { completed: 0, offer: 1, interview: 2, applied: 3, rejected: 4 }
+const SORTS: ApplicationSort[] = ["applied", "status", "name", "event"]
+// Most advanced first: completed > offer > interview > applied > inactive > rejected
+const STATUS_RANK: Record<ApplicationStatus, number> = {
+  completed: 0, offer: 1, interview: 2, applied: 3, inactive: 4, rejected: 5,
+}
 
 // Newest first; missing dates go last
 const byDateDesc = (a: string | null, b: string | null) => (b ?? "").localeCompare(a ?? "")
@@ -22,7 +24,7 @@ const byName = (a: ApplicationListItem, b: ApplicationListItem) =>
   (a.title ?? "").localeCompare(b.title ?? "", undefined, { sensitivity: "base" }) ||
   (a.company ?? "").localeCompare(b.company ?? "", undefined, { sensitivity: "base" })
 
-const COMPARE: Record<Sort, (a: ApplicationListItem, b: ApplicationListItem) => number> = {
+const COMPARE: Record<ApplicationSort, (a: ApplicationListItem, b: ApplicationListItem) => number> = {
   applied: (a, b) => byDateDesc(a.applied_on, b.applied_on) || byName(a, b),
   status: (a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || byDateDesc(a.applied_on, b.applied_on),
   name: (a, b) => byName(a, b) || byDateDesc(a.applied_on, b.applied_on),
@@ -77,17 +79,14 @@ export function ApplicationList() {
   usePageTitle(t("nav.applications"))
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
-  // Filter and sort live in the URL so the overview can link to a pre-filtered list
+  // Filter lives in the URL so the overview can link to a pre-filtered list
   const [params, setParams] = useSearchParams()
   const filter = STATUSES.find((s) => s.value === params.get("status"))?.value ?? null
-  const sort = SORTS.find((s) => s === params.get("sort")) ?? "applied"
-  const setParam = (key: string, value: string | null) => setParams((p) => {
-    const next = new URLSearchParams(p)
-    if (value) next.set(key, value)
-    else next.delete(key)
-    return next
-  }, { replace: true })
-  const setFilter = (status: ApplicationStatus | null) => setParam("status", status)
+  const setFilter = (status: ApplicationStatus | null) => setParams(status ? { status } : {}, { replace: true })
+  // Sort order is saved on the user
+  const me = useCurrentUser()
+  const updateMe = useUpdateMe()
+  const sort = (updateMe.isPending && updateMe.variables.application_sort) || me?.application_sort || "applied"
   const { data = [], isLoading, error } = useQuery({ queryKey: ["applications"], queryFn: api.listApplications })
   const changeStatus = useMutation({
     mutationFn: ({ id, status }: { id: number; status: ApplicationStatus }) => api.updateApplication(id, { status }),
@@ -115,10 +114,13 @@ export function ApplicationList() {
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-xl font-semibold">{t("nav.applications")}</h1>
         <span className="text-sm text-muted-foreground">{t("list.total", { count: data.length })}</span>
-        <Select className="ml-auto w-44" aria-label={t("list.sortLabel")} value={sort}
-          onChange={(e) => setParam("sort", e.target.value === "applied" ? null : e.target.value)}>
-          {SORTS.map((s) => <option key={s} value={s}>{t(`list.sort.${s}`)}</option>)}
-        </Select>
+        <label className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
+          {t("list.sortLabel")}
+          <Select className="w-44 text-foreground" value={sort}
+            onChange={(e) => updateMe.mutate({ application_sort: e.target.value as ApplicationSort })}>
+            {SORTS.map((s) => <option key={s} value={s}>{t(`list.sort.${s}`)}</option>)}
+          </Select>
+        </label>
         <div className="relative w-full max-w-xs">
           <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
           <Input className="pl-8" placeholder={t("list.search")} value={search}

@@ -203,6 +203,7 @@ export interface Settings extends PasswordPolicy {
 
 export type Role = "admin" | "user"
 export type Theme = "light" | "dark" | "system"
+export type ApplicationSort = "applied" | "status" | "name" | "event"
 
 export interface User {
   id: number
@@ -211,6 +212,7 @@ export interface User {
   role: Role
   language: Locale
   theme: Theme
+  application_sort: ApplicationSort
   /** false until the initial setup is completed */
   onboarded: boolean
   has_avatar: boolean
@@ -229,7 +231,7 @@ interface AuthStatus {
   password_policy: PasswordPolicy
 }
 
-export type MeChanges = Partial<Pick<User, "username" | "email" | "language" | "theme" | "onboarded">>
+export type MeChanges = Partial<Pick<User, "username" | "email" | "language" | "theme" | "application_sort" | "onboarded">>
 type NewUser = Pick<User, "username" | "email" | "role" | "language"> & { password: string }
 type UserChanges = Partial<Pick<User, "username" | "email" | "role">> & { password?: string }
 

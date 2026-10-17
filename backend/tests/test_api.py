@@ -136,7 +136,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("1.0", "20261017.2350")
+    assert (health["version"], health["build"]) == ("1.0", "20261018.0001")
 
     r = client.post("/api/ai/job-posting", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
@@ -223,6 +223,9 @@ def test_settings_and_language(client):
     me = client.patch("/api/me", json={"language": "en", "theme": "dark", "onboarded": True}).json()
     assert (me["language"], me["theme"], me["onboarded"]) == ("en", "dark", True)
     assert client.patch("/api/me", json={"theme": "blue"}).status_code == 422
+    assert me["application_sort"] == "applied"
+    assert client.patch("/api/me", json={"application_sort": "event"}).json()["application_sort"] == "event"
+    assert client.patch("/api/me", json={"application_sort": "salary"}).status_code == 422
 
     # Messages follow the interface language
     assert client.get("/api/applications/999", headers={"Accept-Language": "en"}).json()["detail"] == "Application not found"
@@ -307,6 +310,6 @@ def test_list_reports_last_event(client):
     for day in ("2026-03-01", "2026-05-10"):
         client.post("/api/events", json={"application_id": first, "type": "interview", "occurred_on": day, "title": "x"})
     # Status changes don't count as events
-    client.patch(f"/api/applications/{second}", json={"status": "interview"})
+    client.patch(f"/api/applications/{second}", json={"status": "inactive"})
     last = {a["id"]: a["last_event_on"] for a in client.get("/api/applications").json()}
     assert last == {first: "2026-05-10", second: None}
