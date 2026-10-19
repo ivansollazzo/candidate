@@ -120,6 +120,8 @@ class User(SQLModel, table=True):
     # Sort order of the applications list
     application_sort: str = Field(default="applied", sa_type=sa.String(10),
                                   sa_column_kwargs={"server_default": "applied"})
+    # Status shown in the applications list ("all" or an ApplicationStatus)
+    application_filter: str = Field(default="all", sa_type=sa.String(20), sa_column_kwargs={"server_default": "all"})
     # False until the user completes the onboarding wizard
     onboarded: bool = _bool(False)
     avatar_path: str | None = None

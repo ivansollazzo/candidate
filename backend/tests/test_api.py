@@ -226,6 +226,10 @@ def test_settings_and_language(client):
     assert me["application_sort"] == "applied"
     assert client.patch("/api/me", json={"application_sort": "event"}).json()["application_sort"] == "event"
     assert client.patch("/api/me", json={"application_sort": "salary"}).status_code == 422
+    assert me["application_filter"] == "all"
+    assert client.patch("/api/me", json={"application_filter": "interview"}).json()["application_filter"] == "interview"
+    assert client.patch("/api/me", json={"application_filter": "all"}).json()["application_filter"] == "all"
+    assert client.patch("/api/me", json={"application_filter": "draft"}).status_code == 422
 
     # Messages follow the interface language
     assert client.get("/api/applications/999", headers={"Accept-Language": "en"}).json()["detail"] == "Application not found"

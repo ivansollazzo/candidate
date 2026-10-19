@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Banknote, MapPin, Plus, Search } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router"
 
 import { buttonVariants } from "@/components/ui/button"
 import { Input, Select } from "@/components/ui/input"
-import { api, type ApplicationListItem, type ApplicationSort } from "@/lib/api"
+import { api, type ApplicationListItem, type ApplicationSort, type MeChanges, type User } from "@/lib/api"
 import { useCurrentUser, useUpdateMe } from "@/lib/auth"
 import { useT } from "@/lib/i18n"
 import { STATUSES, statusInfo, statusLabel, type ApplicationStatus } from "@/lib/status"
@@ -79,14 +79,25 @@ export function ApplicationList() {
   usePageTitle(t("nav.applications"))
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
-  // Filter lives in the URL so the overview can link to a pre-filtered list
-  const [params, setParams] = useSearchParams()
-  const filter = STATUSES.find((s) => s.value === params.get("status"))?.value ?? null
-  const setFilter = (status: ApplicationStatus | null) => setParams(status ? { status } : {}, { replace: true })
-  // Sort order is saved on the user
+  // Sort order and status filter are saved on the user, shown at once and stored in the background
   const me = useCurrentUser()
   const updateMe = useUpdateMe()
-  const sort = (updateMe.isPending && updateMe.variables.application_sort) || me?.application_sort || "applied"
+  const savePreference = (changes: MeChanges) => {
+    queryClient.setQueryData<User>(["me"], (old) => old && { ...old, ...changes })
+    updateMe.mutate(changes)
+  }
+  const sort = me?.application_sort ?? "applied"
+  const saved = STATUSES.find((s) => s.value === me?.application_filter)?.value ?? null
+  const setFilter = (status: ApplicationStatus | null) => savePreference({ application_filter: status ?? "all" })
+  // The overview links to a pre-filtered list (?status=): that becomes the saved filter
+  const [params, setParams] = useSearchParams()
+  const linked = STATUSES.find((s) => s.value === params.get("status"))?.value
+  const filter = linked ?? saved
+  useEffect(() => {
+    if (!params.has("status")) return
+    if (linked) setFilter(linked)
+    setParams({}, { replace: true })
+  }, [params])
   const { data = [], isLoading, error } = useQuery({ queryKey: ["applications"], queryFn: api.listApplications })
   const changeStatus = useMutation({
     mutationFn: ({ id, status }: { id: number; status: ApplicationStatus }) => api.updateApplication(id, { status }),
@@ -117,7 +128,7 @@ export function ApplicationList() {
         <label className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
           {t("list.sortLabel")}
           <Select className="w-44 text-foreground" value={sort}
-            onChange={(e) => updateMe.mutate({ application_sort: e.target.value as ApplicationSort })}>
+            onChange={(e) => savePreference({ application_sort: e.target.value as ApplicationSort })}>
             {SORTS.map((s) => <option key={s} value={s}>{t(`list.sort.${s}`)}</option>)}
           </Select>
         </label>

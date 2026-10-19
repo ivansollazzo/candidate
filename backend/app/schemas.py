@@ -407,6 +407,7 @@ Role = Literal["admin", "user"]
 Language = Literal["it", "en"]
 Theme = Literal["light", "dark", "system"]
 ApplicationSort = Literal["applied", "status", "name", "event"]
+ApplicationFilter = Literal["all"] | ApplicationStatus
 # Upper bound so we never hash huge inputs
 Secret = Annotated[str, Field(max_length=256)]
 
@@ -421,6 +422,7 @@ class UserRead(BaseModel):
     language: str
     theme: str
     application_sort: str
+    application_filter: str
     onboarded: bool
     has_avatar: bool
     created_at: datetime
@@ -463,6 +465,7 @@ class MeUpdate(BaseModel):
     language: Language | None = None
     theme: Theme | None = None
     application_sort: ApplicationSort | None = None
+    application_filter: ApplicationFilter | None = None
     onboarded: bool | None = None
 
 
