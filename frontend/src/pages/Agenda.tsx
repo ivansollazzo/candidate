@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Plus } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
+import { ErrorText } from "@/components/ErrorText"
 import { EventForm } from "@/components/EventForm"
 import { EventItem } from "@/components/EventItem"
 import { Button } from "@/components/ui/button"
@@ -60,7 +61,7 @@ export function Agenda() {
         </Card>
       )}
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{(error as Error).message}</p>}
+      <ErrorText error={error} />
       {isLoading ? <p className="text-sm text-muted-foreground">{t("common.loading")}</p> : (
         <>
           {overdue.length > 0 && (

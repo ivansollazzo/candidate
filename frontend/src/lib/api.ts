@@ -192,7 +192,7 @@ export interface PasswordPolicy {
 }
 
 /** Progress of the updater service, see updater/updater.sh */
-export interface UpdateStatus {
+interface UpdateStatus {
   status: "unavailable" | "idle" | "checking" | "updating"
   step: "fetch" | "build" | "cleanup" | null
   /** estimated completion of the running update, 0-100 */
@@ -219,8 +219,9 @@ export interface UpdateResult {
 }
 
 export interface Updates extends UpdateStatus {
-  branch: string | null
-  followed_branch: string | null
+  /** The branch the admin picked; until then, the checked-out one */
+  selected_branch: string | null
+  /** commit of the installed release */
   commit: string | null
   checked_at: string | null
   branches: BranchRelease[]
@@ -232,7 +233,7 @@ export interface Updates extends UpdateStatus {
 export interface Settings extends PasswordPolicy {
   llm_enabled: boolean
   llm_accelerator: Accelerator | "auto"
-  /** Branch followed for updates; null = the one checked out */
+  /** Branch to update from; null = the one checked out */
   update_branch: string | null
   /** Hours between update checks; 0 = only on request */
   update_check_hours: number

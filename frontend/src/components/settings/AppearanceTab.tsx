@@ -1,5 +1,6 @@
 import { Monitor, Moon, Sun } from "lucide-react"
 
+import { ErrorText } from "@/components/ErrorText"
 import { LanguageSelect } from "@/components/LanguageSelect"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCurrentUser, useUpdateMe } from "@/lib/auth"
@@ -17,7 +18,7 @@ export function AppearanceTab() {
 
   return (
     <>
-      {update.error && <p className="text-sm text-red-600 dark:text-red-400">{update.error.message}</p>}
+      <ErrorText error={update.error} />
       <Card>
         <CardHeader>
           <CardTitle>{t("settings.language")}</CardTitle>

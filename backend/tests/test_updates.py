@@ -43,19 +43,19 @@ def test_branches_and_install(client, updates_dir):
     assert data["update_available"] is True
     assert client.get("/api/updates/status").json()["status"] == "idle"
 
-    # Following a branch without a newer release, or a missing one: nothing to install
+    # A selected branch without a newer release, or a missing one: nothing to install
     for name, code in (("old", 409), ("nope", 404)):
         settings = client.patch("/api/settings", json={"update_branch": name}).json()
         assert settings["update_branch"] == name
         data = client.get("/api/updates").json()
-        assert (data["branch"], data["followed_branch"], data["update_available"]) == ("main", name, False)
+        assert (data["selected_branch"], data["update_available"]) == (name, False)
         assert client.post("/api/updates/install").status_code == code
     assert not (updates_dir / "request.json").exists()
 
     client.patch("/api/settings", json={"update_branch": "old"})
     # Back to the checked-out branch
     assert client.patch("/api/settings", json={"update_branch": ""}).json()["update_branch"] is None
-    assert client.get("/api/updates").json()["followed_branch"] == "main"
+    assert client.get("/api/updates").json()["selected_branch"] == "main"
     assert client.post("/api/updates/install").status_code == 202
     assert json.loads((updates_dir / "request.json").read_text()) == {"action": "install", "branch": "main"}
 

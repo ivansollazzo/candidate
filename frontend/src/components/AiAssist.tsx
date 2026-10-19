@@ -1,6 +1,7 @@
 import { FileText, FileUp, Link2, Loader2, type LucideIcon, Save, Sparkles } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
+import { ErrorText } from "@/components/ErrorText"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Textarea } from "@/components/ui/input"
@@ -42,7 +43,7 @@ export function AiAssist({ hint, running, error, canRun, onRun, children }: {
           )}
           {!ai.ready && <span className="text-sm text-muted-foreground">{ai.reason}</span>}
         </div>
-        {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        <ErrorText error={error} />
       </CardContent>
     </Card>
   )

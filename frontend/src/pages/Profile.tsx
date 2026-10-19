@@ -4,6 +4,7 @@ import { type ReactNode, useState } from "react"
 
 import { AiAssist } from "@/components/AiAssist"
 import { EntryList, type FieldDef } from "@/components/EntryList"
+import { ErrorText } from "@/components/ErrorText"
 import { ProfilePhoto } from "@/components/ProfilePhoto"
 import { SaveBar } from "@/components/SaveBar"
 import { SkillsEditor } from "@/components/SkillsEditor"
@@ -120,7 +121,7 @@ export function ProfilePage() {
   const ai = useAiStatus()
   const fill = useAiFill<Partial<Profile>>({ ...profile, ...draft }, (changes) => setDraft((d) => ({ ...d, ...changes })))
 
-  if (error) return <p className="text-sm text-red-600 dark:text-red-400">{(error as Error).message}</p>
+  if (error) return <ErrorText error={error} />
   if (!profile) return <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
 
   const value = <K extends keyof Profile>(key: K): Profile[K] => (key in draft ? draft[key] : profile[key]) as Profile[K]
@@ -167,7 +168,7 @@ export function ProfilePage() {
           {profile.cv_filename && <a href="/api/profile/cv" className="text-sm underline">{profile.cv_filename}</a>}
           <span className="ml-auto text-xs text-muted-foreground">{t("profile.updated", { date: formatDate(profile.updated_at) ?? "" })}</span>
         </div>
-        {upload.error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{upload.error.message}</p>}
+        <ErrorText className="mt-2" error={upload.error} />
       </Section>
 
       <AiAssist hint={profile.cv_filename ? t("profile.aiHint") : t("profile.aiHintNoCv")}

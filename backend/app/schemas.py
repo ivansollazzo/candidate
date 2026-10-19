@@ -392,7 +392,7 @@ class SettingsRead(BaseModel):
 class SettingsUpdate(BaseModel):
     llm_enabled: bool | None = None
     llm_accelerator: Literal["auto", "cuda", "rocm", "vulkan", "cpu"] | None = None
-    # Empty string: follow the branch that is checked out
+    # Branch to update from; empty string: the checked-out one
     update_branch: str | None = Field(default=None, max_length=200)
     update_check_hours: Literal[0, 1, 6, 12, 24, 168] | None = None
     password_min_length: int | None = Field(default=None, ge=8, le=128)
@@ -548,9 +548,8 @@ class UpdateResult(BaseModel):
 
 
 class UpdatesRead(UpdateStatus):
-    # Checked out, and followed for updates
-    branch: str | None = None
-    followed_branch: str | None = None
+    selected_branch: str | None = None
+    # Commit of the installed release
     commit: str | None = None
     checked_at: str | None = None
     branches: list[BranchRelease]

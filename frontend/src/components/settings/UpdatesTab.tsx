@@ -1,5 +1,6 @@
 import { Download, Loader2, RefreshCw } from "lucide-react"
 
+import { ErrorText } from "@/components/ErrorText"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
@@ -42,7 +43,7 @@ function LastResult({ last }: { last: NonNullable<Updates["last"]> }) {
   )
 }
 
-/** Installed release, branch to follow, check interval and branches of the repository (admin only). */
+/** Installed release, selected branch, check interval and branches of the repository (admin only). */
 export function UpdatesTab() {
   const t = useT()
   const { data } = useUpdates()
@@ -65,9 +66,9 @@ export function UpdatesTab() {
   }
 
   const busy = data.status !== "idle" || check.isPending || install.isPending
-  const followed = data.branches.find((branch) => branch.name === data.followed_branch)
+  const selected = data.branches.find((branch) => branch.name === data.selected_branch)
   const onInstall = () => {
-    if (followed && confirm(t("updates.confirm", { version: release(followed), branch: followed.name }))) {
+    if (selected && confirm(t("updates.confirm", { version: release(selected), branch: selected.name }))) {
       install.mutate({ build: data.build })
     }
   }
@@ -75,19 +76,19 @@ export function UpdatesTab() {
 
   return (
     <>
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{error.message}</p>}
+      <ErrorText error={error} />
       <Card>
         <CardHeader><CardTitle>{t("updates.installed")}</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
           <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[10rem_1fr]">
             <dt className="text-muted-foreground">{t("info.version")}</dt>
             <dd className="font-mono">{release(data)}</dd>
-            <dt className="text-muted-foreground">{t("updates.branch")}</dt>
-            <dd className="font-mono">{data.branch ?? "—"} {data.commit && <span className="text-muted-foreground">({data.commit})</span>}</dd>
+            <dt className="text-muted-foreground">{t("updates.commit")}</dt>
+            <dd className="font-mono">{data.commit ?? "—"}</dd>
           </dl>
-          {data.update_available && followed && (
+          {data.update_available && selected && (
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
-              <span>{t("updates.available", { version: release(followed), branch: followed.name })}</span>
+              <span>{t("updates.available", { version: release(selected), branch: selected.name })}</span>
               <Button size="sm" className="ml-auto" disabled={busy} onClick={onInstall}>
                 <Download /> {t("updates.update")}
               </Button>
@@ -106,25 +107,23 @@ export function UpdatesTab() {
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           <div>
-            <Label className="mb-1 block" htmlFor="update-branch">{t("updates.followed")}</Label>
-            {/* Shows the branch in use until another one is chosen; choosing it again stores nothing */}
-            <Select id="update-branch" className="w-full sm:w-96" value={data.followed_branch ?? ""}
-              disabled={save.isPending}
-              onChange={(e) => save.mutate({ update_branch: e.target.value === data.branch ? "" : e.target.value })}>
+            <Label className="mb-1 block" htmlFor="update-branch">{t("updates.branch")}</Label>
+            <Select id="update-branch" className="w-full sm:w-96" value={data.selected_branch ?? ""}
+              disabled={save.isPending} onChange={(e) => save.mutate({ update_branch: e.target.value })}>
               {data.branches.map((branch) => (
                 <option key={branch.name} value={branch.name}>
                   {branch.name} · {branch.version ? release(branch) : t("updates.noVersion")}
                 </option>
               ))}
-              {/* A followed branch that was deleted from the repository */}
+              {/* A selected branch that was deleted from the repository */}
               {settings.update_branch && !data.branches.some((branch) => branch.name === settings.update_branch) && (
                 <option value={settings.update_branch}>{settings.update_branch}</option>
               )}
             </Select>
             <p className="mt-1 text-xs text-muted-foreground">
-              {!followed ? t("updates.followedMissing")
-                : followed.newer ? t("updates.followedNewer")
-                  : t("updates.followedWaiting", { branch: followed.name })}
+              {!selected ? t("updates.selectedMissing")
+                : selected.newer ? t("updates.selectedNewer")
+                  : t("updates.selectedWaiting", { branch: selected.name })}
             </p>
           </div>
           <div>
@@ -151,8 +150,8 @@ export function UpdatesTab() {
               {data.branches.map((branch) => (
                 <li key={branch.name} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2">
                   <span className="font-mono font-medium">{branch.name}</span>
-                  {branch.name === data.branch && (
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">{t("updates.inUse")}</span>
+                  {branch.name === data.selected_branch && (
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">{t("updates.selected")}</span>
                   )}
                   <span className="ml-auto text-muted-foreground">
                     {branch.version ? release(branch) : t("updates.noVersion")}

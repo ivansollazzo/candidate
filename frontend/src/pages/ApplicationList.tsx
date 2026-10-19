@@ -3,6 +3,7 @@ import { Banknote, MapPin, Plus, Search, Trash2 } from "lucide-react"
 import { useEffect, useState, type InputHTMLAttributes } from "react"
 import { Link, useSearchParams } from "react-router"
 
+import { ErrorText } from "@/components/ErrorText"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input, Select } from "@/components/ui/input"
 import { api, type ApplicationBulk, type ApplicationListItem, type ApplicationSort, type MeChanges, type User } from "@/lib/api"
@@ -194,9 +195,7 @@ export function ApplicationList() {
         ))}
       </div>
 
-      {(error ?? bulk.error) && (
-        <p className="text-sm text-red-600 dark:text-red-400">{((error ?? bulk.error) as Error).message}</p>
-      )}
+      <ErrorText error={error ?? bulk.error} />
       {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
 
       {!isLoading && visible.length === 0 ? (

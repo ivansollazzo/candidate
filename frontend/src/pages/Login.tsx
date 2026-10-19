@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query"
 import { ArrowLeft, LogIn } from "lucide-react"
 import { type FormEvent, type ReactNode, useState } from "react"
 
+import { ErrorText } from "@/components/ErrorText"
 import { LanguageSelect } from "@/components/LanguageSelect"
 import { Logo } from "@/components/Logo"
 import { isPasswordValid, NewPassword } from "@/components/PasswordInput"
@@ -43,7 +44,7 @@ function SignInForm({ onForgot }: { onForgot: () => void }) {
         onChange={(e) => setUsername(e.target.value)} />
       <Field label={t("password.label")} type="password" autoComplete="current-password" required value={password}
         onChange={(e) => setPassword(e.target.value)} />
-      {login.error && <p className="text-sm text-red-600 dark:text-red-400">{login.error.message}</p>}
+      <ErrorText error={login.error} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Button type="submit" disabled={login.isPending}><LogIn />{t("login.submit")}</Button>
         <button type="button" onClick={onForgot} className="text-sm text-muted-foreground underline hover:text-foreground">
@@ -94,7 +95,7 @@ function ResetForm({ onBack }: { onBack: () => void }) {
       <Field label={t("reset.key")} placeholder="ABCD-EFGH-…" required value={key} className="font-mono"
         onChange={(e) => setKey(e.target.value)} />
       <NewPassword value={password} confirm={confirm} onChange={setPassword} onConfirmChange={setConfirm} policy={policy} />
-      {reset.error && <p className="text-sm text-red-600 dark:text-red-400">{reset.error.message}</p>}
+      <ErrorText error={reset.error} />
       <div className="flex flex-wrap justify-between gap-2">
         <Button type="button" variant="ghost" onClick={onBack}><ArrowLeft />{t("reset.back")}</Button>
         <Button type="submit" disabled={reset.isPending || !isPasswordValid(password, confirm, policy)}>

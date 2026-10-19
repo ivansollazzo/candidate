@@ -3,6 +3,7 @@ import { ImageUp, Trash2 } from "lucide-react"
 import { useRef } from "react"
 
 import { Avatar } from "@/components/Avatar"
+import { ErrorText } from "@/components/ErrorText"
 import { Button } from "@/components/ui/button"
 import { api } from "@/lib/api"
 import { useCurrentUser } from "@/lib/auth"
@@ -39,7 +40,7 @@ export function ProfilePhoto() {
         )}
       </div>
       <p className="text-xs text-muted-foreground">{t("profile.photoHint")}</p>
-      {change.error && <p className="text-sm text-red-600 dark:text-red-400">{change.error.message}</p>}
+      <ErrorText error={change.error} />
     </div>
   )
 }

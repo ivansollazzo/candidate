@@ -44,21 +44,21 @@ def pending_action() -> str | None:
         return None
 
 
-def overview(followed: str | None) -> dict:
-    """Updater state; an update is available when the followed branch (default: the checked-out one) is newer."""
+def overview(selected: str | None) -> dict:
+    """Updater state; an update is available when the selected branch has a newer release.
+    Until the admin selects one, the selected branch is the checked-out one."""
     state = read_state() or {"status": "unavailable"}
     if state.get("status") == "idle" and (action := pending_action()):
         state = {**state, "status": "updating" if action == "install" else "checking", "step": "fetch", "progress": 0}
     branches = [{**branch, "newer": is_newer(branch.get("version", ""), branch.get("build", ""))}
                 for branch in state.get("branches", [])]
-    followed = followed or state.get("branch") or None
-    target = next((branch for branch in branches if branch["name"] == followed), None)
+    selected = selected or state.get("branch") or None
+    target = next((branch for branch in branches if branch["name"] == selected), None)
     return {
         "status": state.get("status", "unavailable"),
         "step": state.get("step") or None,
         "progress": state.get("progress") or 0,
-        "branch": state.get("branch") or None,
-        "followed_branch": followed,
+        "selected_branch": selected,
         "commit": state.get("commit") or None,
         "checked_at": state.get("checked_at") or None,
         "version": __version__,
@@ -69,7 +69,7 @@ def overview(followed: str | None) -> dict:
     }
 
 
-def request(action: str, followed: str | None = None) -> None:
+def request(action: str, selected: str | None = None) -> None:
     state = read_state()
     if state is None or state.get("status") == "unavailable":
         raise HTTPException(status.HTTP_409_CONFLICT, t("updates_unavailable"))
@@ -77,7 +77,7 @@ def request(action: str, followed: str | None = None) -> None:
         raise HTTPException(status.HTTP_409_CONFLICT, t("update_busy"))
     fields = {}
     if action == "install":
-        name = followed or state.get("branch")
+        name = selected or state.get("branch")
         branch = next((b for b in state.get("branches", []) if b.get("name") == name), None)
         if branch is None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, t("branch_not_found"))
