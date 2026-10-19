@@ -2,6 +2,7 @@
 # Keeps Candidate up to date from its Git repository. The project folder is mounted at /project
 # and must be a Git clone. Talks to the backend through files in /updates:
 #   state.json    written here: checked-out branch, branches on the remote with their version, progress
+#                 (step and an estimated percentage, from the build steps docker compose reports)
 #   request.json  written by the backend: {"action": "check"} or {"action": "install", "branch": "..."}
 #   settings.json written by the backend: {"check_hours": 6}, hours between checks (0 = only on request)
 # An install moves the folder to the branch on the remote (local changes go to a stash), rebuilds the
@@ -28,7 +29,7 @@ esac
 # Files created here belong to the owner of the project folder
 OWNER=$(stat -c %u:%g "$REPO")
 
-STATUS=idle STEP="" BRANCHES="" CHECKED_AT="" LAST=""
+STATUS=idle STEP="" PROGRESS=0 BRANCHES="" CHECKED_AT="" LAST=""
 
 log() { echo "[updater] $*"; }
 # Without the file (before the backend starts) the default applies
@@ -44,17 +45,27 @@ compose() { docker compose --project-directory "$HOST_DIR" -p "$PROJECT" "$@"; }
 write_state() {
   head_branch=$(git symbolic-ref --short -q HEAD)
   head_commit=$(git rev-parse --short HEAD 2>/dev/null)
-  printf '{"status": "%s", "step": "%s", "branch": "%s", "commit": "%s", "checked_at": "%s", "branches": [%s], "last": %s}\n' \
-    "$STATUS" "$STEP" "$(json "$head_branch")" "$head_commit" "$CHECKED_AT" "$BRANCHES" "${LAST:-null}" > "$STATE.tmp" \
+  printf '{"status": "%s", "step": "%s", "progress": %s, "branch": "%s", "commit": "%s", "checked_at": "%s", "branches": [%s], "last": %s}\n' \
+    "$STATUS" "$STEP" "$PROGRESS" "$(json "$head_branch")" "$head_commit" "$CHECKED_AT" "$BRANCHES" "${LAST:-null}" > "$STATE.tmp" \
     && mv "$STATE.tmp" "$STATE"
 }
 
-set_step() { STATUS=$1 STEP=$2; write_state; }
+set_step() { STATUS=$1 STEP=$2 PROGRESS=${3:-0}; write_state; }
+
+# Share of the build done, 0-100: the steps finished in each Dockerfile. Both BuildKit ("[backend 3/6]")
+# and the classic builder ("Step 3/6") print a step when it starts, so step 3 means 2 finished
+build_done() {
+  service=$(grep -oE '\[(backend|frontend) [0-9]+/[0-9]+\]' /tmp/build.log | tr -d '[]' | tr / ' ' \
+    | awk '{ f = ($2 - 1) / $3; if (f > done[$1]) done[$1] = f } END { print int((done["backend"] + done["frontend"]) * 50) }')
+  classic=$(grep -oE '^Step [0-9]+/[0-9]+' /tmp/build.log | tr / ' ' \
+    | awk '{ f = ($2 - 1) / $3; if (f > done) done = f } END { print int(done * 100) }')
+  [ "${service:-0}" -gt "${classic:-0}" ] && echo "${service:-0}" || echo "${classic:-0}"
+}
 
 finish() { # result error detail restart_required [stashed]
   LAST=$(printf '{"result": "%s", "error": "%s", "detail": "%s", "restart_required": %s, "stashed": %s, "finished_at": "%s"}' \
     "$1" "$2" "$(json "$3")" "$4" "${5:-false}" "$(now)")
-  STATUS=idle STEP=""
+  STATUS=idle STEP="" PROGRESS=0
   write_state
   fix_owner
 }
@@ -96,7 +107,7 @@ check() {
     LAST=$(printf '{"result": "failed", "error": "fetch", "detail": "%s", "restart_required": false, "finished_at": "%s"}' \
       "$(json "$FETCH_ERROR")" "$(now)")
   fi
-  STATUS=idle STEP=""
+  STATUS=idle STEP="" PROGRESS=0
   write_state
 }
 
@@ -155,14 +166,22 @@ install() { # branch
     return
   fi
   list_branches
+  set_step updating fetch 10
 
   restart=false
   [ "$(restart_files)" = "$running_files" ] || restart=true
 
-  set_step updating build
-  # In the background so a docker compose stop doesn't wait for the build
-  compose up -d --build --no-deps backend frontend > /tmp/build.log 2>&1 &
-  if ! wait $!; then
+  set_step updating build 10
+  # In the background so a docker compose stop doesn't wait for the build; the build goes from 10% to 90%
+  rm -f /tmp/build.status
+  { compose up -d --build --no-deps backend frontend > /tmp/build.log 2>&1; echo $? > /tmp/build.status.tmp; mv /tmp/build.status.tmp /tmp/build.status; } &
+  while [ ! -f /tmp/build.status ]; do
+    progress=$((10 + $(build_done) * 80 / 100))
+    [ "$progress" -gt "$PROGRESS" ] && { PROGRESS=$progress; write_state; }
+    sleep 1 &
+    wait $!
+  done
+  if [ "$(cat /tmp/build.status)" != 0 ]; then
     log "build non riuscita"
     cat /tmp/build.log
     rollback
@@ -171,7 +190,7 @@ install() { # branch
     return
   fi
 
-  set_step updating cleanup
+  set_step updating cleanup 92
   docker image prune -f --filter "label=com.docker.compose.project=$PROJECT" >/dev/null 2>&1
   log "aggiornamento completato: $(git rev-parse --short HEAD)"
   finish ok "" "" "$restart" "$stashed"

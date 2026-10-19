@@ -195,6 +195,8 @@ export interface PasswordPolicy {
 export interface UpdateStatus {
   status: "unavailable" | "idle" | "checking" | "updating"
   step: "fetch" | "build" | "cleanup" | null
+  /** estimated completion of the running update, 0-100 */
+  progress: number
   version: string
   build: string
 }

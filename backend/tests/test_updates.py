@@ -58,9 +58,10 @@ def test_branches_and_install(client, updates_dir):
     assert client.post("/api/updates/install").status_code == 202
     assert json.loads((updates_dir / "request.json").read_text()) == {"action": "install", "branch": "main"}
 
-    write_state(updates_dir, status="updating", step="build")
+    write_state(updates_dir, status="updating", step="build", progress=42)
     assert client.post("/api/updates/check").status_code == 409
-    assert client.get("/api/updates/status").json()["step"] == "build"
+    status = client.get("/api/updates/status").json()
+    assert (status["step"], status["progress"]) == ("build", 42)
 
 
 def test_check_request(client, updates_dir):

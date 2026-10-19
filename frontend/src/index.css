@@ -75,3 +75,9 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+/* Sheen moving across the update progress bar */
+@keyframes update-sheen {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}

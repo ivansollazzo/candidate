@@ -507,6 +507,8 @@ class UpdateStatus(BaseModel):
     status: str
     # fetch, build, cleanup
     step: str | None = None
+    # Estimated completion of the running update, 0-100
+    progress: int = 0
     version: str
     build: str
 

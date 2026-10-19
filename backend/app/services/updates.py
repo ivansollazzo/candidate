@@ -48,7 +48,7 @@ def overview(followed: str | None) -> dict:
     """Updater state; an update is available when the followed branch (default: the checked-out one) is newer."""
     state = read_state() or {"status": "unavailable"}
     if state.get("status") == "idle" and (action := pending_action()):
-        state = {**state, "status": "updating" if action == "install" else "checking", "step": "fetch"}
+        state = {**state, "status": "updating" if action == "install" else "checking", "step": "fetch", "progress": 0}
     branches = [{**branch, "newer": is_newer(branch.get("version", ""), branch.get("build", ""))}
                 for branch in state.get("branches", [])]
     followed = followed or state.get("branch") or None
@@ -56,6 +56,7 @@ def overview(followed: str | None) -> dict:
     return {
         "status": state.get("status", "unavailable"),
         "step": state.get("step") or None,
+        "progress": state.get("progress") or 0,
         "branch": state.get("branch") or None,
         "followed_branch": followed,
         "commit": state.get("commit") or None,

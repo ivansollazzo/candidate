@@ -87,9 +87,11 @@ export function useUpdateProgress() {
     }
   }, [data, started, queryClient])
 
+  // While the backend restarts the status can't be read: the build is done by then
+  const restarting = status.isError
   return {
     running: started != null,
-    // While the backend restarts the status can't be read
-    step: status.isError ? "restart" as const : data?.step ?? "fetch",
+    step: restarting ? "restart" as const : data?.step ?? "fetch",
+    progress: restarting ? 96 : data?.status === "updating" ? data.progress : 0,
   }
 }
