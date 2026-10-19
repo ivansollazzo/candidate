@@ -217,6 +217,7 @@ export interface UpdateResult {
 
 export interface Updates extends UpdateStatus {
   branch: string | null
+  followed_branch: string | null
   commit: string | null
   checked_at: string | null
   branches: BranchRelease[]
@@ -228,6 +229,10 @@ export interface Updates extends UpdateStatus {
 export interface Settings extends PasswordPolicy {
   llm_enabled: boolean
   llm_accelerator: Accelerator | "auto"
+  /** Branch followed for updates; null = the one checked out */
+  update_branch: string | null
+  /** Hours between update checks; 0 = only on request */
+  update_check_hours: number
   session_hours: number
   /** 0 = no lockout */
   max_login_attempts: number
@@ -372,7 +377,7 @@ export const api = {
   getUpdates: () => request<Updates>("/api/updates"),
   updateStatus: () => request<UpdateStatus>("/api/updates/status"),
   checkUpdates: () => request<void>("/api/updates/check", { method: "POST" }),
-  installUpdate: (branch: string) => request<void>("/api/updates/install", json("POST", { branch })),
+  installUpdate: () => request<void>("/api/updates/install", { method: "POST" }),
 }
 
 export const isWorking = (status: TaskStatus | null | undefined) => status === "pending" || status === "running"

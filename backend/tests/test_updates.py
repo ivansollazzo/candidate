@@ -42,12 +42,20 @@ def test_branches_and_install(client, updates_dir):
     assert data["update_available"] is True
     assert client.get("/api/updates/status").json()["status"] == "idle"
 
-    # Same or older release, or unknown branch: refused
-    assert client.post("/api/updates/install", json={"branch": "old"}).status_code == 409
-    assert client.post("/api/updates/install", json={"branch": "nope"}).status_code == 404
+    # Following a branch without a newer release, or a missing one: nothing to install
+    for name, code in (("old", 409), ("nope", 404)):
+        settings = client.patch("/api/settings", json={"update_branch": name}).json()
+        assert settings["update_branch"] == name
+        data = client.get("/api/updates").json()
+        assert (data["branch"], data["followed_branch"], data["update_available"]) == ("main", name, False)
+        assert client.post("/api/updates/install").status_code == code
     assert not (updates_dir / "request.json").exists()
 
-    assert client.post("/api/updates/install", json={"branch": "main"}).status_code == 202
+    client.patch("/api/settings", json={"update_branch": "old"})
+    # Back to the checked-out branch
+    assert client.patch("/api/settings", json={"update_branch": ""}).json()["update_branch"] is None
+    assert client.get("/api/updates").json()["followed_branch"] == "main"
+    assert client.post("/api/updates/install").status_code == 202
     assert json.loads((updates_dir / "request.json").read_text()) == {"action": "install", "branch": "main"}
 
     write_state(updates_dir, status="updating", step="build")
@@ -75,7 +83,15 @@ def test_admin_only(client, updates_dir):
 
 def test_pending_request_reads_as_running(client, updates_dir):
     write_state(updates_dir, branches=[{"name": "main", "version": "9.0", "build": "1", "commit": "1111111"}])
-    assert client.post("/api/updates/install", json={"branch": "main"}).status_code == 202
+    assert client.post("/api/updates/install").status_code == 202
     # The updater hasn't picked the request up yet
     assert client.get("/api/updates/status").json()["status"] == "updating"
     assert client.post("/api/updates/check").status_code == 409
+
+
+def test_check_interval(client, updates_dir):
+    assert client.get("/api/settings").json()["update_check_hours"] == 6
+    assert client.patch("/api/settings", json={"update_check_hours": 24}).json()["update_check_hours"] == 24
+    assert json.loads((updates_dir / "settings.json").read_text()) == {"check_hours": 24}
+    assert client.patch("/api/settings", json={"update_check_hours": 0}).json()["update_check_hours"] == 0
+    assert client.patch("/api/settings", json={"update_check_hours": 5}).status_code == 422

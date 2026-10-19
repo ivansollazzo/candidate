@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.1 (build 20261019.1528), by Ivan Sollazzo.
+Version 1.1 (build 20261019.1549), by Ivan Sollazzo.
 
 ## Features
 
@@ -71,9 +71,11 @@ holds the update status.
 
 ### Updating
 
-Settings › Updates (admin only) lists the branches of the repository with the version each one contains, checks for
-new versions every 6 hours and shows a dot on the settings icon when the branch in use has a newer one. A version can
-be installed only if it is newer than the installed one, so the database is never taken back to an older schema.
+Settings › Updates (admin only) lists the branches of the repository with the version each one contains. There you
+choose the branch to follow (by default the one in use) and how often to check it (every hour, 6 or 12 hours, daily,
+weekly or only on request). When the followed branch has a newer version, a dot appears on the settings icon and the
+version can be installed. A version is installed only if it is newer than the installed one, so the database is never
+taken back to an older schema: following a branch with an older version simply waits until it gets a newer one.
 
 Installing a version is handled by the `updater` service: it checks out the branch, rebuilds the backend and frontend
 while the current version keeps running, replaces them and removes the old images. The app shows an "Updating" screen
@@ -106,7 +108,6 @@ Set them in a `.env` file next to `docker-compose.yml` (or in the shell):
 |---|---|---|
 | `LLM_MODEL` | `qwen3:4b` | Ollama model to use. `qwen3:1.7b` is about twice as fast but less accurate. |
 | `OLLAMA_PORT` | *(unset)* | Publishes Ollama on `127.0.0.1:<port>`, for running the backend outside Docker. |
-| `UPDATE_CHECK_HOURS` | `6` | Hours between checks for new versions in the repository. |
 
 For anything else, such as ports or extra environment variables, create a `docker-compose.override.yml` next to
 `docker-compose.yml`. Docker Compose merges it automatically, and Git ignores it, so updates never touch it.

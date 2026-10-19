@@ -14,9 +14,10 @@ export function useUpdateSettings() {
     mutationFn: (changes: Partial<Settings>) => api.updateSettings(changes),
     onSuccess: (data) => {
       queryClient.setQueryData(["settings"], data)
-      // LLM status and password rules depend on the settings
+      // LLM status, password rules and available updates depend on the settings
       queryClient.invalidateQueries({ queryKey: ["health"] })
       queryClient.invalidateQueries({ queryKey: ["auth-status"] })
+      queryClient.invalidateQueries({ queryKey: ["updates"] })
     },
   })
 }

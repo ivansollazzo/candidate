@@ -2,9 +2,14 @@ import { Download, Loader2, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { BranchRelease, Updates } from "@/lib/api"
+import { Label, Select } from "@/components/ui/input"
+import type { Updates } from "@/lib/api"
 import { dateLocale, useT } from "@/lib/i18n"
+import { useSettings, useUpdateSettings } from "@/lib/settings"
 import { useCheckUpdates, useInstallUpdate, useUpdates } from "@/lib/updates"
+
+// Hours between checks; 0 = only with "Check now"
+const CHECK_INTERVALS = [1, 6, 12, 24, 168, 0] as const
 
 const release = (item: { version: string; build: string }) => `${item.version} · build ${item.build}`
 
@@ -34,13 +39,15 @@ function LastResult({ last }: { last: NonNullable<Updates["last"]> }) {
   )
 }
 
-/** Installed release, branches of the repository and their versions (admin only). */
+/** Installed release, branch to follow, check interval and branches of the repository (admin only). */
 export function UpdatesTab() {
   const t = useT()
   const { data } = useUpdates()
+  const settings = useSettings()
+  const save = useUpdateSettings()
   const check = useCheckUpdates()
   const install = useInstallUpdate()
-  if (!data) return null
+  if (!data || !settings) return null
 
   if (data.status === "unavailable") {
     return (
@@ -55,13 +62,13 @@ export function UpdatesTab() {
   }
 
   const busy = data.status !== "idle" || check.isPending || install.isPending
-  const current = data.branches.find((branch) => branch.name === data.branch)
-  const onInstall = (branch: BranchRelease) => {
-    if (confirm(t("updates.confirm", { version: release(branch), branch: branch.name }))) {
-      install.mutate({ branch: branch.name, build: data.build })
+  const followed = data.branches.find((branch) => branch.name === data.followed_branch)
+  const onInstall = () => {
+    if (followed && confirm(t("updates.confirm", { version: release(followed), branch: followed.name }))) {
+      install.mutate({ build: data.build })
     }
   }
-  const error = check.error ?? install.error
+  const error = save.error ?? check.error ?? install.error
 
   return (
     <>
@@ -75,10 +82,10 @@ export function UpdatesTab() {
             <dt className="text-muted-foreground">{t("updates.branch")}</dt>
             <dd className="font-mono">{data.branch ?? "—"} {data.commit && <span className="text-muted-foreground">({data.commit})</span>}</dd>
           </dl>
-          {data.update_available && current && (
+          {data.update_available && followed && (
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
-              <span>{t("updates.available", { version: release(current) })}</span>
-              <Button size="sm" className="ml-auto" disabled={busy} onClick={() => onInstall(current)}>
+              <span>{t("updates.available", { version: release(followed), branch: followed.name })}</span>
+              <Button size="sm" className="ml-auto" disabled={busy} onClick={onInstall}>
                 <Download /> {t("updates.update")}
               </Button>
             </div>
@@ -89,11 +96,50 @@ export function UpdatesTab() {
 
       <Card>
         <CardHeader className="flex-wrap">
-          <CardTitle>{t("updates.branches")}</CardTitle>
+          <CardTitle>{t("updates.settings")}</CardTitle>
           <Button variant="outline" size="sm" disabled={busy} onClick={() => check.mutate()}>
             {data.status === "checking" ? <Loader2 className="animate-spin" /> : <RefreshCw />} {t("updates.check")}
           </Button>
         </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <div>
+            <Label className="mb-1 block" htmlFor="update-branch">{t("updates.followed")}</Label>
+            <Select id="update-branch" className="w-full sm:w-96" value={settings.update_branch ?? ""}
+              disabled={save.isPending} onChange={(e) => save.mutate({ update_branch: e.target.value })}>
+              <option value="">{t("updates.followCurrent", { branch: data.branch ?? "—" })}</option>
+              {data.branches.map((branch) => (
+                <option key={branch.name} value={branch.name}>
+                  {branch.name} · {branch.version ? release(branch) : t("updates.noVersion")}
+                </option>
+              ))}
+              {/* A followed branch that was deleted from the repository */}
+              {settings.update_branch && !data.branches.some((branch) => branch.name === settings.update_branch) && (
+                <option value={settings.update_branch}>{settings.update_branch}</option>
+              )}
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {!followed ? t("updates.followedMissing")
+                : followed.newer ? t("updates.followedNewer")
+                  : t("updates.followedWaiting", { branch: followed.name })}
+            </p>
+          </div>
+          <div>
+            <Label className="mb-1 block" htmlFor="update-interval">{t("updates.interval")}</Label>
+            <Select id="update-interval" className="w-full sm:w-96" value={settings.update_check_hours}
+              disabled={save.isPending} onChange={(e) => save.mutate({ update_check_hours: Number(e.target.value) })}>
+              {CHECK_INTERVALS.map((hours) => (
+                <option key={hours} value={hours}>{t(`updates.every.${hours}`)}</option>
+              ))}
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("updates.checkedAt", { time: formatTime(data.checked_at) })}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>{t("updates.branches")}</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
           <p className="text-muted-foreground">{t("updates.branchesHint")}</p>
           {data.branches.length > 0 ? (
@@ -104,17 +150,12 @@ export function UpdatesTab() {
                   {branch.name === data.branch && (
                     <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">{t("updates.inUse")}</span>
                   )}
-                  <span className="text-muted-foreground">
+                  {branch.name === data.followed_branch && (
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">{t("updates.followedBadge")}</span>
+                  )}
+                  <span className="ml-auto text-muted-foreground">
                     {branch.version ? release(branch) : t("updates.noVersion")}
-                  </span>
-                  <span className="ml-auto">
-                    {branch.newer ? (
-                      <Button variant="outline" size="sm" disabled={busy} onClick={() => onInstall(branch)}>
-                        <Download /> {t("updates.install")}
-                      </Button>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">{t("updates.notNewer")}</span>
-                    )}
+                    {branch.newer && <span className="ml-2 text-emerald-700 dark:text-emerald-400">{t("updates.newer")}</span>}
                   </span>
                 </li>
               ))}
@@ -122,7 +163,6 @@ export function UpdatesTab() {
           ) : (
             <p className="text-muted-foreground">{t("updates.noBranches")}</p>
           )}
-          <p className="text-xs text-muted-foreground">{t("updates.checkedAt", { time: formatTime(data.checked_at) })}</p>
         </CardContent>
       </Card>
     </>

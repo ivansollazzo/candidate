@@ -3,6 +3,7 @@
 # and must be a Git clone. Talks to the backend through files in /updates:
 #   state.json    written here: checked-out branch, branches on the remote with their version, progress
 #   request.json  written by the backend: {"action": "check"} or {"action": "install", "branch": "..."}
+#   settings.json written by the backend: {"check_hours": 6}, hours between checks (0 = only on request)
 # An install checks out the branch, rebuilds the backend and frontend with docker compose (the old
 # containers keep running until the new ones are ready) and removes the old images.
 # This service is never rebuilt by itself: when an update changes the compose file, llm/ or updater/,
@@ -12,7 +13,7 @@ set -u
 REPO=/project
 STATE=/updates/state.json
 REQUEST=/updates/request.json
-CHECK_SECONDS=$(( ${UPDATE_CHECK_HOURS:-6} * 3600 ))
+SETTINGS=/updates/settings.json
 
 SELF=$(hostname)
 label() { docker inspect -f "{{index .Config.Labels \"com.docker.compose.$1\"}}" "$SELF" 2>/dev/null; }
@@ -29,6 +30,11 @@ OWNER=$(stat -c %u:%g "$REPO")
 STATUS=idle STEP="" BRANCHES="" CHECKED_AT="" LAST=""
 
 log() { echo "[updater] $*"; }
+# Without the file (before the backend starts) the default applies
+check_hours() {
+  value=$(sed -n 's/.*"check_hours": *\([0-9]*\).*/\1/p' "$SETTINGS" 2>/dev/null)
+  echo "${value:-6}"
+}
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 json() { printf '%s' "$1" | tr -d '\000-\011\013-\037' | sed 's/\\/\\\\/g; s/"/\\"/g' | awk 'NR > 1 { printf "\\n" } { printf "%s", $0 }'; }
 git() { command git -C "$REPO" "$@"; }
@@ -159,8 +165,9 @@ if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]; then
 fi
 
 check
-next_check=$(( $(date +%s) + CHECK_SECONDS ))
+last_check=$(date +%s)
 while :; do
+  hours=$(check_hours)
   if [ -f "$REQUEST" ]; then
     action=$(sed -n 's/.*"action": *"\([a-z]*\)".*/\1/p' "$REQUEST")
     branch=$(sed -n 's/.*"branch": *"\([^"]*\)".*/\1/p' "$REQUEST")
@@ -169,10 +176,10 @@ while :; do
       check) check ;;
       install) git check-ref-format --branch "$branch" >/dev/null 2>&1 && install "$branch" ;;
     esac
-    next_check=$(( $(date +%s) + CHECK_SECONDS ))
-  elif [ "$(date +%s)" -ge "$next_check" ]; then
+    last_check=$(date +%s)
+  elif [ "$hours" -gt 0 ] && [ "$(date +%s)" -ge $((last_check + hours * 3600)) ]; then
     check
-    next_check=$(( $(date +%s) + CHECK_SECONDS ))
+    last_check=$(date +%s)
   fi
   sleep 2 &
   wait $!

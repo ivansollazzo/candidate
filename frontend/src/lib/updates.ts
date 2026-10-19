@@ -47,7 +47,7 @@ export function useCheckUpdates() {
 export function useInstallUpdate() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ branch }: { branch: string; build: string }) => api.installUpdate(branch),
+    mutationFn: (_: { build: string }) => api.installUpdate(),
     onSuccess: (_, { build }) => {
       writeStarted(build)
       queryClient.invalidateQueries({ queryKey: ["update-status"] })

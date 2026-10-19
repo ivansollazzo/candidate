@@ -57,8 +57,6 @@ services:
   # Needs the project folder (a Git clone) and the Docker socket to rebuild the backend and frontend.
   updater:
     build: ./updater
-    environment:
-      UPDATE_CHECK_HOURS: ${UPDATE_CHECK_HOURS:-6}
     volumes:
       - .:/project
       - /var/run/docker.sock:/var/run/docker.sock

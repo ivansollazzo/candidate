@@ -34,14 +34,19 @@ def require_llm(session: Session) -> None:
 
 
 def publish(settings: AppSettings) -> None:
-    """Write LLM choices to the shared volume; the llm service starts, stops or restarts Ollama accordingly."""
-    folder = get_settings().llm_runtime_file.parent
-    if not folder.is_dir():
+    """Write choices to the shared volumes: the llm service starts, stops or restarts Ollama accordingly,
+    the updater follows the check interval."""
+    _write(get_settings().llm_runtime_file.parent / "settings.json",
+           {"llm_enabled": settings.llm_enabled, "llm_accelerator": settings.llm_accelerator})
+    _write(get_settings().updates_dir / "settings.json", {"check_hours": settings.update_check_hours})
+
+
+def _write(target, data: dict) -> None:
+    if not target.parent.is_dir():
         return  # backend running outside Docker
-    target = folder / "settings.json"
     try:
         tmp = target.with_suffix(".tmp")
-        tmp.write_text(json.dumps({"llm_enabled": settings.llm_enabled, "llm_accelerator": settings.llm_accelerator}))
+        tmp.write_text(json.dumps(data))
         tmp.replace(target)
     except OSError:
         log.exception("Impossibile scrivere %s", target)
