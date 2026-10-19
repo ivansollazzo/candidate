@@ -107,9 +107,10 @@ export function UpdatesTab() {
         <CardContent className="space-y-4 text-sm">
           <div>
             <Label className="mb-1 block" htmlFor="update-branch">{t("updates.followed")}</Label>
-            <Select id="update-branch" className="w-full sm:w-96" value={settings.update_branch ?? ""}
-              disabled={save.isPending} onChange={(e) => save.mutate({ update_branch: e.target.value })}>
-              <option value="">{t("updates.followCurrent", { branch: data.branch ?? "—" })}</option>
+            {/* Shows the branch in use until another one is chosen; choosing it again stores nothing */}
+            <Select id="update-branch" className="w-full sm:w-96" value={data.followed_branch ?? ""}
+              disabled={save.isPending}
+              onChange={(e) => save.mutate({ update_branch: e.target.value === data.branch ? "" : e.target.value })}>
               {data.branches.map((branch) => (
                 <option key={branch.name} value={branch.name}>
                   {branch.name} · {branch.version ? release(branch) : t("updates.noVersion")}
@@ -152,9 +153,6 @@ export function UpdatesTab() {
                   <span className="font-mono font-medium">{branch.name}</span>
                   {branch.name === data.branch && (
                     <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">{t("updates.inUse")}</span>
-                  )}
-                  {branch.name === data.followed_branch && (
-                    <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">{t("updates.followedBadge")}</span>
                   )}
                   <span className="ml-auto text-muted-foreground">
                     {branch.version ? release(branch) : t("updates.noVersion")}

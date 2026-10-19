@@ -21,6 +21,7 @@ def write_state(folder, **state):
 
 def test_release_order():
     assert release_key("1.1", "20261019.0001") > release_key("1.0", "20261018.0001")
+    assert release_key("1.2.1", "20261019.0001") > release_key("1.2", "20261020.0001")
     assert release_key("1.0", "20261018.0002") > release_key("1.0", "20261018.0001")
     assert release_key("1.10", "1") > release_key("1.9", "2")
 
