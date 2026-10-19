@@ -52,6 +52,6 @@ def run(task: AITask, fn: Callable[..., dict], *args) -> None:
         task.error = str(exc)
         task.status = TaskStatus.FAILED
     except Exception:
-        log.exception("Attività LLM non riuscita")
+        log.exception("LLM task failed")
         task.error = t("task_failed")
         task.status = TaskStatus.FAILED

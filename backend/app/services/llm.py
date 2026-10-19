@@ -69,7 +69,7 @@ def generate_structured(system: str, user: str, schema: type[T]) -> T:
     try:
         return schema.model_validate(json.loads(content))
     except (json.JSONDecodeError, ValidationError) as exc:
-        log.warning("Risposta LLM non valida: %s", content[:500])
+        log.warning("Invalid LLM response: %s", content[:500])
         raise LLMError(t("llm_invalid", error=exc)) from exc
 
 

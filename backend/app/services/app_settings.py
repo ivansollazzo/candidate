@@ -49,4 +49,4 @@ def _write(target, data: dict) -> None:
         tmp.write_text(json.dumps(data))
         tmp.replace(target)
     except OSError:
-        log.exception("Impossibile scrivere %s", target)
+        log.exception("Unable to write %s", target)

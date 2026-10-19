@@ -40,7 +40,7 @@ def _model():
     from sentence_transformers import SentenceTransformer
 
     name = get_settings().embedding_model
-    log.info("Caricamento modello di embedding %s", name)
+    log.info("Loading embedding model %s", name)
     return SentenceTransformer(name, device="cpu")
 
 
@@ -92,7 +92,7 @@ def compute_match(app: Application, profile: Profile | None) -> MatchResult:
             similarities = job_vectors @ profile_vectors.T
         except Exception:
             # Model unavailable (e.g. first run offline): exact match only
-            log.exception("Embeddings non disponibili, uso solo il confronto esatto")
+            log.exception("Embeddings unavailable, using exact matching only")
     for i in pending:
         if similarities is None:
             items[i] = SkillMatchItem(skill=job_skills[i]["name"],

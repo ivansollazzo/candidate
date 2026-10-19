@@ -102,7 +102,7 @@ check() {
   if fetch; then
     list_branches
     CHECKED_AT=$(now)
-    log "controllo completato"
+    log "check completed"
   else
     LAST=$(printf '{"result": "failed", "error": "fetch", "detail": "%s", "restart_required": false, "finished_at": "%s"}' \
       "$(json "$FETCH_ERROR")" "$(now)")
@@ -144,7 +144,7 @@ rollback() {
 # docker-compose.override.yml and .env, are left alone.
 install() { # branch
   target=$1
-  log "aggiornamento al branch $target"
+  log "updating to branch $target"
   set_step updating fetch
   fetch || { finish failed fetch "$FETCH_ERROR" false; return; }
   git show-ref --verify -q "refs/remotes/origin/$target" || { finish failed branch "$target" false; return; }
@@ -155,7 +155,7 @@ install() { # branch
   stashed=false
   if ! git diff --quiet HEAD -- "$NOT_DS_STORE" && ! published "$target"; then
     git -c user.name=Candidate -c user.email=updater@candidate.local \
-      stash push -q -m "Candidate: modifiche locali prima dell'aggiornamento del $(now)" && stashed=true
+      stash push -q -m "Candidate: local changes before the update of $(now)" && stashed=true
   fi
   output=$(git checkout -q -f -B "$target" --track "origin/$target" 2>&1)
   status=$?
@@ -182,7 +182,7 @@ install() { # branch
     wait $!
   done
   if [ "$(cat /tmp/build.status)" != 0 ]; then
-    log "build non riuscita"
+    log "build failed"
     cat /tmp/build.log
     rollback
     list_branches
@@ -192,7 +192,7 @@ install() { # branch
 
   set_step updating cleanup 92
   docker image prune -f --filter "label=com.docker.compose.project=$PROJECT" >/dev/null 2>&1
-  log "aggiornamento completato: $(git rev-parse --short HEAD)"
+  log "update completed: $(git rev-parse --short HEAD)"
   finish ok "" "" "$restart" "$stashed"
 }
 
@@ -203,7 +203,7 @@ rm -f "$REQUEST"
 # The project folder belongs to the host user, not to root
 command git config --global safe.directory '*'
 if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]; then
-  log "la cartella del progetto non è un repository Git: aggiornamenti non disponibili"
+  log "the project folder is not a Git repository: updates unavailable"
   STATUS=unavailable
   write_state
   while :; do sleep 3600 & wait $!; done

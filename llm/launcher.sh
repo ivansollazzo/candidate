@@ -54,13 +54,13 @@ detect_hardware() {
   probe --device /dev/kfd --device /dev/dri && ROCM=available
   probe --device /dev/dri && VULKAN=available
   write_hardware
-  log "rilevati: cuda=$CUDA rocm=$ROCM vulkan=$VULKAN cpu=available"
+  log "detected: cuda=$CUDA rocm=$ROCM vulkan=$VULKAN cpu=available"
 }
 
 write_choice() { # model accelerator
   printf '{"base_url": "http://ollama:11434", "model": "%s", "accelerator": "%s"}\n' "$1" "$2" > "$OUT.tmp" \
     && mv "$OUT.tmp" "$OUT"
-  log "in uso: $2 ($1)"
+  log "in use: $2 ($1)"
 }
 
 stop_llm() {
@@ -86,10 +86,10 @@ start_ollama() { # accelerator
     *) image=ollama/ollama:latest; set -- ;;
   esac
   docker rm -f "$NAME" >/dev/null 2>&1
-  log "provo $accelerator"
+  log "trying $accelerator"
   docker run -d --name "$NAME" --network "$NETWORK" --network-alias ollama \
     --label com.candidate.managed=true -v "$VOLUME:/root/.ollama" -e OLLAMA_KEEP_ALIVE=24h $PUBLISH \
-    "$@" "$image" >/dev/null 2>&1 || { log "$accelerator non disponibile"; return 1; }
+    "$@" "$image" >/dev/null 2>&1 || { log "$accelerator not available"; return 1; }
 
   library=""
   i=0
@@ -101,12 +101,12 @@ start_ollama() { # accelerator
     i=$((i + 1))
   done
   if ! running; then
-    log "$accelerator: il container si è fermato"
+    log "$accelerator: the container stopped"
     docker rm -f "$NAME" >/dev/null 2>&1
     return 1
   fi
   if [ "$accelerator" != cpu ] && [ "$(echo "$library" | tr 'A-Z' 'a-z')" = cpu ]; then
-    log "$accelerator: Ollama non vede la GPU"
+    log "$accelerator: Ollama does not see the GPU"
     docker rm -f "$NAME" >/dev/null 2>&1
     return 1
   fi
@@ -130,15 +130,15 @@ start_container() { # preference
 }
 
 start_llm() { # preference
-  start_container "$1" || { log "impossibile avviare Ollama"; return 1; }
+  start_container "$1" || { log "unable to start Ollama"; return 1; }
   until docker exec "$NAME" ollama list >/dev/null 2>&1; do
     running || return 1
     sleep 1
   done
-  log "controllo il modello $MODEL (il download avviene solo la prima volta)"
+  log "checking model $MODEL (downloaded only the first time)"
   # In the background so Ctrl+C stops even a long download right away
   docker exec "$NAME" ollama pull "$MODEL" &
-  wait $! || { log "download del modello non riuscito"; return 1; }
+  wait $! || { log "model download failed"; return 1; }
   write_choice "$MODEL" "$ACCELERATOR"
 }
 
@@ -148,22 +148,22 @@ while :; do
   wanted=$(preference)
   if enabled; then
     if running && [ "$wanted" != "$STARTED_WITH" ]; then
-      log "acceleratore cambiato nelle impostazioni ($STARTED_WITH -> $wanted): riavvio Ollama"
+      log "accelerator changed in the settings ($STARTED_WITH -> $wanted): restarting Ollama"
       stop_llm
     fi
     if ! running; then
-      [ -f "$OUT" ] && log "il container di Ollama si è fermato, lo riavvio"
+      [ -f "$OUT" ] && log "the Ollama container stopped, restarting it"
       stop_llm
       STARTED_WITH=$wanted
       if ! start_llm "$wanted"; then
         stop_llm
-        log "nuovo tentativo tra un minuto"
+        log "retrying in a minute"
         sleep 60 &
         wait $!
       fi
     fi
   elif running || [ -f "$OUT" ]; then
-    log "LLM disattivato dalle impostazioni: fermo Ollama"
+    log "LLM disabled in the settings: stopping Ollama"
     stop_llm
   fi
   sleep 5 &
