@@ -191,6 +191,39 @@ export interface PasswordPolicy {
   password_require_symbol: boolean
 }
 
+/** Progress of the updater service, see updater/updater.sh */
+export interface UpdateStatus {
+  status: "unavailable" | "idle" | "checking" | "updating"
+  step: "fetch" | "build" | "cleanup" | null
+  version: string
+  build: string
+}
+
+export interface BranchRelease {
+  name: string
+  version: string
+  build: string
+  commit: string
+  newer: boolean
+}
+
+export interface UpdateResult {
+  result: "ok" | "failed"
+  error: "" | "fetch" | "branch" | "local_changes" | "checkout" | "build"
+  detail: string
+  restart_required: boolean
+  finished_at: string
+}
+
+export interface Updates extends UpdateStatus {
+  branch: string | null
+  commit: string | null
+  checked_at: string | null
+  branches: BranchRelease[]
+  update_available: boolean
+  last: UpdateResult | null
+}
+
 /** System settings: readable by everyone, writable by the admin only */
 export interface Settings extends PasswordPolicy {
   llm_enabled: boolean
@@ -335,6 +368,11 @@ export const api = {
 
   getSettings: () => request<Settings>("/api/settings"),
   updateSettings: (changes: Partial<Settings>) => request<Settings>("/api/settings", json("PATCH", changes)),
+
+  getUpdates: () => request<Updates>("/api/updates"),
+  updateStatus: () => request<UpdateStatus>("/api/updates/status"),
+  checkUpdates: () => request<void>("/api/updates/check", { method: "POST" }),
+  installUpdate: (branch: string) => request<void>("/api/updates/install", json("POST", { branch })),
 }
 
 export const isWorking = (status: TaskStatus | null | undefined) => status === "pending" || status === "running"

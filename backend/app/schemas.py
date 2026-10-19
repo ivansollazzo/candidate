@@ -492,3 +492,43 @@ class AITaskRead(BaseModel):
     error: str | None = None
     # Job posting text read from text, link or file
     source_text: str | None = None
+
+
+class UpdateStatus(BaseModel):
+    # unavailable (no updater or not a Git clone), idle, checking, updating
+    status: str
+    # fetch, build, cleanup
+    step: str | None = None
+    version: str
+    build: str
+
+
+class BranchRelease(BaseModel):
+    name: str
+    version: str
+    build: str
+    commit: str
+    newer: bool
+
+
+class UpdateResult(BaseModel):
+    # ok, failed
+    result: str
+    # fetch, branch, local_changes, checkout, build
+    error: str = ""
+    detail: str = ""
+    restart_required: bool = False
+    finished_at: str
+
+
+class UpdatesRead(UpdateStatus):
+    branch: str | None = None
+    commit: str | None = None
+    checked_at: str | None = None
+    branches: list[BranchRelease]
+    update_available: bool
+    last: UpdateResult | None = None
+
+
+class UpdateInstall(BaseModel):
+    branch: str = Field(min_length=1, max_length=200)

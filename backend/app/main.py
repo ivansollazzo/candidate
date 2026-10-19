@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 
 from app import __build__, __version__
-from app.api import ai, applications, auth, events, me, profile, settings, users
+from app.api import ai, applications, auth, events, me, profile, settings, updates, users
 from app.config import get_settings
 from app.db import engine
 from app.i18n import LanguageMiddleware
@@ -44,6 +44,7 @@ app.include_router(events.router)
 app.include_router(profile.router)
 app.include_router(ai.router)
 app.include_router(settings.router)
+app.include_router(updates.router)
 
 
 @app.get("/api/health")

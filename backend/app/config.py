@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     match_threshold: float = 0.90
     partial_match_threshold: float = 0.85
 
+    # Shared with the updater service (docker compose)
+    updates_dir: Path = Path("/updates")
+
     upload_dir: Path = Path("data/uploads")
     max_upload_mb: int = 10
 

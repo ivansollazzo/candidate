@@ -1,0 +1,81 @@
+import json
+
+import pytest
+
+from app import __build__, __version__
+from app.config import get_settings
+from app.services.updates import release_key
+
+
+@pytest.fixture
+def updates_dir(tmp_path, monkeypatch):
+    monkeypatch.setattr(get_settings(), "updates_dir", tmp_path)
+    return tmp_path
+
+
+def write_state(folder, **state):
+    base = {"status": "idle", "step": "", "branch": "main", "commit": "abc1234", "checked_at": "2026-10-19T12:00:00Z",
+            "branches": [], "last": None}
+    (folder / "state.json").write_text(json.dumps({**base, **state}))
+
+
+def test_release_order():
+    assert release_key("1.1", "20261019.0001") > release_key("1.0", "20261018.0001")
+    assert release_key("1.0", "20261018.0002") > release_key("1.0", "20261018.0001")
+    assert release_key("1.10", "1") > release_key("1.9", "2")
+
+
+def test_unavailable_without_updater(client, updates_dir):
+    data = client.get("/api/updates").json()
+    assert (data["status"], data["version"], data["update_available"]) == ("unavailable", __version__, False)
+    assert client.post("/api/updates/check").status_code == 409
+
+
+def test_branches_and_install(client, updates_dir):
+    write_state(updates_dir, branches=[
+        {"name": "main", "version": "9.0", "build": "20991231.0000", "commit": "1111111"},
+        {"name": "old", "version": __version__, "build": __build__, "commit": "2222222"},
+        {"name": "empty", "version": "", "build": "", "commit": "3333333"},
+    ])
+    data = client.get("/api/updates").json()
+    assert [b["newer"] for b in data["branches"]] == [True, False, False]
+    assert data["update_available"] is True
+    assert client.get("/api/updates/status").json()["status"] == "idle"
+
+    # Same or older release, or unknown branch: refused
+    assert client.post("/api/updates/install", json={"branch": "old"}).status_code == 409
+    assert client.post("/api/updates/install", json={"branch": "nope"}).status_code == 404
+    assert not (updates_dir / "request.json").exists()
+
+    assert client.post("/api/updates/install", json={"branch": "main"}).status_code == 202
+    assert json.loads((updates_dir / "request.json").read_text()) == {"action": "install", "branch": "main"}
+
+    write_state(updates_dir, status="updating", step="build")
+    assert client.post("/api/updates/check").status_code == 409
+    assert client.get("/api/updates/status").json()["step"] == "build"
+
+
+def test_check_request(client, updates_dir):
+    write_state(updates_dir)
+    assert client.post("/api/updates/check").status_code == 202
+    assert json.loads((updates_dir / "request.json").read_text()) == {"action": "check"}
+
+
+def test_admin_only(client, updates_dir):
+    r = client.post("/api/users", json={"username": "mario", "email": "m@example.com", "password": "Password123",
+                                        "role": "user"})
+    assert r.status_code == 201
+    client.post("/api/auth/logout")
+    assert client.post("/api/auth/login", json={"username": "mario", "password": "Password123"}).status_code == 200
+    write_state(updates_dir)
+    assert client.get("/api/updates").status_code == 403
+    assert client.get("/api/updates/status").status_code == 200
+    assert client.post("/api/updates/check").status_code == 403
+
+
+def test_pending_request_reads_as_running(client, updates_dir):
+    write_state(updates_dir, branches=[{"name": "main", "version": "9.0", "build": "1", "commit": "1111111"}])
+    assert client.post("/api/updates/install", json={"branch": "main"}).status_code == 202
+    # The updater hasn't picked the request up yet
+    assert client.get("/api/updates/status").json()["status"] == "updating"
+    assert client.post("/api/updates/check").status_code == 409

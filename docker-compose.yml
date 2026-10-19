@@ -42,6 +42,8 @@ services:
       - backend-data:/app/data
       # Reads the running model, writes settings.json (LLM on/off)
       - llm-runtime:/runtime
+      # Update requests for the updater service
+      - updates:/updates
 
   frontend:
     build: ./frontend
@@ -51,7 +53,20 @@ services:
     ports:
       - "5173:5173"
 
+  # Updates Candidate from its Git repository when asked in Settings › Updates, see updater/updater.sh.
+  # Needs the project folder (a Git clone) and the Docker socket to rebuild the backend and frontend.
+  updater:
+    build: ./updater
+    environment:
+      UPDATE_CHECK_HOURS: ${UPDATE_CHECK_HOURS:-6}
+    volumes:
+      - .:/project
+      - /var/run/docker.sock:/var/run/docker.sock
+      - updates:/updates
+    restart: unless-stopped
+
 volumes:
   pgdata:
   backend-data:
   llm-runtime:
+  updates:

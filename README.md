@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.0 (build 20261018.0001), by Ivan Sollazzo.
+Version 1.1 (build 20261019.1528), by Ivan Sollazzo.
 
 ## Features
 
@@ -26,6 +26,8 @@ Version 1.0 (build 20261018.0001), by Ivan Sollazzo.
   at a glance.
 - **Multi-user**: sign-in, admin and user roles, password recovery keys (no email needed), configurable password and
   lockout policy.
+- **Updates from the app**: pick a branch of the repository and install its version when it is newer than the
+  installed one.
 - **Italian and English** interface, light and dark theme.
 
 ## Requirements
@@ -64,13 +66,29 @@ The first start downloads the language model (about 2.5 GB). The embedding model
 | `docker compose down -v` | Also removes the database, uploaded files and the embedding model. |
 | `docker volume rm candidate_ollama` | Removes the downloaded language model (the prefix is the project folder name). |
 
-The Ollama container is created by the `llm` service and removed whenever the app stops.
+The Ollama container is created by the `llm` service and removed whenever the app stops. The `updates` volume only
+holds the update status.
 
 ### Updating
 
+Settings › Updates (admin only) lists the branches of the repository with the version each one contains, checks for
+new versions every 6 hours and shows a dot on the settings icon when the branch in use has a newer one. A version can
+be installed only if it is newer than the installed one, so the database is never taken back to an older schema.
+
+Installing a version is handled by the `updater` service: it checks out the branch, rebuilds the backend and frontend
+while the current version keeps running, replaces them and removes the old images. The app shows an "Updating" screen
+and reloads by itself when the new version is up. If the build fails, the previous version stays in use.
+
+This needs a folder created with `git clone` and no local changes to the files in the repository: put your own
+settings in `docker-compose.override.yml` (see [Configuration](#configuration)), which Git ignores. When an update
+also changes `docker-compose.yml`, `llm/` or `updater/`, the app asks you to run `docker compose up --build -d` once
+to apply it.
+
+You can always update by hand:
+
 ```bash
 git pull
-docker compose up --build
+docker compose up --build -d
 ```
 
 Database migrations run automatically when the backend starts.
@@ -82,12 +100,16 @@ password and lockout policy, and users (admin only).
 
 ### Docker Compose variables
 
-Set them in the shell or in a `.env` file next to `docker-compose.yml`:
+Set them in a `.env` file next to `docker-compose.yml` (or in the shell):
 
 | Variable | Default | Description |
 |---|---|---|
 | `LLM_MODEL` | `qwen3:4b` | Ollama model to use. `qwen3:1.7b` is about twice as fast but less accurate. |
 | `OLLAMA_PORT` | *(unset)* | Publishes Ollama on `127.0.0.1:<port>`, for running the backend outside Docker. |
+| `UPDATE_CHECK_HOURS` | `6` | Hours between checks for new versions in the repository. |
+
+For anything else, such as ports or extra environment variables, create a `docker-compose.override.yml` next to
+`docker-compose.yml`. Docker Compose merges it automatically, and Git ignores it, so updates never touch it.
 
 Example: `LLM_MODEL=qwen3:1.7b docker compose up --build`
 
@@ -99,12 +121,20 @@ Example: `LLM_MODEL=qwen3:1.7b docker compose up --build`
 | `8000` | REST API, with interactive documentation at http://localhost:8000/docs |
 | `5432` | PostgreSQL |
 
-To change a port, edit the `ports` entries in `docker-compose.yml` (for example `"8080:5173"`).
+To change a port, override it in `docker-compose.override.yml`:
+
+```yaml
+services:
+  frontend:
+    ports: !override
+      - "8080:5173"
+```
 
 ### Backend variables
 
 The backend reads these environment variables, or `backend/.env` when it runs outside Docker (see
-`backend/.env.example`). In Docker, add them to the `environment` section of the `backend` service.
+`backend/.env.example`). In Docker, add them to the `environment` section of the `backend` service in
+`docker-compose.override.yml`.
 
 | Variable | Default | Description |
 |---|---|---|
@@ -179,6 +209,7 @@ cd backend && pytest
 backend/     FastAPI app (app/api, app/services), SQLModel models, Alembic migrations, tests
 frontend/    React + TypeScript app (src/pages, src/components, src/lib)
 llm/         Service that detects the hardware and manages the Ollama container
+updater/     Service that installs new versions from the Git repository
 ```
 
 ## Built with

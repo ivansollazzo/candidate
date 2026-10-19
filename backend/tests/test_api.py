@@ -136,7 +136,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("1.0", "20261018.0001")
+    assert (health["version"], health["build"]) == ("1.1", "20261019.1528")
 
     r = client.post("/api/ai/job-posting", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
@@ -242,12 +242,12 @@ def test_status_change_stored_as_codes(client):
 def test_scheduled_events(client):
     app_id = client.post("/api/applications", json={"title": "Backend Developer", "company": "ACME"}).json()["id"]
     client.patch(f"/api/applications/{app_id}", json={"status": "interview"})
-    assert client.post("/api/events", json={"application_id": 999, "occurred_on": "2026-10-20", "title": "x"}).status_code == 404
+    assert client.post("/api/events", json={"application_id": 999, "occurred_on": "2099-10-20", "title": "x"}).status_code == 404
 
-    event = client.post("/api/events", json={"application_id": app_id, "type": "interview", "occurred_on": "2026-10-20",
+    event = client.post("/api/events", json={"application_id": app_id, "type": "interview", "occurred_on": "2099-10-20",
                                              "starts_at": "15:30", "title": "Colloquio tecnico", "details": "Con il CTO"}).json()
     assert (event["completed"], event["starts_at"]) == (False, "15:30:00")
-    client.post("/api/events", json={"application_id": app_id, "type": "follow_up", "occurred_on": "2026-10-18",
+    client.post("/api/events", json={"application_id": app_id, "type": "follow_up", "occurred_on": "2099-10-18",
                                      "title": "Scrivere al recruiter"})
 
     # The agenda excludes status changes and includes the application
