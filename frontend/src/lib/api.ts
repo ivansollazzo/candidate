@@ -209,9 +209,10 @@ export interface BranchRelease {
 
 export interface UpdateResult {
   result: "ok" | "failed"
-  error: "" | "fetch" | "branch" | "local_changes" | "checkout" | "build"
+  error: "" | "fetch" | "branch" | "checkout" | "build"
   detail: string
   restart_required: boolean
+  stashed: boolean
   finished_at: string
 }
 

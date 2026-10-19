@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.1 (build 20261019.1549), by Ivan Sollazzo.
+Version 1.1 (build 20261019.1604), by Ivan Sollazzo.
 
 ## Features
 
@@ -81,10 +81,12 @@ Installing a version is handled by the `updater` service: it checks out the bran
 while the current version keeps running, replaces them and removes the old images. The app shows an "Updating" screen
 and reloads by itself when the new version is up. If the build fails, the previous version stays in use.
 
-This needs a folder created with `git clone` and no local changes to the files in the repository: put your own
-settings in `docker-compose.override.yml` (see [Configuration](#configuration)), which Git ignores. When an update
-also changes `docker-compose.yml`, `llm/` or `updater/`, the app asks you to run `docker compose up --build -d` once
-to apply it.
+This needs a folder created with `git clone`. The updater manages that folder: it always moves it to the branch on
+GitHub, so you never have to pull or commit there. If tracked files were changed locally, they are set aside with
+`git stash` (see `git stash list`) instead of blocking the update; untracked files such as `.env` and
+`docker-compose.override.yml` are never touched, so that is where your own settings go (see
+[Configuration](#configuration)). Develop in a separate copy. When an update also changes `docker-compose.yml`, `llm/`
+or `updater/`, the app asks you to run `docker compose up --build -d` once to apply it.
 
 You can always update by hand:
 

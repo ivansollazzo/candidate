@@ -4,8 +4,9 @@
 #   state.json    written here: checked-out branch, branches on the remote with their version, progress
 #   request.json  written by the backend: {"action": "check"} or {"action": "install", "branch": "..."}
 #   settings.json written by the backend: {"check_hours": 6}, hours between checks (0 = only on request)
-# An install checks out the branch, rebuilds the backend and frontend with docker compose (the old
-# containers keep running until the new ones are ready) and removes the old images.
+# An install moves the folder to the branch on the remote (local changes go to a stash), rebuilds the
+# backend and frontend with docker compose (the old containers keep running until the new ones are ready)
+# and removes the old images.
 # This service is never rebuilt by itself: when an update changes the compose file, llm/ or updater/,
 # the state asks for a manual "docker compose up --build -d".
 set -u
@@ -50,11 +51,12 @@ write_state() {
 
 set_step() { STATUS=$1 STEP=$2; write_state; }
 
-finish() { # result error detail restart_required
-  LAST=$(printf '{"result": "%s", "error": "%s", "detail": "%s", "restart_required": %s, "finished_at": "%s"}' \
-    "$1" "$2" "$(json "$3")" "$4" "$(now)")
+finish() { # result error detail restart_required [stashed]
+  LAST=$(printf '{"result": "%s", "error": "%s", "detail": "%s", "restart_required": %s, "stashed": %s, "finished_at": "%s"}' \
+    "$1" "$2" "$(json "$3")" "$4" "${5:-false}" "$(now)")
   STATUS=idle STEP=""
   write_state
+  fix_owner
 }
 
 fix_owner() {
@@ -98,28 +100,53 @@ check() {
   write_state
 }
 
-# Back to the commit that was running (the old containers are still up)
+# Fingerprint of the files only applied by a manual restart: the compose file, the llm service and this service
+restart_files() {
+  (cd "$REPO" && find docker-compose.yml llm updater -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum)
+}
+
+# Finder's .DS_Store files change on their own and are not worth keeping
+NOT_DS_STORE=':(exclude,glob)**/.DS_Store'
+
+# Whether the files match a recent version of the branch on the remote (e.g. copied there by hand):
+# then the local changes are nothing to keep
+published() { # branch
+  for commit in $(git rev-list -n 50 "origin/$1"); do
+    git diff --quiet "$commit" -- "$NOT_DS_STORE" && return 0
+  done
+  return 1
+}
+
+# Back to the commit that was running (the old containers are still up) and to the files as they were
 rollback() {
-  if [ -n "$previous_branch" ] && [ "$(git symbolic-ref --short -q HEAD)" = "$previous_branch" ]; then
-    git reset -q --hard "$previous"
+  if [ -n "$previous_branch" ]; then
+    git checkout -q -f -B "$previous_branch" "$previous"
   else
-    git checkout -q "${previous_branch:-$previous}"
+    git checkout -q -f "$previous"
   fi
+  [ "$stashed" = true ] && git stash pop -q
   fix_owner
 }
 
+# The project folder is managed here: it follows the branch on the remote. Local changes to tracked files
+# are kept in a stash (git stash list) rather than blocking the update; untracked files, such as
+# docker-compose.override.yml and .env, are left alone.
 install() { # branch
   target=$1
   log "aggiornamento al branch $target"
   set_step updating fetch
   fetch || { finish failed fetch "$FETCH_ERROR" false; return; }
   git show-ref --verify -q "refs/remotes/origin/$target" || { finish failed branch "$target" false; return; }
-  changes=$(git status --porcelain --untracked-files=no)
-  [ -z "$changes" ] || { finish failed local_changes "$changes" false; return; }
 
   previous=$(git rev-parse HEAD)
   previous_branch=$(git symbolic-ref --short -q HEAD)
-  output=$( { git checkout -q "$target" && git merge -q --ff-only "origin/$target"; } 2>&1)
+  running_files=$(restart_files)
+  stashed=false
+  if ! git diff --quiet HEAD -- "$NOT_DS_STORE" && ! published "$target"; then
+    git -c user.name=Candidate -c user.email=updater@candidate.local \
+      stash push -q -m "Candidate: modifiche locali prima dell'aggiornamento del $(now)" && stashed=true
+  fi
+  output=$(git checkout -q -f -B "$target" --track "origin/$target" 2>&1)
   status=$?
   fix_owner
   if [ $status -ne 0 ]; then
@@ -129,9 +156,8 @@ install() { # branch
   fi
   list_branches
 
-  # The compose file, the llm service and this service are only applied by a manual restart
   restart=false
-  git diff --quiet "$previous" HEAD -- docker-compose.yml llm updater || restart=true
+  [ "$(restart_files)" = "$running_files" ] || restart=true
 
   set_step updating build
   # In the background so a docker compose stop doesn't wait for the build
@@ -148,7 +174,7 @@ install() { # branch
   set_step updating cleanup
   docker image prune -f --filter "label=com.docker.compose.project=$PROJECT" >/dev/null 2>&1
   log "aggiornamento completato: $(git rev-parse --short HEAD)"
-  finish ok "" "" "$restart"
+  finish ok "" "" "$restart" "$stashed"
 }
 
 trap 'exit 0' TERM INT

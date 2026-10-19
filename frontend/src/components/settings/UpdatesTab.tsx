@@ -31,10 +31,13 @@ function LastResult({ last }: { last: NonNullable<Updates["last"]> }) {
       </div>
     )
   }
-  if (!last.restart_required) return null
+  if (!last.restart_required && !last.stashed) return null
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
-      {t("updates.restartRequired")} <code className="font-mono">docker compose up --build -d</code>
+    <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+      {last.restart_required && (
+        <p>{t("updates.restartRequired")} <code className="font-mono">docker compose up --build -d</code></p>
+      )}
+      {last.stashed && <p>{t("updates.stashed")}</p>}
     </div>
   )
 }

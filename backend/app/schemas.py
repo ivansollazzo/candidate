@@ -519,10 +519,12 @@ class BranchRelease(BaseModel):
 class UpdateResult(BaseModel):
     # ok, failed
     result: str
-    # fetch, branch, local_changes, checkout, build
+    # fetch, branch, checkout, build
     error: str = ""
     detail: str = ""
     restart_required: bool = False
+    # Local changes to the project files were kept with git stash
+    stashed: bool = False
     finished_at: str
 
 
