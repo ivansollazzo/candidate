@@ -85,8 +85,9 @@ This needs a folder created with `git clone`. The updater manages that folder: i
 GitHub, so you never have to pull or commit there. If tracked files were changed locally, they are set aside with
 `git stash` (see `git stash list`) instead of blocking the update; untracked files such as `.env` and
 `docker-compose.override.yml` are never touched, so that is where your own settings go (see
-[Configuration](#configuration)). Develop in a separate copy. When an update also changes `docker-compose.yml`, `llm/`
-or `updater/`, the app asks you to run `docker compose up --build -d` once to apply it.
+[Your own changes](#your-own-changes-docker-composeoverrideyml)). Develop in a separate copy. When an update also
+changes `docker-compose.yml`, `llm/` or `updater/`, the app asks you to run `docker compose up --build -d` once to
+apply it.
 
 You can always update by hand:
 
@@ -111,10 +112,32 @@ Set them in a `.env` file next to `docker-compose.yml` (or in the shell):
 | `LLM_MODEL` | `qwen3:4b` | Ollama model to use. `qwen3:1.7b` is about twice as fast but less accurate. |
 | `OLLAMA_PORT` | *(unset)* | Publishes Ollama on `127.0.0.1:<port>`, for running the backend outside Docker. |
 
-For anything else, such as ports or extra environment variables, create a `docker-compose.override.yml` next to
-`docker-compose.yml`. Docker Compose merges it automatically, and Git ignores it, so updates never touch it.
-
 Example: `LLM_MODEL=qwen3:1.7b docker compose up --build`
+
+### Your own changes: docker-compose.override.yml
+
+Don't edit `docker-compose.yml`: it belongs to the repository and every update replaces it with the version of the
+branch (your edits are kept in a `git stash`, but no longer applied). Put your changes in a
+`docker-compose.override.yml` next to it instead: Docker Compose merges it automatically on every `docker compose`
+command, and Git and the updater never touch it.
+
+Lists such as `ports` and `volumes` are added to the ones in `docker-compose.yml`; to replace them, tag them with
+`!override`. For example, to keep the data in folders of your choice (bind mounts) instead of Docker volumes:
+
+```yaml
+services:
+  db:
+    volumes: !override
+      - ./data/postgres:/var/lib/postgresql/data
+  backend:
+    volumes: !override
+      - ./data/backend:/app/data
+      - llm-runtime:/runtime
+      - updates:/updates
+```
+
+Keep the entries you don't change (here `llm-runtime` and `updates`), since `!override` replaces the whole list.
+To move existing data, stop the app and copy it out of the volumes first.
 
 ### Ports
 
