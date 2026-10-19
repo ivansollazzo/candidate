@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models import ApplicationStatus, EventType
 
@@ -255,6 +255,20 @@ class AgendaEvent(EventRead):
 
     application_title: str | None
     application_company: str | None
+
+
+class ApplicationBulk(BaseModel):
+    """Same action on several applications at once: delete them or move them to one status."""
+
+    ids: Annotated[list[int], Field(min_length=1, max_length=1000)]
+    action: Literal["delete", "status"]
+    status: ApplicationStatus | None = None
+
+    @model_validator(mode="after")
+    def _status_for_status_action(self):
+        if self.action == "status" and self.status is None:
+            raise ValueError("status is required for the status action")
+        return self
 
 
 class ApplicationSummary(BaseModel):

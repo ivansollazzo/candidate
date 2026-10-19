@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Banknote, MapPin, Plus, Search } from "lucide-react"
-import { useEffect, useState } from "react"
+import { Banknote, MapPin, Plus, Search, Trash2 } from "lucide-react"
+import { useEffect, useState, type InputHTMLAttributes } from "react"
 import { Link, useSearchParams } from "react-router"
 
-import { buttonVariants } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Input, Select } from "@/components/ui/input"
-import { api, type ApplicationListItem, type ApplicationSort, type MeChanges, type User } from "@/lib/api"
+import { api, type ApplicationBulk, type ApplicationListItem, type ApplicationSort, type MeChanges, type User } from "@/lib/api"
 import { useCurrentUser, useUpdateMe } from "@/lib/auth"
 import { useT } from "@/lib/i18n"
 import { STATUSES, statusInfo, statusLabel, type ApplicationStatus } from "@/lib/status"
@@ -31,9 +31,18 @@ const COMPARE: Record<ApplicationSort, (a: ApplicationListItem, b: ApplicationLi
   event: (a, b) => byDateDesc(a.last_event_on, b.last_event_on) || byDateDesc(a.applied_on, b.applied_on),
 }
 
-function ApplicationRow({ app, showEvent, onStatus }: {
+function Checkbox({ indeterminate = false, ...props }: InputHTMLAttributes<HTMLInputElement> & { indeterminate?: boolean }) {
+  return (
+    <input type="checkbox" ref={(el) => { if (el) el.indeterminate = indeterminate }}
+      className="size-4 shrink-0 cursor-pointer accent-primary" {...props} />
+  )
+}
+
+function ApplicationRow({ app, showEvent, selected, onSelect, onStatus }: {
   app: ApplicationListItem
   showEvent: boolean
+  selected: boolean
+  onSelect: (selected: boolean) => void
   onStatus: (status: ApplicationStatus) => void
 }) {
   const t = useT()
@@ -45,30 +54,36 @@ function ApplicationRow({ app, showEvent, onStatus }: {
   ].filter(Boolean)
 
   return (
-    <li className="relative flex flex-col gap-3 px-4 py-3 transition-colors hover:bg-secondary/50 sm:flex-row sm:items-center">
-      <div className="min-w-0 flex-1">
-        <p className="truncate">
-          {/* The link covers the whole row; the status menu stays clickable on top */}
-          <Link to={`/applications/${app.id}`} className="font-medium after:absolute after:inset-0">
-            {app.title ?? t("application.untitled")}
-          </Link>
-          <span className="text-muted-foreground"> · {app.company ?? t("application.noCompany")}</span>
-        </p>
-        {details.length > 0 && (
-          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">{details}</div>
-        )}
+    <li className={cn("relative flex gap-3 px-4 py-3 transition-colors hover:bg-secondary/50", selected && "bg-secondary/60")}>
+      {/* Above the link that covers the row */}
+      <div className="relative z-10 flex items-start pt-1 sm:items-center sm:pt-0">
+        <Checkbox checked={selected} aria-label={t("list.select")} onChange={(e) => onSelect(e.target.checked)} />
       </div>
-      <div className="relative z-10 flex items-center gap-3">
-        <span className="hidden w-36 whitespace-nowrap text-right text-xs text-muted-foreground md:block">
-          {showEvent
-            ? app.last_event_on && t("list.lastEvent", { date: formatDate(app.last_event_on) ?? "" })
-            : app.applied_on && t("list.appliedOn", { date: formatDate(app.applied_on) ?? "" })}
-        </span>
-        <span className={cn("size-2 shrink-0 rounded-full", status.color)} />
-        <Select className="w-48" value={app.status} aria-label={t("list.statusLabel")}
-          onChange={(e) => onStatus(e.target.value as ApplicationStatus)}>
-          {STATUSES.map((s) => <option key={s.value} value={s.value}>{statusLabel(s.value)}</option>)}
-        </Select>
+      <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="min-w-0 flex-1">
+          <p className="truncate">
+            {/* The link covers the whole row; the status menu stays clickable on top */}
+            <Link to={`/applications/${app.id}`} className="font-medium after:absolute after:inset-0">
+              {app.title ?? t("application.untitled")}
+            </Link>
+            <span className="text-muted-foreground"> · {app.company ?? t("application.noCompany")}</span>
+          </p>
+          {details.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">{details}</div>
+          )}
+        </div>
+        <div className="relative z-10 flex items-center gap-3">
+          <span className="hidden w-36 whitespace-nowrap text-right text-xs text-muted-foreground md:block">
+            {showEvent
+              ? app.last_event_on && t("list.lastEvent", { date: formatDate(app.last_event_on) ?? "" })
+              : app.applied_on && t("list.appliedOn", { date: formatDate(app.applied_on) ?? "" })}
+          </span>
+          <span className={cn("size-2 shrink-0 rounded-full", status.color)} />
+          <Select className="w-48" value={app.status} aria-label={t("list.statusLabel")}
+            onChange={(e) => onStatus(e.target.value as ApplicationStatus)}>
+            {STATUSES.map((s) => <option key={s.value} value={s.value}>{statusLabel(s.value)}</option>)}
+          </Select>
+        </div>
       </div>
     </li>
   )
@@ -111,10 +126,35 @@ export function ApplicationList() {
     },
   })
 
+  // Selection for bulk actions; it is cleared when the filter or the search changes, so it never
+  // covers applications that are not on screen
+  const [selected, setSelected] = useState<Set<number>>(new Set())
+  const select = (ids: number[], on: boolean) => setSelected((old) => {
+    const next = new Set(old)
+    for (const id of ids) {
+      if (on) next.add(id)
+      else next.delete(id)
+    }
+    return next
+  })
+  const bulk = useMutation({
+    mutationFn: api.bulkApplications,
+    onSuccess: () => setSelected(new Set()),
+    onSettled: () => {
+      for (const key of ["applications", "application", "events"]) queryClient.invalidateQueries({ queryKey: [key] })
+    },
+  })
+
   const term = search.toLowerCase()
+  useEffect(() => setSelected(new Set()), [filter, term])
   const matching = data.filter((a) =>
     !term || [a.title, a.company, a.location].some((v) => v?.toLowerCase().includes(term)))
   const visible = (filter ? matching.filter((a) => a.status === filter) : [...matching]).sort(COMPARE[sort])
+  const chosen = visible.filter((a) => selected.has(a.id)).map((a) => a.id)
+  const runBulk = (action: ApplicationBulk) => bulk.mutate(action)
+  const onBulkDelete = () => {
+    if (confirm(t("list.confirmBulkDelete", { count: chosen.length }))) runBulk({ ids: chosen, action: "delete" })
+  }
   const chip = (active: boolean) => cn(
     "flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm text-muted-foreground hover:text-foreground",
     active && "border-foreground/30 bg-secondary text-foreground",
@@ -154,7 +194,9 @@ export function ApplicationList() {
         ))}
       </div>
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{(error as Error).message}</p>}
+      {(error ?? bulk.error) && (
+        <p className="text-sm text-red-600 dark:text-red-400">{((error ?? bulk.error) as Error).message}</p>
+      )}
       {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
 
       {!isLoading && visible.length === 0 ? (
@@ -162,11 +204,41 @@ export function ApplicationList() {
           {data.length === 0 ? t("list.empty") : t("list.noMatch")}
         </div>
       ) : (
-        <ul className="divide-y overflow-hidden rounded-xl border bg-card">
-          {visible.map((app) => (
-            <ApplicationRow key={app.id} app={app} showEvent={sort === "event"} onStatus={(status) => changeStatus.mutate({ id: app.id, status })} />
-          ))}
-        </ul>
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <div className="flex min-h-12 flex-wrap items-center gap-3 border-b bg-secondary/30 px-4 py-2 text-sm">
+            <label className="flex cursor-pointer items-center gap-3">
+              <Checkbox checked={chosen.length > 0 && chosen.length === visible.length}
+                indeterminate={chosen.length > 0 && chosen.length < visible.length}
+                onChange={(e) => select(visible.map((a) => a.id), e.target.checked)} />
+              <span className={chosen.length ? "font-medium" : "text-muted-foreground"}>
+                {chosen.length ? t("list.selected", { count: chosen.length }) : t("list.selectAll")}
+              </span>
+            </label>
+            {chosen.length > 0 && (
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                <Select className="h-8 w-48" value="" aria-label={t("list.bulkStatus")} disabled={bulk.isPending}
+                  onChange={(e) => runBulk({ ids: chosen, action: "status", status: e.target.value as ApplicationStatus })}>
+                  <option value="" disabled>{t("list.bulkStatus")}</option>
+                  {STATUSES.map((s) => <option key={s.value} value={s.value}>{statusLabel(s.value)}</option>)}
+                </Select>
+                <Button variant="outline" size="sm" disabled={bulk.isPending} onClick={onBulkDelete}
+                  className="text-red-600 hover:text-red-700 dark:text-red-400">
+                  <Trash2 /> {t("common.delete")}
+                </Button>
+                <Button variant="ghost" size="sm" disabled={bulk.isPending} onClick={() => setSelected(new Set())}>
+                  {t("list.clearSelection")}
+                </Button>
+              </div>
+            )}
+          </div>
+          <ul className="divide-y">
+            {visible.map((app) => (
+              <ApplicationRow key={app.id} app={app} showEvent={sort === "event"} selected={selected.has(app.id)}
+                onSelect={(on) => select([app.id], on)}
+                onStatus={(status) => changeStatus.mutate({ id: app.id, status })} />
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   )

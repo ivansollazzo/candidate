@@ -7,6 +7,7 @@ from app.db import get_session, save
 from app.i18n import t
 from app.models import Application, ApplicationEvent, EventType, TaskStatus, User
 from app.schemas import (
+    ApplicationBulk,
     ApplicationListItem,
     ApplicationRead,
     ApplicationUpdate,
@@ -27,6 +28,21 @@ def get_owned(session: Session, application_id: int, user: User) -> Application:
     if app is None or app.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, t("application_not_found"))
     return app
+
+
+def change_status(session: Session, app: Application, new_status: str) -> None:
+    """Set the status, keeping every change in the history."""
+    if new_status == app.status:
+        return
+    session.add(ApplicationEvent(
+        application_id=app.id,
+        type=EventType.STATUS_CHANGE,
+        occurred_on=date.today(),
+        completed=True,
+        # Statuses stored as codes ("applied>interview"); the frontend localizes them
+        title=f"{app.status}>{new_status}",
+    ))
+    app.status = new_status
 
 
 @router.get("", response_model=list[ApplicationListItem])
@@ -60,6 +76,22 @@ def create_application(
     return save(session, app)
 
 
+@router.post("/bulk", status_code=status.HTTP_204_NO_CONTENT)
+def bulk_update(
+    payload: ApplicationBulk, user: User = Depends(security.current_user),
+    session: Session = Depends(get_session),
+):
+    """Apply one action to several applications; all of them or none (unknown ids fail the whole request)."""
+    apps = [get_owned(session, application_id, user) for application_id in dict.fromkeys(payload.ids)]
+    for app in apps:
+        if payload.action == "delete":
+            session.delete(app)
+        else:
+            change_status(session, app, payload.status)
+            session.add(app)
+    session.commit()
+
+
 @router.get("/{application_id}", response_model=ApplicationRead)
 def get_application(
     application_id: int, user: User = Depends(security.current_user),
@@ -76,17 +108,8 @@ def update_application(
     app = get_owned(session, application_id, user)
     changes = payload.model_dump(exclude_unset=True)
 
-    new_status = changes.get("status")
-    if new_status and new_status != app.status:
-        # Every status change is kept in the history
-        session.add(ApplicationEvent(
-            application_id=app.id,
-            type=EventType.STATUS_CHANGE,
-            occurred_on=date.today(),
-            completed=True,
-            # Statuses stored as codes ("applied>interview"); the frontend localizes them
-            title=f"{app.status}>{new_status}",
-        ))
+    if new_status := changes.pop("status", None):
+        change_status(session, app, new_status)
 
     if changes.get("skills") is not None:
         # Advice depends on skills, so it must be regenerated

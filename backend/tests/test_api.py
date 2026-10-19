@@ -3,7 +3,9 @@ import io
 import numpy as np
 import pytest
 from docx import Document
+from fastapi.testclient import TestClient
 
+from app.main import app
 from app.schemas import (
     AdviceExtraction,
     ExtractedSkill,
@@ -136,7 +138,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("1.1", "20261019.1752")
+    assert (health["version"], health["build"]) == ("1.2", "20261019.2236")
 
     r = client.post("/api/ai/job-posting", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
@@ -317,3 +319,38 @@ def test_list_reports_last_event(client):
     client.patch(f"/api/applications/{second}", json={"status": "inactive"})
     last = {a["id"]: a["last_event_on"] for a in client.get("/api/applications").json()}
     assert last == {first: "2026-05-10", second: None}
+
+
+def test_bulk_status_and_delete(client):
+    ids = [client.post("/api/applications", json={"title": f"Job {i}"}).json()["id"] for i in range(3)]
+
+    r = client.post("/api/applications/bulk", json={"ids": ids[:2], "action": "status", "status": "interview"})
+    assert r.status_code == 204
+    statuses = {a["id"]: a["status"] for a in client.get("/api/applications").json()}
+    assert statuses == {ids[0]: "interview", ids[1]: "interview", ids[2]: "applied"}
+    events = client.get(f"/api/applications/{ids[0]}").json()["events"]
+    assert [(e["type"], e["title"]) for e in events] == [("status_change", "applied>interview")]
+
+    # Same status again: no new history entry
+    client.post("/api/applications/bulk", json={"ids": [ids[0]], "action": "status", "status": "interview"})
+    assert len(client.get(f"/api/applications/{ids[0]}").json()["events"]) == 1
+
+    assert client.post("/api/applications/bulk", json={"ids": ids, "action": "status"}).status_code == 422
+    assert client.post("/api/applications/bulk", json={"ids": [], "action": "delete"}).status_code == 422
+
+    # An unknown id fails the whole request
+    assert client.post("/api/applications/bulk", json={"ids": [ids[0], 999999], "action": "delete"}).status_code == 404
+    assert len(client.get("/api/applications").json()) == 3
+
+    assert client.post("/api/applications/bulk", json={"ids": ids[:2], "action": "delete"}).status_code == 204
+    assert [a["id"] for a in client.get("/api/applications").json()] == [ids[2]]
+
+
+def test_bulk_ignores_other_users_applications(client):
+    other_id = client.post("/api/applications", json={"title": "Admin job"}).json()["id"]
+    assert client.post("/api/users", json={"username": "mario", "email": "m@example.com",
+                                           "password": "Segreta1234"}).status_code == 201
+    mario = TestClient(app)
+    assert mario.post("/api/auth/login", json={"username": "mario", "password": "Segreta1234"}).status_code == 200
+    assert mario.post("/api/applications/bulk", json={"ids": [other_id], "action": "delete"}).status_code == 404
+    assert len(client.get("/api/applications").json()) == 1

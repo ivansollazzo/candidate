@@ -244,6 +244,10 @@ export interface Settings extends PasswordPolicy {
 
 export type Role = "admin" | "user"
 export type Theme = "light" | "dark" | "system"
+export type ApplicationBulk =
+  | { ids: number[]; action: "delete" }
+  | { ids: number[]; action: "status"; status: ApplicationStatus }
+
 export type ApplicationSort = "applied" | "status" | "name" | "event"
 export type ApplicationFilter = "all" | ApplicationStatus
 
@@ -357,6 +361,8 @@ export const api = {
   updateApplication: (id: number, changes: ApplicationChanges) =>
     request<Application>(`/api/applications/${id}`, json("PATCH", changes)),
   deleteApplication: (id: number) => request<void>(`/api/applications/${id}`, { method: "DELETE" }),
+  /** Same action on several applications: all of them or none */
+  bulkApplications: (bulk: ApplicationBulk) => request<void>("/api/applications/bulk", json("POST", bulk)),
   getMatch: (id: number) => request<MatchResult>(`/api/applications/${id}/match`),
   requestAdvice: (id: number) => request<Application>(`/api/applications/${id}/advice`, { method: "POST" }),
 
