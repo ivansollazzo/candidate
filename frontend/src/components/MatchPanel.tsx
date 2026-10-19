@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, CircleAlert, CircleDashed, Loader2, Sparkles } from "lucide-react"
 import { Link } from "react-router"
 
+import { ErrorText } from "@/components/ErrorText"
 import { SkillLevelDots } from "@/components/SkillLevelDots"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -105,9 +106,7 @@ export function MatchPanel({ application }: { application: Application }) {
           </div>
           {adviceRunning && <p className="text-sm text-muted-foreground">{t("match.adviceRunning")}</p>}
           {!ai.ready && !adviceRunning && <p className="text-sm text-muted-foreground">{ai.reason}</p>}
-          {!adviceRunning && application.advice?.error && (
-            <p className="text-sm text-red-600 dark:text-red-400">{application.advice.error}</p>
-          )}
+          {!adviceRunning && <ErrorText error={application.advice?.error} />}
           {!adviceRunning && application.advice?.summary && (
             <div className="space-y-3 text-sm">
               <p>{application.advice.summary}</p>

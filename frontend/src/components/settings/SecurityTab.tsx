@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react"
 
+import { ErrorText } from "@/components/ErrorText"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field } from "@/components/ui/input"
@@ -71,7 +72,7 @@ export function SecurityTab({ settings }: { settings: Settings }) {
           ))}
         </CardContent>
       </Card>
-      {update.error && <p className="text-sm text-red-600 dark:text-red-400">{update.error.message}</p>}
+      <ErrorText error={update.error} />
       {update.isSuccess && !changed && <p className="text-sm text-emerald-700 dark:text-emerald-400">{t("security.saved")}</p>}
       <Button type="submit" disabled={!changed || !valid || update.isPending}>{t("common.save")}</Button>
     </form>

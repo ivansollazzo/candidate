@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react"
 import { type ReactNode, useState } from "react"
 import { Link } from "react-router"
 
+import { ErrorText } from "@/components/ErrorText"
 import { EventItem } from "@/components/EventItem"
 import { MiniCalendar } from "@/components/MiniCalendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -69,7 +70,7 @@ export function Overview() {
         </p>
       </div>
 
-      {error && <p className="text-sm text-red-600 dark:text-red-400">{(error as Error).message}</p>}
+      <ErrorText error={error} />
       {isLoading ? <p className="text-sm text-muted-foreground">{t("common.loading")}</p> : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">

@@ -1,3 +1,4 @@
+import { ErrorText } from "@/components/ErrorText"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
@@ -25,7 +26,7 @@ export function SystemTab() {
 
   return (
     <>
-      {update.error && <p className="text-sm text-red-600 dark:text-red-400">{update.error.message}</p>}
+      <ErrorText error={update.error} />
       <Card>
         <CardHeader>
           <CardTitle>{t("settings.ai")}</CardTitle>

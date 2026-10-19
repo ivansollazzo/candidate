@@ -81,7 +81,7 @@ class AppSettings(SQLModel, table=True):
     # auto, cuda, rocm, vulkan, cpu; read by the llm service
     llm_accelerator: str = Field(default="auto", sa_type=sa.String(10), sa_column_kwargs={"server_default": "auto"})
 
-    # Updates: branch to follow (empty = the one checked out) and hours between checks (0 = only on request)
+    # Updates: selected branch (empty = the one checked out) and hours between checks (0 = only on request)
     update_branch: str | None = Field(default=None, sa_type=sa.String(200))
     update_check_hours: int = _int(6)
 

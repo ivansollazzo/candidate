@@ -5,6 +5,7 @@ import {
 import { type FormEvent, type ReactNode, useRef, useState } from "react"
 import { useNavigate } from "react-router"
 
+import { ErrorText } from "@/components/ErrorText"
 import { Logo } from "@/components/Logo"
 import { isPasswordValid, NewPassword } from "@/components/PasswordInput"
 import { RecoveryKey } from "@/components/RecoveryKey"
@@ -54,9 +55,6 @@ function Step({ icon, title, text, children }: { icon: ReactNode; title: string;
     </div>
   )
 }
-
-const ErrorText = ({ error }: { error: Error | null }) =>
-  error && <p className="text-sm text-red-600 dark:text-red-400">{error.message}</p>
 
 /** Admin account creation on first run. */
 function AccountStep({ onCreated }: { onCreated: (username: string, key: string) => void }) {

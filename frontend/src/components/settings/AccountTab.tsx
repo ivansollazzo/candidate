@@ -3,6 +3,7 @@ import { KeyRound, LogOut, RotateCcw } from "lucide-react"
 import { type FormEvent, useState } from "react"
 import { useNavigate } from "react-router"
 
+import { ErrorText } from "@/components/ErrorText"
 import { isPasswordValid, NewPassword } from "@/components/PasswordInput"
 import { RecoveryKey } from "@/components/RecoveryKey"
 import { Button } from "@/components/ui/button"
@@ -12,9 +13,6 @@ import { api, type User } from "@/lib/api"
 import { useLogout, useUpdateMe } from "@/lib/auth"
 import { useT } from "@/lib/i18n"
 import { useSettings } from "@/lib/settings"
-
-const ErrorText = ({ error }: { error: Error | null }) =>
-  error && <p className="text-sm text-red-600 dark:text-red-400">{error.message}</p>
 
 function Details({ me }: { me: User }) {
   const t = useT()

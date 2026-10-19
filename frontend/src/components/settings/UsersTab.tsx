@@ -3,6 +3,7 @@ import { Pencil, Plus, Trash2, X } from "lucide-react"
 import { type FormEvent, useState } from "react"
 
 import { Avatar } from "@/components/Avatar"
+import { ErrorText } from "@/components/ErrorText"
 import { LanguageSelect } from "@/components/LanguageSelect"
 import { isPasswordValid, NewPassword } from "@/components/PasswordInput"
 import { RecoveryKey } from "@/components/RecoveryKey"
@@ -69,7 +70,7 @@ function UserForm({ user, onSaved, onCancel }: {
       <NewPassword value={password} confirm={confirm} onChange={setPassword} onConfirmChange={setConfirm} policy={policy}
         label={t(user ? "users.newPassword" : "password.label")} />
       {user && <p className="text-xs text-muted-foreground">{t("users.passwordHint")}</p>}
-      {save.error && <p className="text-sm text-red-600 dark:text-red-400">{save.error.message}</p>}
+      <ErrorText error={save.error} />
       <div className="flex gap-2">
         <Button type="submit" disabled={!passwordOk || save.isPending}>{t(user ? "common.save" : "users.create")}</Button>
         <Button type="button" variant="ghost" onClick={onCancel}>{t("common.cancel")}</Button>
@@ -116,9 +117,7 @@ export function UsersTab({ me }: { me: User }) {
           </div>
         )}
         {editing === "new" && <UserForm onSaved={saved} onCancel={() => setEditing(null)} />}
-        {(error || remove.error) && (
-          <p className="text-sm text-red-600 dark:text-red-400">{(error ?? remove.error)?.message}</p>
-        )}
+        <ErrorText error={error ?? remove.error} />
         <ul className="divide-y rounded-lg border">
           {users.map((user) => (
             <li key={user.id} className="space-y-3 px-3 py-2.5">

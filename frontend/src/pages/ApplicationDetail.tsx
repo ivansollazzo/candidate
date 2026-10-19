@@ -6,6 +6,7 @@ import { useNavigate, useParams } from "react-router"
 import { JobPostingAssist, useJobSource } from "@/components/AiAssist"
 import { ApplicationFields } from "@/components/ApplicationFields"
 import { BackLink } from "@/components/BackLink"
+import { ErrorText } from "@/components/ErrorText"
 import { EventTimeline } from "@/components/EventTimeline"
 import { MatchPanel } from "@/components/MatchPanel"
 import { SaveBar } from "@/components/SaveBar"
@@ -104,7 +105,7 @@ export function ApplicationDetail() {
     queryFn: () => api.getApplication(id),
     refetchInterval: (q) => (isWorking(q.state.data?.advice_status) ? 3000 : false),
   })
-  if (error) return <p className="text-sm text-red-600 dark:text-red-400">{(error as Error).message}</p>
+  if (error) return <ErrorText error={error} />
   if (!app) return <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
   return <DetailPage key={app.id} app={app} />
 }
