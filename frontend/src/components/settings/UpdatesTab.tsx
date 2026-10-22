@@ -82,9 +82,9 @@ export function UpdatesTab() {
         <CardContent className="space-y-3 text-sm">
           <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[10rem_1fr]">
             <dt className="text-muted-foreground">{t("info.version")}</dt>
-            <dd className="font-mono">{release(data)}</dd>
-            <dt className="text-muted-foreground">{t("updates.commit")}</dt>
-            <dd className="font-mono">{data.commit ?? "—"}</dd>
+            <dd className="font-mono">{data.version}</dd>
+            <dt className="text-muted-foreground">{t("info.build")}</dt>
+            <dd className="font-mono">{data.build}</dd>
           </dl>
           {data.update_available && selected && (
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">

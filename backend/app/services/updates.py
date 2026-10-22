@@ -59,7 +59,6 @@ def overview(selected: str | None) -> dict:
         "step": state.get("step") or None,
         "progress": state.get("progress") or 0,
         "selected_branch": selected,
-        "commit": state.get("commit") or None,
         "checked_at": state.get("checked_at") or None,
         "version": __version__,
         "build": __build__,

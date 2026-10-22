@@ -14,7 +14,7 @@ def updates_dir(tmp_path, monkeypatch):
 
 
 def write_state(folder, **state):
-    base = {"status": "idle", "step": "", "branch": "main", "commit": "abc1234", "checked_at": "2026-10-19T12:00:00Z",
+    base = {"status": "idle", "step": "", "branch": "main", "checked_at": "2026-10-19T12:00:00Z",
             "branches": [], "last": None}
     (folder / "state.json").write_text(json.dumps({**base, **state}))
 
@@ -34,9 +34,9 @@ def test_unavailable_without_updater(client, updates_dir):
 
 def test_branches_and_install(client, updates_dir):
     write_state(updates_dir, branches=[
-        {"name": "main", "version": "9.0", "build": "20991231.0000", "commit": "1111111"},
-        {"name": "old", "version": __version__, "build": __build__, "commit": "2222222"},
-        {"name": "empty", "version": "", "build": "", "commit": "3333333"},
+        {"name": "main", "version": "9.0", "build": "20991231.0000"},
+        {"name": "old", "version": __version__, "build": __build__},
+        {"name": "empty", "version": "", "build": ""},
     ])
     data = client.get("/api/updates").json()
     assert [b["newer"] for b in data["branches"]] == [True, False, False]
@@ -84,7 +84,7 @@ def test_admin_only(client, updates_dir):
 
 
 def test_pending_request_reads_as_running(client, updates_dir):
-    write_state(updates_dir, branches=[{"name": "main", "version": "9.0", "build": "1", "commit": "1111111"}])
+    write_state(updates_dir, branches=[{"name": "main", "version": "9.0", "build": "1"}])
     assert client.post("/api/updates/install").status_code == 202
     # The updater hasn't picked the request up yet
     assert client.get("/api/updates/status").json()["status"] == "updating"

@@ -205,7 +205,6 @@ export interface BranchRelease {
   name: string
   version: string
   build: string
-  commit: string
   newer: boolean
 }
 
@@ -221,8 +220,6 @@ export interface UpdateResult {
 export interface Updates extends UpdateStatus {
   /** The branch the admin picked; until then, the checked-out one */
   selected_branch: string | null
-  /** commit of the installed release */
-  commit: string | null
   checked_at: string | null
   branches: BranchRelease[]
   update_available: boolean

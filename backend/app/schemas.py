@@ -531,7 +531,6 @@ class BranchRelease(BaseModel):
     name: str
     version: str
     build: str
-    commit: str
     newer: bool
 
 
@@ -549,8 +548,6 @@ class UpdateResult(BaseModel):
 
 class UpdatesRead(UpdateStatus):
     selected_branch: str | None = None
-    # Commit of the installed release
-    commit: str | None = None
     checked_at: str | None = None
     branches: list[BranchRelease]
     update_available: bool
