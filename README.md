@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.2.2 (build 20261019.2259), by Ivan Sollazzo.
+Version 1.2.3 (build 20261023.0008), by Ivan Sollazzo.
 
 ## Features
 
@@ -82,6 +82,10 @@ gets a newer one.
 Installing a version is handled by the `updater` service: it checks out the branch, rebuilds the backend and frontend
 while the current version keeps running, replaces them and removes the old images. The app shows an "Updating" screen
 and reloads by itself when the new version is up. If the build fails, the previous version stays in use.
+
+If GitHub can't be reached, a check gives up after two minutes instead of waiting forever: the tab keeps showing the
+branches of the last successful check with an error message, and the updater tries again after 15 minutes (or at the
+next interval, if shorter) until the repository answers.
 
 This needs a folder created with `git clone`. The updater manages that folder: it always moves it to the branch on
 GitHub, so you never have to pull or commit there. If tracked files were changed locally, they are set aside with

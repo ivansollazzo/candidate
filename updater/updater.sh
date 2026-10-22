@@ -16,6 +16,10 @@ REPO=/project
 STATE=/updates/state.json
 REQUEST=/updates/request.json
 SETTINGS=/updates/settings.json
+# A repository that doesn't answer must not block the updater: give up after this many seconds
+FETCH_TIMEOUT=120
+# After a failed check, try again sooner than the check interval
+RETRY_SECONDS=900
 
 SELF=$(hostname)
 label() { docker inspect -f "{{index .Config.Labels \"com.docker.compose.$1\"}}" "$SELF" 2>/dev/null; }
@@ -44,9 +48,8 @@ compose() { docker compose --project-directory "$HOST_DIR" -p "$PROJECT" "$@"; }
 
 write_state() {
   head_branch=$(git symbolic-ref --short -q HEAD)
-  head_commit=$(git rev-parse --short HEAD 2>/dev/null)
-  printf '{"status": "%s", "step": "%s", "progress": %s, "branch": "%s", "commit": "%s", "checked_at": "%s", "branches": [%s], "last": %s}\n' \
-    "$STATUS" "$STEP" "$PROGRESS" "$(json "$head_branch")" "$head_commit" "$CHECKED_AT" "$BRANCHES" "${LAST:-null}" > "$STATE.tmp" \
+  printf '{"status": "%s", "step": "%s", "progress": %s, "branch": "%s", "checked_at": "%s", "branches": [%s], "last": %s}\n' \
+    "$STATUS" "$STEP" "$PROGRESS" "$(json "$head_branch")" "$CHECKED_AT" "$BRANCHES" "${LAST:-null}" > "$STATE.tmp" \
     && mv "$STATE.tmp" "$STATE"
 }
 
@@ -84,29 +87,40 @@ list_branches() {
   for name in $(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin); do
     [ "$name" = HEAD ] && continue
     ref="refs/remotes/origin/$name"
-    entry=$(printf '{"name": "%s", "version": "%s", "build": "%s", "commit": "%s"}' "$(json "$name")" \
-      "$(json "$(version_of "$ref" version)")" "$(json "$(version_of "$ref" build)")" "$(git rev-parse --short "$ref")")
+    entry=$(printf '{"name": "%s", "version": "%s", "build": "%s"}' "$(json "$name")" \
+      "$(json "$(version_of "$ref" version)")" "$(json "$(version_of "$ref" build)")")
     BRANCHES="${BRANCHES:+$BRANCHES, }$entry"
   done
 }
 
 fetch() {
-  output=$(git fetch --prune origin 2>&1)
+  # No credential prompts, and no waiting forever on a server that doesn't answer
+  output=$(GIT_TERMINAL_PROMPT=0 timeout "$FETCH_TIMEOUT" git -C "$REPO" fetch --prune origin 2>&1)
   status=$?
   fix_owner
-  [ $status -eq 0 ] || { log "$output"; FETCH_ERROR=$output; return 1; }
+  [ $status -eq 0 ] && return 0
+  [ -n "$output" ] || output="no answer from the repository within $FETCH_TIMEOUT seconds"
+  log "fetch failed: $output"
+  FETCH_ERROR=$output
+  return 1
 }
 
+# Fetch failures of a check are shown until a check succeeds; results of an install stay
+CHECK_FAILED=false
 check() {
   set_step checking fetch
   if fetch; then
-    list_branches
     CHECKED_AT=$(now)
+    [ "$CHECK_FAILED" = true ] && LAST=""
+    CHECK_FAILED=false
     log "check completed"
   else
+    CHECK_FAILED=true
     LAST=$(printf '{"result": "failed", "error": "fetch", "detail": "%s", "restart_required": false, "finished_at": "%s"}' \
       "$(json "$FETCH_ERROR")" "$(now)")
   fi
+  # Without the repository, the branches are those of the last fetch that worked
+  list_branches
   STATUS=idle STEP="" PROGRESS=0
   write_state
 }
@@ -209,6 +223,11 @@ if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]; then
   while :; do sleep 3600 & wait $!; done
 fi
 
+# Seconds until the next automatic check: the interval, or sooner after a failed check
+next_check() {
+  [ "$CHECK_FAILED" = true ] && [ $((hours * 3600)) -gt "$RETRY_SECONDS" ] && echo "$RETRY_SECONDS" || echo $((hours * 3600))
+}
+
 check
 last_check=$(date +%s)
 while :; do
@@ -222,7 +241,7 @@ while :; do
       install) git check-ref-format --branch "$branch" >/dev/null 2>&1 && install "$branch" ;;
     esac
     last_check=$(date +%s)
-  elif [ "$hours" -gt 0 ] && [ "$(date +%s)" -ge $((last_check + hours * 3600)) ]; then
+  elif [ "$hours" -gt 0 ] && [ "$(date +%s)" -ge $((last_check + $(next_check))) ]; then
     check
     last_check=$(date +%s)
   fi
