@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     llm_provider: Literal["auto", "ollama"] = "ollama"
     llm_runtime_file: Path = Path("/runtime/llm.json")
     llm_base_url: str = "http://localhost:11434"
-    llm_model: str = "qwen3:4b"
+    llm_model: str = "gemma4:e2b"
     llm_timeout_seconds: float = 600.0
     llm_num_ctx: int = 8192
 

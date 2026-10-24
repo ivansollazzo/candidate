@@ -162,6 +162,10 @@ interface MatchResult {
   has_profile: boolean
 }
 
+/** Local models offered in the settings (backend: SettingsUpdate.llm_model) */
+export const LLM_MODELS = ["gemma4:e2b", "gemma4:e4b", "qwen3.5:4b"] as const
+export type LlmModel = (typeof LLM_MODELS)[number]
+
 export const ACCELERATORS = ["cuda", "rocm", "vulkan", "cpu"] as const
 type Accelerator = (typeof ACCELERATORS)[number]
 /** failed: detected, but Ollama cannot use it */
@@ -178,6 +182,8 @@ interface Health {
     starting?: boolean
     reachable?: boolean
     model_available?: boolean
+    /** Model being downloaded by the llm service, progress 0-100 */
+    download?: { model: string; progress: number } | null
     error?: string
     /** null until the llm service has probed the hardware */
     hardware: Record<Accelerator, HardwareStatus> | null
@@ -237,6 +243,7 @@ export interface Updates extends UpdateStatus {
 export interface Settings extends PasswordPolicy {
   llm_enabled: boolean
   llm_accelerator: Accelerator | "auto"
+  llm_model: LlmModel
   /** Branch to update from; null = the one checked out */
   update_branch: string | null
   /** Hours between update checks; 0 = only on request */

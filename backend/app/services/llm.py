@@ -53,7 +53,7 @@ def generate_structured(system: str, user: str, schema: type[T]) -> T:
         ],
         "format": schema.model_json_schema(),
         "stream": False,
-        # Disable Qwen 3 "thinking" mode for faster responses
+        # Reasoning off: extraction follows strict prompts and doesn't need it, and it would be much slower
         "think": False,
         "options": {"temperature": 0, "num_ctx": settings.llm_num_ctx},
     }
@@ -81,10 +81,19 @@ def hardware_support() -> dict | None:
         return None  # backend running outside Docker, or detection not finished yet
 
 
+def download_progress() -> dict | None:
+    """Model the llm service is downloading, with the percentage done."""
+    try:
+        return json.loads((get_settings().llm_runtime_file.parent / "pull.json").read_text())
+    except (OSError, ValueError):
+        return None
+
+
 def check_llm() -> dict:
     target = current_target()
     if target is None:
-        return {"model": None, "accelerator": None, "starting": True, "reachable": False, "model_available": False}
+        return {"model": None, "accelerator": None, "starting": True, "reachable": False, "model_available": False,
+                "download": download_progress()}
     info = {"model": target.model, "accelerator": target.accelerator, "starting": False}
     try:
         response = httpx.get(f"{target.base_url}/api/tags", timeout=5)

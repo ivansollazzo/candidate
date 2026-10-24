@@ -378,6 +378,7 @@ class SettingsRead(BaseModel):
 
     llm_enabled: bool
     llm_accelerator: str
+    llm_model: str
     update_branch: str | None
     update_check_hours: int
     password_min_length: int
@@ -392,6 +393,8 @@ class SettingsRead(BaseModel):
 class SettingsUpdate(BaseModel):
     llm_enabled: bool | None = None
     llm_accelerator: Literal["auto", "cuda", "rocm", "vulkan", "cpu"] | None = None
+    # Local models offered in Settings > System (also listed in the frontend, lib/ai.ts)
+    llm_model: Literal["gemma4:e2b", "gemma4:e4b", "qwen3.5:4b"] | None = None
     # Branch to update from; empty string: the checked-out one
     update_branch: str | None = Field(default=None, max_length=200)
     update_check_hours: Literal[0, 1, 6, 12, 24, 168] | None = None
