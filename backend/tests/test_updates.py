@@ -97,3 +97,11 @@ def test_check_interval(client, updates_dir):
     assert json.loads((updates_dir / "settings.json").read_text()) == {"check_hours": 24}
     assert client.patch("/api/settings", json={"update_check_hours": 0}).json()["update_check_hours"] == 0
     assert client.patch("/api/settings", json={"update_check_hours": 5}).status_code == 422
+
+
+def test_check_error_kept_apart_from_install_result(client, updates_dir):
+    last = {"result": "ok", "restart_required": True, "finished_at": "2026-10-24T10:00:00Z"}
+    write_state(updates_dir, last=last, check_error={"detail": "Could not resolve host", "failed_at": "2026-10-24T11:00:00Z"})
+    data = client.get("/api/updates").json()
+    assert data["last"]["restart_required"] is True
+    assert data["check_error"]["detail"] == "Could not resolve host"

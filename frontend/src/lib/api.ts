@@ -217,6 +217,11 @@ export interface UpdateResult {
   finished_at: string
 }
 
+export interface CheckError {
+  detail: string
+  failed_at: string
+}
+
 export interface Updates extends UpdateStatus {
   /** The branch the admin picked; until then, the checked-out one */
   selected_branch: string | null
@@ -224,6 +229,8 @@ export interface Updates extends UpdateStatus {
   branches: BranchRelease[]
   update_available: boolean
   last: UpdateResult | null
+  /** The last check couldn't reach the repository */
+  check_error: CheckError | null
 }
 
 /** System settings: readable by everyone, writable by the admin only */
