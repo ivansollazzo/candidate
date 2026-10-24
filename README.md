@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.2.3 (build 20261023.0008), by Ivan Sollazzo.
+Version 1.2.4 (build 20261024.1758), by Ivan Sollazzo.
 
 ## Features
 
@@ -85,15 +85,19 @@ and reloads by itself when the new version is up. If the build fails, the previo
 
 If GitHub can't be reached, a check gives up after two minutes instead of waiting forever: the tab keeps showing the
 branches of the last successful check with an error message, and the updater tries again after 15 minutes (or at the
-next interval, if shorter) until the repository answers.
+next interval, if shorter) until the repository answers. That error is shown apart from the result of the last
+install, so a notice such as "run `docker compose up --build -d`" stays visible. Git lock files left over by a fetch
+that was killed halfway (for example when the container stopped during it) are removed after 10 minutes, so they
+can't block the following checks.
 
 This needs a folder created with `git clone`. The updater manages that folder: it always moves it to the branch on
 GitHub, so you never have to pull or commit there. If tracked files were changed locally, they are set aside with
 `git stash` (see `git stash list`) instead of blocking the update; untracked files such as `.env` and
 `docker-compose.override.yml` are never touched, so that is where your own settings go (see
 [Your own changes](#your-own-changes-docker-composeoverrideyml)). Develop in a separate copy. When an update also
-changes `docker-compose.yml`, `llm/` or `updater/`, the app asks you to run `docker compose up --build -d` once to
-apply it.
+changes `docker-compose.yml`, `llm/` or `updater/Dockerfile`, the app asks you to run `docker compose up --build -d`
+once to apply it. The updater script itself (`updater/updater.sh`) is run from the project folder, so a new version of
+it takes over right after the install, with no manual step.
 
 You can always update by hand:
 

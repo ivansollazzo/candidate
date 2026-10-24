@@ -65,6 +65,7 @@ def overview(selected: str | None) -> dict:
         "branches": branches,
         "update_available": bool(target and target["newer"]),
         "last": state.get("last"),
+        "check_error": state.get("check_error"),
     }
 
 

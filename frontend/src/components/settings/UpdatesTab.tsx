@@ -17,21 +17,24 @@ const release = (item: { version: string; build: string }) => `${item.version} Â
 const formatTime = (value: string | null) =>
   value ? new Date(value).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" }) : "â€”"
 
+function Failure({ message, detail }: { message: string; detail: string }) {
+  const t = useT()
+  return (
+    <div className="space-y-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
+      <p>{message}</p>
+      {detail && (
+        <details>
+          <summary className="cursor-pointer text-xs">{t("updates.details")}</summary>
+          <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap text-xs">{detail}</pre>
+        </details>
+      )}
+    </div>
+  )
+}
+
 function LastResult({ last }: { last: NonNullable<Updates["last"]> }) {
   const t = useT()
-  if (last.result === "failed") {
-    return (
-      <div className="space-y-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-        <p>{t(`updates.error.${last.error || "build"}`)}</p>
-        {last.detail && (
-          <details>
-            <summary className="cursor-pointer text-xs">{t("updates.details")}</summary>
-            <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap text-xs">{last.detail}</pre>
-          </details>
-        )}
-      </div>
-    )
-  }
+  if (last.result === "failed") return <Failure message={t(`updates.error.${last.error || "build"}`)} detail={last.detail} />
   if (!last.restart_required && !last.stashed) return null
   return (
     <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -138,6 +141,10 @@ export function UpdatesTab() {
               {t("updates.checkedAt", { time: formatTime(data.checked_at) })}
             </p>
           </div>
+          {data.check_error && (
+            <Failure message={t("updates.error.check", { time: formatTime(data.check_error.failed_at) })}
+              detail={data.check_error.detail} />
+          )}
         </CardContent>
       </Card>
 

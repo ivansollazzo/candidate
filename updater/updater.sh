@@ -2,14 +2,16 @@
 # Keeps Candidate up to date from its Git repository. The project folder is mounted at /project
 # and must be a Git clone. Talks to the backend through files in /updates:
 #   state.json    written here: checked-out branch, branches on the remote with their version, progress
-#                 (step and an estimated percentage, from the build steps docker compose reports)
+#                 (step and an estimated percentage, from the build steps docker compose reports),
+#                 result of the last install and error of the last check, if it failed
 #   request.json  written by the backend: {"action": "check"} or {"action": "install", "branch": "..."}
 #   settings.json written by the backend: {"check_hours": 6}, hours between checks (0 = only on request)
 # An install moves the folder to the branch on the remote (local changes go to a stash), rebuilds the
 # backend and frontend with docker compose (the old containers keep running until the new ones are ready)
 # and removes the old images.
-# This service is never rebuilt by itself: when an update changes the compose file, llm/ or updater/,
-# the state asks for a manual "docker compose up --build -d".
+# The image runs this script from the project folder, so after an install the updater restarts itself
+# with the new script. Its container is never rebuilt by itself: when an update changes the compose
+# file, llm/ or updater/Dockerfile, the state asks for a manual "docker compose up --build -d".
 set -u
 
 REPO=/project
@@ -20,6 +22,15 @@ SETTINGS=/updates/settings.json
 FETCH_TIMEOUT=120
 # After a failed check, try again sooner than the check interval
 RETRY_SECONDS=900
+# A Git lock file older than this is left over by a git killed halfway (e.g. a container stopped
+# during a fetch): it would make every following fetch fail
+STALE_LOCK_MINUTES=10
+# When the last check succeeded, kept across restarts of the updater
+CHECKED_FILE=/updates/checked_at
+
+SCRIPT=$REPO/updater/updater.sh
+# The script now running: an install that changes it restarts the updater with the new one
+RUNNING_SCRIPT=$(md5sum < "$0")
 
 SELF=$(hostname)
 label() { docker inspect -f "{{index .Config.Labels \"com.docker.compose.$1\"}}" "$SELF" 2>/dev/null; }
@@ -33,7 +44,9 @@ esac
 # Files created here belong to the owner of the project folder
 OWNER=$(stat -c %u:%g "$REPO")
 
-STATUS=idle STEP="" PROGRESS=0 BRANCHES="" CHECKED_AT="" LAST=""
+# LAST (result of the last install) is handed over when the updater restarts itself with a new script
+STATUS=idle STEP="" PROGRESS=0 BRANCHES="" CHECK_ERROR="" LAST=${LAST:-}
+CHECKED_AT=$(cat "$CHECKED_FILE" 2>/dev/null)
 
 log() { echo "[updater] $*"; }
 # Without the file (before the backend starts) the default applies
@@ -48,8 +61,8 @@ compose() { docker compose --project-directory "$HOST_DIR" -p "$PROJECT" "$@"; }
 
 write_state() {
   head_branch=$(git symbolic-ref --short -q HEAD)
-  printf '{"status": "%s", "step": "%s", "progress": %s, "branch": "%s", "checked_at": "%s", "branches": [%s], "last": %s}\n' \
-    "$STATUS" "$STEP" "$PROGRESS" "$(json "$head_branch")" "$CHECKED_AT" "$BRANCHES" "${LAST:-null}" > "$STATE.tmp" \
+  printf '{"status": "%s", "step": "%s", "progress": %s, "branch": "%s", "checked_at": "%s", "branches": [%s], "last": %s, "check_error": %s}\n' \
+    "$STATUS" "$STEP" "$PROGRESS" "$(json "$head_branch")" "$CHECKED_AT" "$BRANCHES" "${LAST:-null}" "${CHECK_ERROR:-null}" > "$STATE.tmp" \
     && mv "$STATE.tmp" "$STATE"
 }
 
@@ -93,31 +106,40 @@ list_branches() {
   done
 }
 
+remove_stale_locks() {
+  find "$REPO/.git" -name '*.lock' -mmin +"$STALE_LOCK_MINUTES" 2>/dev/null | while read -r lock; do
+    log "removing stale Git lock $lock"
+    rm -f "$lock"
+  done
+}
+
+# Every fetch that works, also the one of an install, counts as a successful check
 fetch() {
+  remove_stale_locks
   # No credential prompts, and no waiting forever on a server that doesn't answer
   output=$(GIT_TERMINAL_PROMPT=0 timeout "$FETCH_TIMEOUT" git -C "$REPO" fetch --prune origin 2>&1)
   status=$?
   fix_owner
-  [ $status -eq 0 ] && return 0
+  if [ $status -eq 0 ]; then
+    CHECKED_AT=$(now)
+    CHECK_ERROR=""
+    echo "$CHECKED_AT" > "$CHECKED_FILE"
+    return 0
+  fi
   [ -n "$output" ] || output="no answer from the repository within $FETCH_TIMEOUT seconds"
   log "fetch failed: $output"
   FETCH_ERROR=$output
   return 1
 }
 
-# Fetch failures of a check are shown until a check succeeds; results of an install stay
-CHECK_FAILED=false
+# The error of a failed check is shown until a fetch succeeds; it is kept apart from the result of the
+# last install, so a notice like "restart required" is not lost
 check() {
   set_step checking fetch
   if fetch; then
-    CHECKED_AT=$(now)
-    [ "$CHECK_FAILED" = true ] && LAST=""
-    CHECK_FAILED=false
     log "check completed"
   else
-    CHECK_FAILED=true
-    LAST=$(printf '{"result": "failed", "error": "fetch", "detail": "%s", "restart_required": false, "finished_at": "%s"}' \
-      "$(json "$FETCH_ERROR")" "$(now)")
+    CHECK_ERROR=$(printf '{"detail": "%s", "failed_at": "%s"}' "$(json "$FETCH_ERROR")" "$(now)")
   fi
   # Without the repository, the branches are those of the last fetch that worked
   list_branches
@@ -125,9 +147,10 @@ check() {
   write_state
 }
 
-# Fingerprint of the files only applied by a manual restart: the compose file, the llm service and this service
+# Fingerprint of the files only applied by a manual restart: the compose file, the llm service and the
+# image of this service (not this script, which is reloaded by itself)
 restart_files() {
-  (cd "$REPO" && find docker-compose.yml llm updater -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum)
+  (cd "$REPO" && find docker-compose.yml llm updater -type f ! -name updater.sh 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum)
 }
 
 # Finder's .DS_Store files change on their own and are not worth keeping
@@ -208,6 +231,12 @@ install() { # branch
   docker image prune -f --filter "label=com.docker.compose.project=$PROJECT" >/dev/null 2>&1
   log "update completed: $(git rev-parse --short HEAD)"
   finish ok "" "" "$restart" "$stashed"
+  # A new version of this script takes over right away, keeping the result of the install
+  if [ -f "$SCRIPT" ] && [ "$(md5sum < "$SCRIPT")" != "$RUNNING_SCRIPT" ]; then
+    log "restarting with the new updater script"
+    export LAST
+    exec sh "$SCRIPT"
+  fi
 }
 
 trap 'exit 0' TERM INT
@@ -225,7 +254,7 @@ fi
 
 # Seconds until the next automatic check: the interval, or sooner after a failed check
 next_check() {
-  [ "$CHECK_FAILED" = true ] && [ $((hours * 3600)) -gt "$RETRY_SECONDS" ] && echo "$RETRY_SECONDS" || echo $((hours * 3600))
+  [ -n "$CHECK_ERROR" ] && [ $((hours * 3600)) -gt "$RETRY_SECONDS" ] && echo "$RETRY_SECONDS" || echo $((hours * 3600))
 }
 
 check

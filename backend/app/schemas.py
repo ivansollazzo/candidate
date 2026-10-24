@@ -546,10 +546,17 @@ class UpdateResult(BaseModel):
     finished_at: str
 
 
+class CheckError(BaseModel):
+    # The repository couldn't be reached; cleared by the next successful check
+    detail: str = ""
+    failed_at: str
+
+
 class UpdatesRead(UpdateStatus):
     selected_branch: str | None = None
     checked_at: str | None = None
     branches: list[BranchRelease]
     update_available: bool
     last: UpdateResult | None = None
+    check_error: CheckError | None = None
 
