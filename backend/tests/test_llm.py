@@ -27,6 +27,32 @@ def test_auto_waits_for_runtime_file(tmp_path, monkeypatch):
     assert llm.generate_structured("s", "u", JobCoreExtraction).title == "Dev"
     assert captured["url"] == "http://ollama:11434/api/chat"
     assert captured["payload"]["format"]["title"] == "JobCoreExtraction"
+    # Every field must be written, so an empty object doesn't satisfy the output grammar
+    assert set(captured["payload"]["format"]["required"]) == set(JobCoreExtraction.model_fields)
+
+
+def test_empty_or_trailing_output_retried(tmp_path, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "llm_provider", "ollama")
+    answers = iter(["{}<|tool_response>", '```json\n{"title": "Dev"}\n```<|tool_response>'])
+    temperatures = []
+
+    def fake_post(url, json, timeout):
+        temperatures.append(json["options"]["temperature"])
+        body = {"message": {"content": next(answers)}}
+        return httpx.Response(200, json=body, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(llm.httpx, "post", fake_post)
+    assert llm.generate_structured("s", "u", JobCoreExtraction).title == "Dev"
+    assert temperatures == [0, 0.4]
+
+
+def test_strict_schema_requires_nested_fields():
+    from app.schemas import JobRequirementsExtraction
+
+    schema = llm.strict_schema(JobRequirementsExtraction.model_json_schema())
+    assert set(schema["required"]) == {"responsibilities", "requirements", "nice_to_have", "skills"}
+    assert schema["$defs"]["ExtractedSkill"]["required"] == ["name", "importance"]
 
 
 def test_download_progress_while_starting(tmp_path, monkeypatch):

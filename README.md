@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Gemma 4 or Qwen 3
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.3 (build 20261024.2013), by Ivan Sollazzo.
+Version 1.3 (build 20261024.2039), by Ivan Sollazzo.
 
 ## Features
 
@@ -79,8 +79,9 @@ settings icon and the version can be installed. A version is installed only if i
 the database is never taken back to an older schema: selecting a branch with an older version simply waits until it
 gets a newer one.
 
-Installing a version is handled by the `updater` service: it checks out the branch, rebuilds the backend and frontend
-while the current version keeps running, replaces them and removes the old images. The app shows an "Updating" screen
+Installing a version is handled by the `updater` service: it checks out the branch, rebuilds every other service
+(backend, frontend, llm, database) with the new `docker-compose.yml` while the current version keeps running, replaces
+them and removes the old images. The app shows an "Updating" screen
 and reloads by itself when the new version is up. If the build fails, the previous version stays in use.
 
 If GitHub can't be reached, a check gives up after two minutes instead of waiting forever: the tab keeps showing the
@@ -94,10 +95,11 @@ This needs a folder created with `git clone`. The updater manages that folder: i
 GitHub, so you never have to pull or commit there. If tracked files were changed locally, they are set aside with
 `git stash` (see `git stash list`) instead of blocking the update; untracked files such as `.env` and
 `docker-compose.override.yml` are never touched, so that is where your own settings go (see
-[Your own changes](#your-own-changes-docker-composeoverrideyml)). Develop in a separate copy. When an update also
-changes `docker-compose.yml`, `llm/` or `updater/Dockerfile`, the app asks you to run `docker compose up --build -d`
-once to apply it. The updater script itself (`updater/updater.sh`) is run from the project folder, so a new version of
-it takes over right after the install, with no manual step.
+[Your own changes](#your-own-changes-docker-composeoverrideyml)). Develop in a separate copy. The updater can't
+replace its own container: only when an update changes `updater/Dockerfile` or the `updater` service in
+`docker-compose.yml`, the app asks you to run `docker compose up --build -d` once. The updater script itself
+(`updater/updater.sh`) is run from the project folder, so a new version of it takes over right after the install,
+with no manual step.
 
 You can always update by hand:
 
@@ -125,7 +127,8 @@ In Settings > System the admin picks the local model used by all AI features:
 
 Reasoning ("thinking") is always off: the prompts give the model strict rules and an example for each request,
 which is enough for extraction and much faster. Changing model downloads the new one the first time (the app shows the
-progress) and deletes the previous one; until the download ends, the previous model stays in use.
+progress) and deletes the previous one; until the download ends, the previous model stays in use. Picking another
+model during a download cancels it and deletes what was downloaded so far.
 
 ### Docker Compose variables
 

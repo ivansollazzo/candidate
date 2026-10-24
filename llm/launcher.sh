@@ -144,16 +144,27 @@ start_llm() { # preference
     running || return 1
     sleep 1
   done
-  use_model "$(wanted_model)"
+  while :; do
+    use_model "$(wanted_model)"
+    status=$?
+    # Cancelled because the admin picked another model: download that one
+    [ $status -eq 2 ] || return $status
+  done
 }
 
-# Download the model if needed (pull.json reports the progress), then remove the other models
+# Download the model if needed (pull.json reports the progress), then remove the other models.
+# Returns 2 when the download is cancelled because the settings changed meanwhile.
 use_model() { # model
   log "checking model $1 (downloaded only the first time)"
   # In the background so Ctrl+C stops even a long download right away
   docker exec "$NAME" ollama pull "$1" > /tmp/pull.log 2>&1 &
   pull=$!
   while kill -0 "$pull" 2>/dev/null; do
+    if [ "$(wanted_model)" != "$1" ] || ! enabled; then
+      cancel_download "$1"
+      enabled || return 1
+      return 2
+    fi
     progress=$(tr '\r' '\n' < /tmp/pull.log | grep -o '[0-9]*%' | tail -n 1 | tr -d %)
     printf '{"model": "%s", "progress": %s}\n' "$1" "${progress:-0}" > "$PULL.tmp" && mv "$PULL.tmp" "$PULL"
     sleep 1 &
@@ -173,6 +184,20 @@ use_model() { # model
   done
   MODEL=$1
   write_choice "$MODEL" "$ACCELERATOR"
+}
+
+# Restarting the container is the sure way to stop a pull inside Ollama; the parts already downloaded
+# are deleted, so an abandoned model leaves nothing behind
+cancel_download() { # model
+  log "download of $1 cancelled: the settings changed"
+  docker restart "$NAME" >/dev/null 2>&1
+  wait "$pull"
+  rm -f "$PULL"
+  until docker exec "$NAME" ollama list >/dev/null 2>&1; do
+    running || return
+    sleep 1
+  done
+  docker exec "$NAME" sh -c 'rm -f /root/.ollama/models/blobs/*-partial*'
 }
 
 rm -f "$OUT"
@@ -199,11 +224,16 @@ while :; do
       log "model changed in the settings (${MODEL:-none} -> $wanted)"
       previous=$MODEL
       rm -f "$OUT"
-      if ! use_model "$wanted"; then
-        # The previous model stays in use; the download is tried again in a minute
+      use_model "$wanted"
+      status=$?
+      if [ $status -ne 0 ]; then
+        # The previous model stays in use until the new one is ready
         [ -n "$previous" ] && MODEL=$previous && write_choice "$MODEL" "$ACCELERATOR"
-        sleep 60 &
-        wait $!
+        # Failed download: try again in a minute; cancelled (status 2): the next loop takes the new choice
+        if [ $status -eq 1 ] && enabled; then
+          sleep 60 &
+          wait $!
+        fi
       fi
     fi
   elif running || [ -f "$OUT" ]; then
