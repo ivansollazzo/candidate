@@ -19,7 +19,7 @@ services:
   llm:
     build: ./llm
     environment:
-      LLM_MODEL: ${LLM_MODEL:-qwen3:4b-instruct-2507-q4_K_M}
+      LLM_MODEL: ${LLM_MODEL:-qwen3:4b}
       OLLAMA_PORT: ${OLLAMA_PORT:-}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

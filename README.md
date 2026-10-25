@@ -4,11 +4,11 @@ Candidate is a self-hosted web app for keeping track of your job applications. I
 status, dates, events and notes, keeps your professional profile, and tells you how well your skills match each
 position.
 
-Forms can be filled in by hand or with a local language model (Qwen 3 4B Instruct 2507, served by Ollama) that reads a job posting or
+Forms can be filled in by hand or with a local language model (Qwen 3 4B served by Ollama) that reads a job posting or
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.3 (build 20261026.0031), by Ivan Sollazzo.
+Version 1.3 (build 20261026.0042), by Ivan Sollazzo.
 
 ## Features
 
@@ -121,10 +121,10 @@ Set them in a `.env` file next to `docker-compose.yml` (or in the shell):
 
 | Variable | Default | Description |
 |---|---|---|
-| `LLM_MODEL` | `qwen3:4b-instruct-2507-q4_K_M` | Ollama model to use. `ministral-3:3b` (Ministral 3 3B Instruct) is an alternative of similar size. |
+| `LLM_MODEL` | `qwen3:4b` | Ollama model to use. `qwen3:1.7b` is about twice as fast but less accurate. |
 | `OLLAMA_PORT` | *(unset)* | Publishes Ollama on `127.0.0.1:<port>`, for running the backend outside Docker. |
 
-Example: `LLM_MODEL=ministral-3:3b docker compose up --build`
+Example: `LLM_MODEL=qwen3:1.7b docker compose up --build`
 
 ### Your own changes: docker-compose.override.yml
 
@@ -179,7 +179,7 @@ The backend reads these environment variables, or `backend/.env` when it runs ou
 | `DATABASE_URL` | `postgresql+psycopg://candidate:candidate@localhost:5432/candidate` | PostgreSQL connection string. |
 | `LLM_PROVIDER` | `ollama` | `auto` uses the model started by the `llm` service (the Docker setting); `ollama` uses `LLM_BASE_URL` and `LLM_MODEL`. |
 | `LLM_BASE_URL` | `http://localhost:11434` | Ollama address, with `LLM_PROVIDER=ollama`. |
-| `LLM_MODEL` | `qwen3:4b-instruct-2507-q4_K_M` | Model name, with `LLM_PROVIDER=ollama`. |
+| `LLM_MODEL` | `qwen3:4b` | Model name, with `LLM_PROVIDER=ollama`. |
 | `LLM_TIMEOUT_SECONDS` | `600` | Maximum time for a single model request. |
 | `LLM_NUM_CTX` | `8192` | Model context size in tokens. |
 | `EMBEDDING_MODEL` | `intfloat/multilingual-e5-small` | Sentence-transformers model for skill matching. |
@@ -253,7 +253,7 @@ updater/     Service that installs new versions from the Git repository
 ## Built with
 
 FastAPI, SQLModel, Alembic, PostgreSQL · React, TypeScript, Vite, Tailwind CSS, TanStack Query, Lucide · Ollama,
-Qwen 3 4B Instruct 2507, sentence-transformers (multilingual-e5-small) · pdfplumber, python-docx, trafilatura · pwdlib (Argon2),
+Qwen 3 4B, sentence-transformers (multilingual-e5-small) · pdfplumber, python-docx, trafilatura · pwdlib (Argon2),
 PyJWT, Pillow · Docker Compose.
 
 Thanks to the open source projects Candidate is built on.

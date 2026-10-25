@@ -53,8 +53,9 @@ def generate_structured(system: str, user: str, schema: type[T]) -> T:
         ],
         "format": schema.model_json_schema(),
         "stream": False,
-        # num_predict caps the output so a looping generation stops instead of running forever
-        "options": {"temperature": 0, "num_ctx": settings.llm_num_ctx, "num_predict": 3000},
+        # Disable Qwen 3 "thinking" mode for faster responses
+        "think": False,
+        "options": {"temperature": 0, "num_ctx": settings.llm_num_ctx},
     }
     try:
         response = httpx.post(f"{target.base_url}/api/chat", json=payload, timeout=settings.llm_timeout_seconds)
