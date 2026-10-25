@@ -37,8 +37,7 @@ def publish(settings: AppSettings) -> None:
     """Write choices to the shared volumes: the llm service starts, stops or restarts Ollama accordingly,
     the updater follows the check interval."""
     _write(get_settings().llm_runtime_file.parent / "settings.json",
-           {"llm_enabled": settings.llm_enabled, "llm_accelerator": settings.llm_accelerator,
-            "llm_model": settings.llm_model})
+           {"llm_enabled": settings.llm_enabled, "llm_accelerator": settings.llm_accelerator})
     _write(get_settings().updates_dir / "settings.json", {"check_hours": settings.update_check_hours})
 
 

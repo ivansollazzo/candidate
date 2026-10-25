@@ -4,11 +4,11 @@ Candidate is a self-hosted web app for keeping track of your job applications. I
 status, dates, events and notes, keeps your professional profile, and tells you how well your skills match each
 position.
 
-Forms can be filled in by hand or with a local language model (Gemma 4 or Qwen 3.5, served by Ollama) that reads a job posting or
+Forms can be filled in by hand or with a local language model (Qwen 3.5 2B, served by Ollama) that reads a job posting or
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.3 (build 20261024.2039), by Ivan Sollazzo.
+Version 1.3 (build 20261026.0009), by Ivan Sollazzo.
 
 ## Features
 
@@ -55,7 +55,7 @@ On first start:
    somewhere safe: it is the only way to reset the password.
 2. You choose whether to enable the AI features, then fill in your profile and, if you like, your first application.
 
-The first start downloads the language model (about 2.5 GB). The embedding model used for skill matching (about
+The first start downloads the language model (about 3 GB). The embedding model used for skill matching (about
 470 MB) is downloaded the first time a match is computed. Settings › System shows when the model is ready.
 
 ### Stopping and removing
@@ -112,23 +112,8 @@ Database migrations run automatically when the backend starts.
 
 ## Configuration
 
-Most settings are changed from the app: language and theme (per user), AI features on or off, the AI model, hardware
-acceleration, password and lockout policy, and users (admin only).
-
-### AI model
-
-In Settings > System the admin picks the local model used by all AI features:
-
-| Model | Download | Notes |
-|---|---|---|
-| Gemma 4 E2B (`gemma4:e2b`, default) | about 4.6 GB | Fastest, made for running on personal computers. |
-| Gemma 4 E4B (`gemma4:e4b`) | about 6.6 GB | More accurate than E2B, slower. |
-| Qwen 3.5 4B (`qwen3.5:4b`) | about 3.3 GB | Best of the three in public benchmarks. |
-
-Reasoning ("thinking") is always off: the prompts give the model strict rules and an example for each request,
-which is enough for extraction and much faster. Changing model downloads the new one the first time (the app shows the
-progress) and deletes the previous one; until the download ends, the previous model stays in use. Picking another
-model during a download cancels it and deletes what was downloaded so far.
+Most settings are changed from the app: language and theme (per user), AI features on or off, hardware acceleration,
+password and lockout policy, and users (admin only).
 
 ### Docker Compose variables
 
@@ -136,7 +121,10 @@ Set them in a `.env` file next to `docker-compose.yml` (or in the shell):
 
 | Variable | Default | Description |
 |---|---|---|
+| `LLM_MODEL` | `qwen3.5:2b` | Ollama model to use. `qwen3.5:2b-q4_K_M` is smaller (1.9 GB) and faster but less accurate. |
 | `OLLAMA_PORT` | *(unset)* | Publishes Ollama on `127.0.0.1:<port>`, for running the backend outside Docker. |
+
+Example: `LLM_MODEL=qwen3.5:2b-q4_K_M docker compose up --build`
 
 ### Your own changes: docker-compose.override.yml
 
@@ -191,7 +179,7 @@ The backend reads these environment variables, or `backend/.env` when it runs ou
 | `DATABASE_URL` | `postgresql+psycopg://candidate:candidate@localhost:5432/candidate` | PostgreSQL connection string. |
 | `LLM_PROVIDER` | `ollama` | `auto` uses the model started by the `llm` service (the Docker setting); `ollama` uses `LLM_BASE_URL` and `LLM_MODEL`. |
 | `LLM_BASE_URL` | `http://localhost:11434` | Ollama address, with `LLM_PROVIDER=ollama`. |
-| `LLM_MODEL` | `gemma4:e2b` | Model name, with `LLM_PROVIDER=ollama` (in Docker the model is chosen in the app). |
+| `LLM_MODEL` | `qwen3.5:2b` | Model name, with `LLM_PROVIDER=ollama`. |
 | `LLM_TIMEOUT_SECONDS` | `600` | Maximum time for a single model request. |
 | `LLM_NUM_CTX` | `8192` | Model context size in tokens. |
 | `EMBEDDING_MODEL` | `intfloat/multilingual-e5-small` | Sentence-transformers model for skill matching. |
@@ -265,7 +253,7 @@ updater/     Service that installs new versions from the Git repository
 ## Built with
 
 FastAPI, SQLModel, Alembic, PostgreSQL · React, TypeScript, Vite, Tailwind CSS, TanStack Query, Lucide · Ollama,
-Gemma 4, Qwen 3.5, sentence-transformers (multilingual-e5-small) · pdfplumber, python-docx, trafilatura · pwdlib (Argon2),
+Qwen 3.5 2B, sentence-transformers (multilingual-e5-small) · pdfplumber, python-docx, trafilatura · pwdlib (Argon2),
 PyJWT, Pillow · Docker Compose.
 
 Thanks to the open source projects Candidate is built on.

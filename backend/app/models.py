@@ -80,8 +80,6 @@ class AppSettings(SQLModel, table=True):
     llm_enabled: bool = _bool(True)
     # auto, cuda, rocm, vulkan, cpu; read by the llm service
     llm_accelerator: str = Field(default="auto", sa_type=sa.String(10), sa_column_kwargs={"server_default": "auto"})
-    # Ollama model, one of those in SettingsUpdate; read by the llm service, which downloads it
-    llm_model: str = Field(default="gemma4:e2b", sa_type=sa.String(50), sa_column_kwargs={"server_default": "gemma4:e2b"})
 
     # Updates: selected branch (empty = the one checked out) and hours between checks (0 = only on request)
     update_branch: str | None = Field(default=None, sa_type=sa.String(200))

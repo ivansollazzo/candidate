@@ -138,7 +138,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("1.3", "20261024.2039")
+    assert (health["version"], health["build"]) == ("1.3", "20261026.0009")
 
     r = client.post("/api/ai/job-posting", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
@@ -218,9 +218,6 @@ def test_settings_and_language(client):
     assert "secret_key" not in settings
     assert client.patch("/api/settings", json={"llm_accelerator": "vulkan"}).json()["llm_accelerator"] == "vulkan"
     assert client.patch("/api/settings", json={"llm_accelerator": "tpu"}).status_code == 422
-    assert settings["llm_model"] == "gemma4:e2b"
-    assert client.patch("/api/settings", json={"llm_model": "qwen3.5:4b"}).json()["llm_model"] == "qwen3.5:4b"
-    assert client.patch("/api/settings", json={"llm_model": "qwen3:4b"}).status_code == 422
     assert client.patch("/api/settings", json={"session_hours": 0}).status_code == 422
 
     me = client.get("/api/me").json()

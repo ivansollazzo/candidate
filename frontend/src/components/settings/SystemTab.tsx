@@ -2,8 +2,8 @@ import { ErrorText } from "@/components/ErrorText"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { ACCELERATOR_NAMES, MODEL_NAMES, useAiStatus, useHealth } from "@/lib/ai"
-import { ACCELERATORS, type HardwareStatus, LLM_MODELS, type LlmModel, type Settings } from "@/lib/api"
+import { ACCELERATOR_NAMES, useAiStatus, useHealth } from "@/lib/ai"
+import { ACCELERATORS, type HardwareStatus, type Settings } from "@/lib/api"
 import { useT } from "@/lib/i18n"
 import { useSettings, useUpdateSettings } from "@/lib/settings"
 import { cn } from "@/lib/utils"
@@ -40,17 +40,6 @@ export function SystemTab() {
           </p>
           <p className="text-muted-foreground">{t("settings.aiText")}</p>
           <p className="text-muted-foreground">{t("settings.aiMemory")}</p>
-          <div>
-            <Label className="mb-1 block" htmlFor="llm-model">{t("settings.model")}</Label>
-            <Select id="llm-model" className="w-full sm:w-96" value={settings?.llm_model}
-              disabled={!settings || update.isPending}
-              onChange={(e) => update.mutate({ llm_model: e.target.value as LlmModel })}>
-              {LLM_MODELS.map((model) => (
-                <option key={model} value={model}>{MODEL_NAMES[model]} · {t(`model.${model}`)}</option>
-              ))}
-            </Select>
-            <p className="mt-1 text-xs text-muted-foreground">{t("settings.modelHint")}</p>
-          </div>
         </CardContent>
       </Card>
 

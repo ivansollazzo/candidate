@@ -6,13 +6,6 @@ import { t, useT } from "./i18n"
 
 export const ACCELERATOR_NAMES: Record<string, string> = { cpu: "CPU", cuda: "CUDA", rocm: "ROCm", vulkan: "Vulkan" }
 
-export const MODEL_NAMES: Record<string, string> = {
-  "gemma4:e2b": "Gemma 4 E2B",
-  "gemma4:e4b": "Gemma 4 E4B",
-  "qwen3.5:4b": "Qwen 3.5 4B",
-}
-const modelName = (model: string | null | undefined) => (model ? MODEL_NAMES[model] ?? model : "")
-
 /** Backend status: release and LLM state. */
 export const useHealth = () => useQuery({ queryKey: ["health"], queryFn: api.health, refetchInterval: 30_000 })
 
@@ -24,10 +17,9 @@ export function useAiStatus() {
   let reason: string | null = null
   if (!llm) reason = t("ai.backendDown")
   else if (!llm.enabled) reason = t("ai.disabled")
-  else if (llm.starting && llm.download) reason = t("ai.downloading", { model: modelName(llm.download.model) })
   else if (llm.starting) reason = t("ai.starting")
   else if (!llm.reachable) reason = t("ai.unreachable")
-  else if (!llm.model_available) reason = t("ai.notDownloaded", { model: modelName(llm.model) })
+  else if (!llm.model_available) reason = t("ai.notDownloaded", { model: llm.model ?? "" })
   const accelerator = llm?.accelerator ? ACCELERATOR_NAMES[llm.accelerator] ?? llm.accelerator : null
   return {
     enabled: llm?.enabled ?? false,
@@ -36,10 +28,8 @@ export function useAiStatus() {
     /** Short model status, for settings */
     label: !llm ? t("ai.backendDown")
       : !llm.enabled ? t("ai.off")
-        : llm.starting && llm.download
-          ? t("ai.downloadingShort", { model: modelName(llm.download.model), progress: llm.download.progress })
-          : llm.starting ? t("ai.startingShort")
-            : reason ?? [modelName(llm.model), accelerator].filter(Boolean).join(" · "),
+        : llm.starting ? t("ai.startingShort")
+          : reason ?? [llm.model, accelerator].filter(Boolean).join(" · "),
     tone: reason == null ? "bg-emerald-500" : !llm?.enabled ? "bg-slate-400" : llm.starting ? "bg-amber-500" : "bg-red-500",
   }
 }

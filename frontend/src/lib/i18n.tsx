@@ -113,8 +113,6 @@ const it = {
   "ai.notDownloaded": "Il modello {model} non è ancora stato scaricato",
   "ai.off": "AI disattivata",
   "ai.startingShort": "Avvio del modello…",
-  "ai.downloading": "Download del modello {model} in corso, riprova tra qualche minuto",
-  "ai.downloadingShort": "Download di {model}: {progress}%",
   "ai.fillFailed": "Compilazione non riuscita",
   "ai.confirmOverwrite":
     "L'AI ha trovato valori diversi per {count} campi già compilati. Vuoi sostituirli?\nAnnulla per compilare solo i campi vuoti.",
@@ -333,7 +331,7 @@ const it = {
   "settings.aiText":
     "Il modello locale compila i campi di candidature e profilo partendo da annunci e CV, e genera i consigli su dove migliorare. Senza AI puoi sempre compilare tutto a mano; anche la compatibilità delle skill resta disponibile, perché non usa il modello.",
   "settings.aiMemory":
-    "Quando disattivi l'AI il modello viene fermato e libera la memoria che occupa (da 3 a 7 GB secondo il modello). Quando la riattivi riparte da solo: servono alcuni secondi, il download avviene solo la prima volta.",
+    "Quando disattivi l'AI il modello viene fermato e libera la memoria che occupa (circa 3-4 GB). Quando la riattivi riparte da solo: servono alcuni secondi, il download avviene solo la prima volta.",
   "settings.hardware": "Accelerazione hardware",
   "settings.hardwareHint":
     "Stack con cui il modello può girare su questo computer. L'accelerazione hardware non è al momento supportata su Mac.",
@@ -341,12 +339,6 @@ const it = {
   "settings.accelerator": "Stack da usare",
   "settings.auto": "Automatico (il migliore disponibile)",
   "settings.acceleratorHint": "Cambiando stack il modello viene riavviato. Se lo stack scelto non funziona, si usa la CPU.",
-  "settings.model": "Modello",
-  "settings.modelHint":
-    "Vale per tutte le funzioni AI. Cambiando modello viene scaricato quello nuovo (solo la prima volta) e cancellato il precedente; nel frattempo resta in uso quello attuale.",
-  "model.gemma4:e2b": "il più veloce, circa 4,6 GB",
-  "model.gemma4:e4b": "più preciso, circa 6,6 GB",
-  "model.qwen3.5:4b": "il migliore nei benchmark, circa 3,3 GB",
   "settings.setup": "Configurazione iniziale",
   "settings.setupHint": "Ripeti la procedura del primo accesso: lingua, profilo e prima candidatura.",
   "settings.setupButton": "Ripeti configurazione iniziale",
@@ -365,7 +357,7 @@ const it = {
   "wizard.languageText": "Scegli la lingua dell'app. Puoi cambiarla quando vuoi dalle impostazioni.",
   "wizard.aiTitle": "Vuoi usare l'AI?",
   "wizard.aiText":
-    "Un modello linguistico locale (Gemma 4 E2B, puoi cambiarlo dalle impostazioni) può compilare candidature e profilo partendo da annunci e CV, e suggerirti dove migliorare. Gira sul tuo computer: occupa circa 4-5 GB di memoria e la prima volta scarica circa 4,6 GB.",
+    "Un modello linguistico locale (Qwen 3.5 2B) può compilare candidature e profilo partendo da annunci e CV, e suggerirti dove migliorare. Gira sul tuo computer: occupa circa 3-4 GB di memoria e la prima volta scarica circa 3 GB.",
   "wizard.aiOn": "Sì, attiva l'AI",
   "wizard.aiOnHint": "Compilazione automatica e consigli",
   "wizard.aiOff": "No, per ora",
@@ -634,8 +626,6 @@ const en: Record<MessageKey, string> = {
   "ai.notDownloaded": "The model {model} hasn't been downloaded yet",
   "ai.off": "AI turned off",
   "ai.startingShort": "Starting the model…",
-  "ai.downloading": "Downloading the model {model}, try again in a few minutes",
-  "ai.downloadingShort": "Downloading {model}: {progress}%",
   "ai.fillFailed": "Filling in failed",
   "ai.confirmOverwrite":
     "The AI found different values for {count} fields you already filled in. Replace them?\nCancel to fill in only the empty fields.",
@@ -852,7 +842,7 @@ const en: Record<MessageKey, string> = {
   "settings.aiText":
     "The local model fills in applications and your profile from job postings and CVs, and gives advice on where to improve. Without AI you can always fill in everything by hand; the skill match stays available too, because it doesn't use the model.",
   "settings.aiMemory":
-    "When you turn AI off the model is stopped and frees the memory it uses (3 to 7 GB depending on the model). When you turn it back on it restarts by itself: it takes a few seconds, and the download only happens the first time.",
+    "When you turn AI off the model is stopped and frees the memory it uses (about 3-4 GB). When you turn it back on it restarts by itself: it takes a few seconds, and the download only happens the first time.",
   "settings.hardware": "Hardware acceleration",
   "settings.hardwareHint":
     "Stacks the model can run on with this computer. Hardware acceleration is not currently supported on Mac.",
@@ -860,12 +850,6 @@ const en: Record<MessageKey, string> = {
   "settings.accelerator": "Stack to use",
   "settings.auto": "Automatic (best available)",
   "settings.acceleratorHint": "Changing stack restarts the model. If the chosen stack doesn't work, the CPU is used.",
-  "settings.model": "Model",
-  "settings.modelHint":
-    "Used by all AI features. Changing model downloads the new one (only the first time) and deletes the previous one; meanwhile the current one stays in use.",
-  "model.gemma4:e2b": "fastest, about 4.6 GB",
-  "model.gemma4:e4b": "more accurate, about 6.6 GB",
-  "model.qwen3.5:4b": "best in benchmarks, about 3.3 GB",
   "settings.setup": "Initial setup",
   "settings.setupHint": "Run the first sign-in setup again: language, profile and first application.",
   "settings.setupButton": "Run initial setup again",
@@ -884,7 +868,7 @@ const en: Record<MessageKey, string> = {
   "wizard.languageText": "Choose the app language. You can change it any time in the settings.",
   "wizard.aiTitle": "Do you want to use AI?",
   "wizard.aiText":
-    "A local language model (Gemma 4 E2B, you can change it in the settings) can fill in applications and your profile from job postings and CVs, and suggest where to improve. It runs on your computer: it uses about 4-5 GB of memory and downloads about 4.6 GB the first time.",
+    "A local language model (Qwen 3.5 2B) can fill in applications and your profile from job postings and CVs, and suggest where to improve. It runs on your computer: it uses about 3-4 GB of memory and downloads about 3 GB the first time.",
   "wizard.aiOn": "Yes, turn AI on",
   "wizard.aiOnHint": "Automatic filling in and advice",
   "wizard.aiOff": "Not now",

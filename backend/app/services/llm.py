@@ -1,6 +1,5 @@
 """Minimal Ollama client with JSON output constrained to a Pydantic schema."""
 
-import copy
 import json
 import logging
 from dataclasses import dataclass
@@ -40,56 +39,8 @@ def current_target() -> LLMTarget | None:
         return None
 
 
-# Temperature of each attempt: a small model now and then answers with something unusable, and the same
-# request at temperature 0 would get the same answer again
-TEMPERATURES = (0, 0.4)
-
-
-def strict_schema(schema: dict) -> dict:
-    """JSON schema with every property required (still nullable where the model allows it). With optional
-    properties the output grammar accepts {}, and small models take that shortcut."""
-    def visit(node):
-        if isinstance(node, dict):
-            if node.get("type") == "object" and "properties" in node:
-                node["required"] = list(node["properties"])
-            for value in node.values():
-                visit(value)
-        elif isinstance(node, list):
-            for value in node:
-                visit(value)
-
-    schema = copy.deepcopy(schema)
-    visit(schema)
-    return schema
-
-
-def first_object(content: str) -> dict:
-    """The first JSON object in the response: models sometimes add text or special tokens after it
-    (e.g. '{...}<|tool_response>') or wrap it in a ```json block."""
-    start = content.find("{")
-    if start < 0:
-        raise json.JSONDecodeError("no JSON object", content, 0)
-    value, _ = json.JSONDecoder().raw_decode(content, start)
-    return value
-
-
 def generate_structured(system: str, user: str, schema: type[T]) -> T:
     """Ask the model for a response matching `schema` (Ollama structured outputs)."""
-    error: Exception | None = None
-    for temperature in TEMPERATURES:
-        content = _chat(system, user, strict_schema(schema.model_json_schema()), temperature)
-        try:
-            data = first_object(content)
-            if not data:
-                raise ValueError("empty object")
-            return schema.model_validate(data)
-        except (ValueError, ValidationError) as exc:  # JSONDecodeError is a ValueError
-            log.warning("Invalid LLM response: %s", content[:500])
-            error = exc
-    raise LLMError(t("llm_invalid", error=error))
-
-
-def _chat(system: str, user: str, schema: dict, temperature: float) -> str:
     settings = get_settings()
     target = current_target()
     if target is None:
@@ -100,11 +51,11 @@ def _chat(system: str, user: str, schema: dict, temperature: float) -> str:
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        "format": schema,
+        "format": schema.model_json_schema(),
         "stream": False,
-        # Reasoning off: extraction follows strict prompts and doesn't need it, and it would be much slower
+        # Disable Qwen 3.5 "thinking" mode for faster responses
         "think": False,
-        "options": {"temperature": temperature, "num_ctx": settings.llm_num_ctx},
+        "options": {"temperature": 0, "num_ctx": settings.llm_num_ctx},
     }
     try:
         response = httpx.post(f"{target.base_url}/api/chat", json=payload, timeout=settings.llm_timeout_seconds)
@@ -114,7 +65,12 @@ def _chat(system: str, user: str, schema: dict, temperature: float) -> str:
     except httpx.HTTPError as exc:
         raise LLMError(t("llm_unreachable", url=target.base_url, error=exc)) from exc
 
-    return response.json().get("message", {}).get("content", "")
+    content = response.json().get("message", {}).get("content", "")
+    try:
+        return schema.model_validate(json.loads(content))
+    except (json.JSONDecodeError, ValidationError) as exc:
+        log.warning("Invalid LLM response: %s", content[:500])
+        raise LLMError(t("llm_invalid", error=exc)) from exc
 
 
 def hardware_support() -> dict | None:
@@ -125,19 +81,10 @@ def hardware_support() -> dict | None:
         return None  # backend running outside Docker, or detection not finished yet
 
 
-def download_progress() -> dict | None:
-    """Model the llm service is downloading, with the percentage done."""
-    try:
-        return json.loads((get_settings().llm_runtime_file.parent / "pull.json").read_text())
-    except (OSError, ValueError):
-        return None
-
-
 def check_llm() -> dict:
     target = current_target()
     if target is None:
-        return {"model": None, "accelerator": None, "starting": True, "reachable": False, "model_available": False,
-                "download": download_progress()}
+        return {"model": None, "accelerator": None, "starting": True, "reachable": False, "model_available": False}
     info = {"model": target.model, "accelerator": target.accelerator, "starting": False}
     try:
         response = httpx.get(f"{target.base_url}/api/tags", timeout=5)
