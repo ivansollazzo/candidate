@@ -15,7 +15,7 @@ def test_auto_waits_for_runtime_file(tmp_path, monkeypatch):
     assert llm.check_llm()["starting"] is True
 
     (tmp_path / "llm.json").write_text(json.dumps(
-        {"base_url": "http://ollama:11434", "model": "qwen3.5:2b", "accelerator": "cuda"}))
+        {"base_url": "http://ollama:11434", "model": "ministral-3:3b", "accelerator": "cuda"}))
     captured = {}
 
     def fake_post(url, json, timeout):

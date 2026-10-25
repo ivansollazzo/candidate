@@ -357,7 +357,7 @@ const it = {
   "wizard.languageText": "Scegli la lingua dell'app. Puoi cambiarla quando vuoi dalle impostazioni.",
   "wizard.aiTitle": "Vuoi usare l'AI?",
   "wizard.aiText":
-    "Un modello linguistico locale (Qwen 3.5 2B) può compilare candidature e profilo partendo da annunci e CV, e suggerirti dove migliorare. Gira sul tuo computer: occupa circa 3-4 GB di memoria e la prima volta scarica circa 3 GB.",
+    "Un modello linguistico locale (Ministral 3 3B Instruct) può compilare candidature e profilo partendo da annunci e CV, e suggerirti dove migliorare. Gira sul tuo computer: occupa circa 3-4 GB di memoria e la prima volta scarica circa 3 GB.",
   "wizard.aiOn": "Sì, attiva l'AI",
   "wizard.aiOnHint": "Compilazione automatica e consigli",
   "wizard.aiOff": "No, per ora",
@@ -868,7 +868,7 @@ const en: Record<MessageKey, string> = {
   "wizard.languageText": "Choose the app language. You can change it any time in the settings.",
   "wizard.aiTitle": "Do you want to use AI?",
   "wizard.aiText":
-    "A local language model (Qwen 3.5 2B) can fill in applications and your profile from job postings and CVs, and suggest where to improve. It runs on your computer: it uses about 3-4 GB of memory and downloads about 3 GB the first time.",
+    "A local language model (Ministral 3 3B Instruct) can fill in applications and your profile from job postings and CVs, and suggest where to improve. It runs on your computer: it uses about 3-4 GB of memory and downloads about 3 GB the first time.",
   "wizard.aiOn": "Yes, turn AI on",
   "wizard.aiOnHint": "Automatic filling in and advice",
   "wizard.aiOff": "Not now",

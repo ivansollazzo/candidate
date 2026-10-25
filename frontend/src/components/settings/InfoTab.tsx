@@ -8,7 +8,7 @@ import { useT } from "@/lib/i18n"
 const TECHNOLOGIES = [
   "FastAPI, SQLModel, Alembic, PostgreSQL",
   "React, TypeScript, Vite, Tailwind CSS, TanStack Query, Lucide",
-  "Ollama, Qwen 3.5 2B, sentence-transformers (multilingual-e5-small)",
+  "Ollama, Ministral 3 3B Instruct, sentence-transformers (multilingual-e5-small)",
   "pdfplumber, python-docx, trafilatura",
   "pwdlib (Argon2), PyJWT, Pillow",
   "Docker Compose",

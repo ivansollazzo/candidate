@@ -8,7 +8,7 @@
 # (docker compose down / stop / Ctrl+C) or when the LLM is disabled.
 set -u
 
-MODEL="${LLM_MODEL:-qwen3.5:2b}"
+MODEL="${LLM_MODEL:-ministral-3:3b}"
 # Dev only: publish Ollama on 127.0.0.1:$OLLAMA_PORT for a backend running outside Docker
 PUBLISH="${OLLAMA_PORT:+-p 127.0.0.1:$OLLAMA_PORT:11434}"
 NAME="${OLLAMA_CONTAINER:-candidate-ollama}"
