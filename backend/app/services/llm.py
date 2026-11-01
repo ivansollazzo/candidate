@@ -1,9 +1,14 @@
-"""Minimal Ollama client with JSON output constrained to a Pydantic schema."""
+"""Minimal Ollama client with JSON output constrained to a Pydantic schema; a running call can be cancelled."""
 
+import http.client
 import json
 import logging
+import socket
+import threading
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import TypeVar
+from urllib.parse import urlsplit
 
 import httpx
 from pydantic import BaseModel, ValidationError
@@ -18,6 +23,43 @@ T = TypeVar("T", bound=BaseModel)
 
 class LLMError(RuntimeError):
     pass
+
+
+class Cancelled(Exception):
+    """The job using the model was cancelled."""
+
+
+class CancelToken:
+    """Stops the model mid-answer: shutting the connection down makes Ollama stop generating."""
+
+    def __init__(self) -> None:
+        self.cancelled = False
+        self._sock: socket.socket | None = None
+        self._lock = threading.Lock()
+
+    def attach(self, sock: socket.socket | None) -> None:
+        with self._lock:
+            if self.cancelled:
+                raise Cancelled
+            self._sock = sock
+
+    def detach(self) -> None:
+        with self._lock:
+            self._sock = None
+
+    def cancel(self) -> None:
+        with self._lock:
+            self.cancelled = True
+            if self._sock is not None:
+                try:
+                    # Wakes up the read blocked in the worker thread
+                    self._sock.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
+
+
+# Token of the job running in this thread, set by the job queue
+cancel_token: ContextVar[CancelToken | None] = ContextVar("cancel_token", default=None)
 
 
 @dataclass
@@ -52,25 +94,57 @@ def generate_structured(system: str, user: str, schema: type[T]) -> T:
             {"role": "user", "content": user},
         ],
         "format": schema.model_json_schema(),
-        "stream": False,
+        # Streamed, so a cancelled job can drop the connection and stop the model
+        "stream": True,
         # Disable Qwen 3 "thinking" mode for faster responses
         "think": False,
         "options": {"temperature": 0, "num_ctx": settings.llm_num_ctx},
     }
-    try:
-        response = httpx.post(f"{target.base_url}/api/chat", json=payload, timeout=settings.llm_timeout_seconds)
-        response.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        raise LLMError(t("llm_http_error", code=exc.response.status_code, text=exc.response.text[:300])) from exc
-    except httpx.HTTPError as exc:
-        raise LLMError(t("llm_unreachable", url=target.base_url, error=exc)) from exc
-
-    content = response.json().get("message", {}).get("content", "")
+    content = "".join(_chat(target.base_url, payload, settings.llm_timeout_seconds))
     try:
         return schema.model_validate(json.loads(content))
     except (json.JSONDecodeError, ValidationError) as exc:
         log.warning("Invalid LLM response: %s", content[:500])
         raise LLMError(t("llm_invalid", error=exc)) from exc
+
+
+def _chat(base_url: str, payload: dict, timeout: float) -> list[str]:
+    """POST /api/chat and collect the streamed answer, giving up as soon as the job is cancelled."""
+    url = urlsplit(base_url)
+    connection_class = http.client.HTTPSConnection if url.scheme == "https" else http.client.HTTPConnection
+    conn = connection_class(url.hostname or "localhost", url.port, timeout=timeout)
+    token = cancel_token.get()
+    parts: list[str] = []
+    try:
+        conn.connect()
+        if token is not None:
+            token.attach(conn.sock)
+        conn.request("POST", url.path.rstrip("/") + "/api/chat", body=json.dumps(payload),
+                     headers={"Content-Type": "application/json"})
+        response = conn.getresponse()
+        if response.status != 200:
+            text = response.read().decode(errors="replace")
+            raise LLMError(t("llm_http_error", code=response.status, text=text[:300]))
+        for line in response:
+            if not line.strip():
+                continue
+            chunk = json.loads(line)
+            if chunk.get("error"):
+                raise LLMError(t("llm_http_error", code=response.status, text=str(chunk["error"])[:300]))
+            parts.append(chunk.get("message", {}).get("content", ""))
+            if chunk.get("done"):
+                break
+    except (OSError, http.client.HTTPException, ValueError) as exc:
+        if token is not None and token.cancelled:
+            raise Cancelled from exc
+        raise LLMError(t("llm_unreachable", url=base_url, error=exc)) from exc
+    finally:
+        if token is not None:
+            token.detach()
+        conn.close()
+    if token is not None and token.cancelled:
+        raise Cancelled
+    return parts
 
 
 def hardware_support() -> dict | None:

@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ExternalLink, FileUp, Loader2 } from "lucide-react"
 import { type ReactNode, useState } from "react"
 
-import { AiAssist } from "@/components/AiAssist"
+import { AiAssist, ProposalCard } from "@/components/AiAssist"
 import { EntryList, type FieldDef } from "@/components/EntryList"
 import { ErrorText } from "@/components/ErrorText"
 import { ProfilePhoto } from "@/components/ProfilePhoto"
@@ -21,7 +21,8 @@ import {
   type ProfileSkill,
   type Project,
 } from "@/lib/api"
-import { useAiFill, useAiStatus } from "@/lib/ai"
+import { useAiStatus } from "@/lib/ai"
+import { findJob, useJobs } from "@/lib/jobs"
 import { t, useT } from "@/lib/i18n"
 import { usePageTitle } from "@/lib/title"
 import { formatDate, formatMonth, formatPeriod } from "@/lib/utils"
@@ -120,7 +121,8 @@ export function ProfilePage() {
     onSuccess: (data) => { setDraft({}); onSaved(data) },
   })
   const ai = useAiStatus()
-  const fill = useAiFill<Partial<Profile>>({ ...profile, ...draft }, (changes) => setDraft((d) => ({ ...d, ...changes })))
+  const { data: jobs } = useJobs()
+  const fillJob = findJob(jobs, "profile")
 
   if (error) return <ErrorText error={error} />
   if (!profile) return <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
@@ -159,7 +161,7 @@ export function ProfilePage() {
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">
             {upload.isPending ? <Loader2 className="size-4 animate-spin" /> : <FileUp className="size-4" />}
             {profile.cv_filename ? t("profile.uploadNew") : t("profile.upload")}
-            <input type="file" className="hidden" accept=".pdf,.docx,.txt,.md" disabled={upload.isPending || fill.running}
+            <input type="file" className="hidden" accept=".pdf,.docx,.txt,.md" disabled={upload.isPending}
               onChange={(e) => {
                 const f = e.target.files?.[0]
                 if (f) upload.mutate(f)
@@ -172,9 +174,9 @@ export function ProfilePage() {
         <ErrorText className="mt-2" error={upload.error} />
       </Section>
 
-      <AiAssist hint={profile.cv_filename ? t("profile.aiHint") : t("profile.aiHintNoCv")}
-        running={fill.running} error={fill.error} canRun={!!profile.cv_filename && !upload.isPending}
-        onRun={() => fill.run(api.fillFromCv)} />
+      {fillJob && <ProposalCard job={fillJob} />}
+      <AiAssist hint={profile.cv_filename ? t("profile.aiHint") : t("profile.aiHintNoCv")} runLabel={t("profile.aiRun")}
+        job={fillJob} canRun={!!profile.cv_filename && !upload.isPending} onRun={api.fillProfile} />
 
       <div className="grid gap-5 lg:grid-cols-[3fr_2fr]">
         <Section title={t("profile.main")}>

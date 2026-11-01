@@ -204,7 +204,7 @@ class ReportExtraction(BaseModel):
 # API
 
 class ApplicationUpdate(SalaryFields):
-    # Job posting text returned by /api/ai/job-posting, kept for re-running the LLM fill
+    # Job posting text, read again when the AI fills the application (see /api/applications/{id}/fill)
     description: str | None = None
     title: str | None = None
     company: str | None = None
@@ -541,19 +541,28 @@ class UserUpdate(BaseModel):
     password: Secret | None = None
 
 
-class AITaskRead(BaseModel):
-    id: str
-    status: str
-    result: dict | None = None
-    error: str | None = None
-    # Job posting text read from text, link or file
-    source_text: str | None = None
+class JobRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    kind: str  # application | profile | report
+    status: str  # pending | running | done | failed
+    application_id: int | None
+    application_title: str | None = None
+    new_application: bool
+    # Place in the queue shared by all users (1 = next), for waiting jobs
+    position: int | None = None
+    # Values found for fields already filled, waiting for the user to apply them
+    proposal: dict | None
+    error: str | None
+    created_at: datetime
+    finished_at: datetime | None
 
 
 class UpdateStatus(BaseModel):
     # unavailable (no updater or not a Git clone), idle, checking, updating
     status: str
-    # fetch, build, cleanup
+    # fetch, build, restart (services being replaced: no longer cancelable), cleanup
     step: str | None = None
     # Estimated completion of the running update, 0-100
     progress: int = 0
@@ -569,7 +578,7 @@ class BranchRelease(BaseModel):
 
 
 class UpdateResult(BaseModel):
-    # ok, failed
+    # ok, failed, canceled
     result: str
     # fetch, branch, checkout, build
     error: str = ""
@@ -593,4 +602,6 @@ class UpdatesRead(UpdateStatus):
     update_available: bool
     last: UpdateResult | None = None
     check_error: CheckError | None = None
+    # AI jobs waiting or running (all users): an update can be installed only when there are none
+    active_jobs: int = 0
 

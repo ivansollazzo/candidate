@@ -3,7 +3,7 @@ import { ExternalLink, Trash2 } from "lucide-react"
 import { useState } from "react"
 import { useNavigate, useParams } from "react-router"
 
-import { JobPostingAssist, useJobSource } from "@/components/AiAssist"
+import { AiAssist, ProposalCard, useJobSource } from "@/components/AiAssist"
 import { ApplicationFields } from "@/components/ApplicationFields"
 import { Attachments } from "@/components/Attachments"
 import { BackLink } from "@/components/BackLink"
@@ -13,9 +13,9 @@ import { ReportPanel } from "@/components/ReportPanel"
 import { SaveBar } from "@/components/SaveBar"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/input"
-import { useAiFill } from "@/lib/ai"
 import { api, type Application, type ApplicationChanges, isWorking } from "@/lib/api"
 import { useT } from "@/lib/i18n"
+import { findJob, useJobs } from "@/lib/jobs"
 import { STATUSES, statusLabel, workModeLabel } from "@/lib/status"
 import { usePageTitle } from "@/lib/title"
 
@@ -25,7 +25,9 @@ function DetailPage({ app }: { app: Application }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [draft, setDraft] = useState<ApplicationChanges>({})
-  const job = useJobSource(app.has_description ? app.id : undefined)
+  const source = useJobSource(app.has_description)
+  const { data: jobs } = useJobs()
+  const fillJob = findJob(jobs, "application", app.id)
 
   const onSaved = (data: Application) => {
     queryClient.setQueryData(["application", app.id], data)
@@ -43,14 +45,11 @@ function DetailPage({ app }: { app: Application }) {
   const value = <K extends keyof Application>(key: K): Application[K] =>
     (key in draft ? draft[key] : app[key]) as Application[K]
   const set = <K extends keyof Application>(key: K, v: Application[K]) => setDraft((d) => ({ ...d, [key]: v }))
-  const current = { ...app, ...draft }
-
-  const fill = useAiFill<Partial<Application>>(current, (changes, sourceText) => {
-    // A new job posting (text, link or file) replaces the saved one
-    const source = "application_id" in (job.source ?? {}) ? {} : { description: sourceText }
-    const fromLink = job.url && !current.source_url ? { source_url: job.url } : {}
-    setDraft((d) => ({ ...d, ...changes, ...source, ...fromLink }))
-  })
+  // A new job posting (text, link or file) replaces the saved one when the job is done
+  const fill = async () => {
+    await api.fillApplication(app.id, source.source ?? undefined)
+    source.reset()
+  }
 
   return (
     <div className="space-y-5 pb-20">
@@ -80,7 +79,11 @@ function DetailPage({ app }: { app: Application }) {
 
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
         <div className="space-y-5">
-          <JobPostingAssist hint={t("application.aiHint")} job={job} fill={fill} />
+          {fillJob && <ProposalCard job={fillJob} />}
+          <AiAssist hint={t("application.aiHint")} runLabel={t("application.aiRun")} job={fillJob}
+            canRun={source.source !== null} onRun={fill}>
+            {source.input}
+          </AiAssist>
           <ApplicationFields value={value} set={set} />
           <Attachments application={app} />
         </div>

@@ -8,11 +8,12 @@ from sqlmodel import Session
 from app.api.uploads import read_upload
 from app.db import get_session, save
 from app.i18n import t
-from app.models import Profile, User
-from app.schemas import ProfileRead, ProfileUpdate
-from app.services import security
+from app.models import Job, JobKind, Profile, User
+from app.schemas import JobRead, ProfileRead, ProfileUpdate
+from app.services import jobs, security
+from app.services.app_settings import require_llm
 from app.services.documents import UnsupportedDocument, extract_text
-from app.services.report import mark_stale, profile_skills
+from app.services.profiles import apply_profile_changes
 from app.services.users import add_project_skills, find_profile, user_dir
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
@@ -34,19 +35,27 @@ def get_profile(user: User = Depends(security.current_user), session: Session = 
 def update_profile(payload: ProfileUpdate, user: User = Depends(security.current_user),
                    session: Session = Depends(get_session)):
     profile = _get_or_create(session, user)
-    skills_before = profile_skills(profile)
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(profile, field, value)
-    add_project_skills(profile)
-    if profile_skills(profile) != skills_before:
-        mark_stale(session, user.id)
+    apply_profile_changes(session, profile, payload.model_dump(exclude_unset=True))
     return save(session, profile)
+
+
+@router.post("/fill", response_model=JobRead, status_code=status.HTTP_202_ACCEPTED)
+def fill_from_cv(user: User = Depends(security.current_user), session: Session = Depends(get_session)):
+    """Fill the profile from the uploaded CV in the background. Empty fields are filled when the job is
+    done; values for filled fields are proposed (see /api/jobs/{id}/apply)."""
+    require_llm(session)
+    profile = find_profile(session, user.id)
+    if profile is None or not profile.cv_text:
+        raise HTTPException(status.HTTP_409_CONFLICT, t("upload_first_cv"))
+    if jobs.find_active(session, JobKind.PROFILE, user.id):
+        raise HTTPException(status.HTTP_409_CONFLICT, t("job_running"))
+    return jobs.enqueue(session, Job(user_id=user.id, kind=JobKind.PROFILE))
 
 
 @router.post("/cv", response_model=ProfileRead)
 async def upload_cv(file: UploadFile = File(...), user: User = Depends(security.current_user),
                     session: Session = Depends(get_session)):
-    """Store the CV and its text; profile fields are filled by hand or via /api/ai/cv."""
+    """Store the CV and its text; profile fields are filled by hand or via /api/profile/fill."""
     data = await read_upload(file)
     filename = file.filename or "cv"
     try:

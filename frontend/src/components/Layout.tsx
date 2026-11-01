@@ -3,10 +3,13 @@ import { Briefcase, CalendarDays, LayoutDashboard, LogOut, Settings } from "luci
 import { Link, Navigate, Outlet, useLocation } from "react-router"
 
 import { Avatar } from "@/components/Avatar"
-import { UpdateScreen } from "@/components/UpdateScreen"
+import { JobsMenu } from "@/components/JobsMenu"
+import { Toaster } from "@/components/Toaster"
+import { UpdateBanner, UpdateScreen } from "@/components/UpdateScreen"
 import { api } from "@/lib/api"
 import { useCurrentUser, useLogout } from "@/lib/auth"
 import { type MessageKey, useT } from "@/lib/i18n"
+import { useJobWatcher } from "@/lib/jobs"
 import { useUpdates } from "@/lib/updates"
 import { cn } from "@/lib/utils"
 
@@ -29,6 +32,7 @@ export function Layout() {
   const logout = useLogout()
   const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: api.getProfile })
   const updateAvailable = useUpdates().data?.update_available
+  useJobWatcher()
   if (!me) return null
   // First login starts with the initial setup
   if (!me.onboarded) return <Navigate to="/welcome" replace />
@@ -50,6 +54,7 @@ export function Layout() {
             ))}
           </nav>
           <nav className="ml-auto flex gap-1">
+            <JobsMenu />
             {/* Show photo and full name when set */}
             <Link to="/profile" aria-current={onProfile ? "page" : undefined} className={linkClass(onProfile)}
               title={t("nav.profile")}>
@@ -68,11 +73,13 @@ export function Layout() {
             </button>
           </nav>
         </div>
+        <UpdateBanner />
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6">
         <Outlet />
       </main>
       <UpdateScreen />
+      <Toaster />
     </div>
   )
 }

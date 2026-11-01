@@ -3,7 +3,7 @@ from sqlmodel import Session
 
 from app.db import get_session
 from app.schemas import SettingsRead, SettingsUpdate
-from app.services import app_settings, security
+from app.services import app_settings, jobs, security
 from app.services.report import clear_reports
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
@@ -18,7 +18,8 @@ def get_settings(session: Session = Depends(get_session)):
 def update_settings(payload: SettingsUpdate, session: Session = Depends(get_session)):
     settings = app_settings.load(session)
     if settings.llm_enabled and payload.llm_enabled is False:
-        # Reports exist only with AI on
+        # Reports exist only with AI on; jobs waiting for the model are dropped
+        jobs.cancel_all(session)
         clear_reports(session)
     for field, value in payload.model_dump(exclude_unset=True, exclude_none=True).items():
         setattr(settings, field, value)

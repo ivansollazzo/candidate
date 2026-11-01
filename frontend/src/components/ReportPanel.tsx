@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { CheckCircle2, CircleAlert, CircleDashed, Loader2, Sparkles, TriangleAlert } from "lucide-react"
+import { CheckCircle2, CircleAlert, CircleDashed, Clock, Loader2, Sparkles, TriangleAlert, X } from "lucide-react"
 
 import { ErrorText } from "@/components/ErrorText"
 import { SkillLevelDots } from "@/components/SkillLevelDots"
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAiStatus } from "@/lib/ai"
 import { api, type Application, isWorking, type ReportSkill } from "@/lib/api"
 import { useT } from "@/lib/i18n"
+import { findJob, jobState, useJobActions, useJobs } from "@/lib/jobs"
 import { cn, scoreColor } from "@/lib/utils"
 
 function SkillRow({ item }: { item: ReportSkill }) {
@@ -42,7 +43,11 @@ export function ReportPanel({ application }: { application: Application }) {
   const generate = useMutation({
     mutationFn: () => api.requestReport(application.id),
     onSuccess: (data) => queryClient.setQueryData(["application", application.id], data),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["jobs"] }),
   })
+  const { data: jobs } = useJobs()
+  const job = findJob(jobs, "report", application.id)
+  const { cancel } = useJobActions()
   if (!ai.enabled) return null
 
   const report = application.report
@@ -74,9 +79,18 @@ export function ReportPanel({ application }: { application: Application }) {
           </p>
         )}
         {running && (
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />{t("report.running")}
-          </p>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {application.report_status === "running"
+              ? <Loader2 className="size-4 shrink-0 animate-spin" /> : <Clock className="size-4 shrink-0" />}
+            <span className="flex-1">
+              {application.report_status === "running" ? t("report.running") : job ? jobState(job) : t("jobs.queuedShort")}
+            </span>
+            {job && isWorking(job.status) && (
+              <Button variant="ghost" size="sm" disabled={cancel.isPending} onClick={() => cancel.mutate(job)}>
+                <X />{t("jobs.cancel")}
+              </Button>
+            )}
+          </div>
         )}
         {application.report_status === "failed" && !running && <ErrorText error={report?.error} />}
 
@@ -125,12 +139,12 @@ export function ReportPanel({ application }: { application: Application }) {
 
         <div className={cn("space-y-2", done && "border-t pt-4")}>
           <Button variant="outline" className="w-full"
-            disabled={running || generate.isPending || !ai.ready || application.skills.length === 0}
+            disabled={running || generate.isPending || application.skills.length === 0}
             title={ai.reason ?? undefined} onClick={() => generate.mutate()}>
-            {running || generate.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
+            {generate.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
             {done ? t("report.regenerate") : t("report.generate")}
           </Button>
-          {!ai.ready && !running && <p className="text-xs text-muted-foreground">{ai.reason}</p>}
+          {!ai.ready && <p className="text-xs text-muted-foreground">{t("jobs.modelNotReady", { reason: ai.reason ?? "" })}</p>}
           <ErrorText error={generate.error} />
         </div>
       </CardContent>

@@ -8,11 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import Session
 
 from app import __build__, __version__
-from app.api import ai, applications, auth, events, me, profile, settings, updates, users
+from app.api import applications, auth, events, jobs, me, profile, settings, updates, users
 from app.config import get_settings
 from app.db import engine
 from app.i18n import LanguageMiddleware
-from app.services import app_settings, report
+from app.services import app_settings
+from app.services import jobs as job_queue
 from app.services.llm import check_llm, hardware_support
 
 logging.basicConfig(level=logging.INFO)
@@ -23,10 +24,11 @@ async def lifespan(_: FastAPI):
     # Tell the llm service whether to start the model, per the last saved setting
     with Session(engine) as session:
         app_settings.publish(app_settings.load(session))
-        report.recover_interrupted(session)
     # Cache of the embedding model used for skill matching before 1.3 (up to 2.2 GB): no longer needed
     shutil.rmtree(Path("data/hf-cache"), ignore_errors=True)
+    job_queue.start()
     yield
+    job_queue.stop()
 
 
 app = FastAPI(title="Candidate", description="Gestione delle candidature lavorative", version=__version__,
@@ -47,7 +49,7 @@ app.include_router(users.router)
 app.include_router(applications.router)
 app.include_router(events.router)
 app.include_router(profile.router)
-app.include_router(ai.router)
+app.include_router(jobs.router)
 app.include_router(settings.router)
 app.include_router(updates.router)
 

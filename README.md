@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.3 (build 20261101.2028), by Ivan Sollazzo.
+Version 2.0 (build 20261101.2126), by Ivan Sollazzo.
 
 ## Features
 
@@ -18,9 +18,14 @@ Version 1.3 (build 20261101.2028), by Ivan Sollazzo.
   exists, and a detail page with job details, salary, requirements and status history.
 - **Attachments**: attach any files to an application (cover letter, offer, test...), up to 10 MB each. They are
   deleted from disk together with the application.
-- **AI fill (optional)**: paste a job posting, give a link or upload a PDF, DOCX or TXT file, and the model fills in
-  the form. Empty fields are filled straight away; fields you already filled are only replaced if you confirm. Nothing
-  is saved until you press Save.
+- **AI fill (optional)**: paste a job posting, give a link or upload a PDF, DOCX or TXT file: the application is saved
+  right away and the model fills in its fields in the background. Filling an application or the profile again fills
+  the empty fields and proposes the different values for the ones you already filled, applied only if you confirm.
+- **Background operations**: AI fills and match reports are queued and run one at a time as soon as the model is
+  free, so a slow machine works through them while you do something else, also after leaving the page or a restart.
+  The operations button in the header lists them with their place in the queue: each one can be cancelled (a new
+  application not filled in yet is deleted, a report goes back to the previous one, the model stops right away), and
+  a notice appears when one is done.
 - **Profile**: personal details, experience, education, projects, certifications and skills, filled in by hand or
   from your CV. Technologies used in projects and experience are added to your skills automatically.
 - **Match report (AI)**: on request, the local model compares an application's skills with your profile and returns
@@ -33,7 +38,9 @@ Version 1.3 (build 20261101.2028), by Ivan Sollazzo.
 - **Multi-user**: sign-in, admin and user roles, password recovery keys (no email needed), configurable password and
   lockout policy.
 - **Updates from the app**: pick a branch of the repository and install its version when it is newer than the
-  installed one.
+  installed one. The app stays usable while the new version is downloaded and built, and the update can be cancelled
+  until the services are replaced. An update can be installed only when no AI operation is queued or running, and
+  none starts until it is over.
 - **Italian and English** interface, light and dark theme.
 
 ## Requirements
@@ -85,8 +92,9 @@ gets a newer one.
 
 Installing a version is handled by the `updater` service: it checks out the branch, rebuilds every other service
 (backend, frontend, llm, database) with the new `docker-compose.yml` while the current version keeps running, replaces
-them and removes the old images. The app shows an "Updating" screen
-and reloads by itself when the new version is up. If the build fails, the previous version stays in use.
+them and removes the old images. While it downloads and builds, a bar under the header shows its progress and the
+app stays usable; only while the services are replaced the app shows an "Updating" screen, and it reloads by itself
+when the new version is up. If the build fails or the update is cancelled, the previous version stays in use.
 
 If GitHub can't be reached, a check gives up after two minutes instead of waiting forever: the tab keeps showing the
 branches of the last successful check with an error message, and the updater tries again after 15 minutes (or at the

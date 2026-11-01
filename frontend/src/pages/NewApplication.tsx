@@ -2,11 +2,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { useNavigate } from "react-router"
 
-import { JobPostingAssist, useJobSource } from "@/components/AiAssist"
+import { AiAssist, useJobSource } from "@/components/AiAssist"
 import { ApplicationFields } from "@/components/ApplicationFields"
 import { BackLink } from "@/components/BackLink"
 import { SaveBar } from "@/components/SaveBar"
-import { useAiFill, useAiStatus } from "@/lib/ai"
+import { useAiStatus } from "@/lib/ai"
 import { api, type Application, type ApplicationChanges } from "@/lib/api"
 import { useT } from "@/lib/i18n"
 import { usePageTitle } from "@/lib/title"
@@ -28,18 +28,12 @@ export function NewApplication() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [draft, setDraft] = useState<Partial<Application>>(EMPTY)
-  const [description, setDescription] = useState<string | null>(null)
   const job = useJobSource()
   const ai = useAiStatus()
 
   const value = <K extends keyof Application>(key: K) => draft[key] as Application[K]
   const set = <K extends keyof Application>(key: K, v: Application[K]) => setDraft((d) => ({ ...d, [key]: v }))
 
-  const fill = useAiFill(draft, (changes, sourceText) => {
-    const fromLink = job.url && !draft.source_url ? { source_url: job.url } : {}
-    setDraft((d) => ({ ...d, ...changes, ...fromLink }))
-    setDescription(sourceText)
-  })
   const create = useMutation({
     mutationFn: (fields: ApplicationChanges) => api.createApplication(fields),
     onSuccess: (app) => {
@@ -47,6 +41,12 @@ export function NewApplication() {
       navigate(`/applications/${app.id}`)
     },
   })
+  // Saved at once with its posting: the AI fills it in the background, shown in the list meanwhile
+  const createWithAi = async () => {
+    await api.createApplicationWithAi(job.source!)
+    queryClient.invalidateQueries({ queryKey: ["applications"] })
+    navigate("/applications")
+  }
   const hasTitle = !!draft.title?.trim()
 
   return (
@@ -59,13 +59,17 @@ export function NewApplication() {
         </p>
       </div>
 
-      <JobPostingAssist hint={t("new.aiHint")} job={job} fill={fill} />
+      <AiAssist hint={t("new.aiHint")} runLabel={t("new.createWithAi")} job={undefined}
+        canRun={job.source != null} onRun={createWithAi}>
+        {job.input}
+      </AiAssist>
 
+      {ai.enabled && <h2 className="pt-2 text-sm font-medium text-muted-foreground">{t("new.manual")}</h2>}
       <ApplicationFields value={value} set={set} />
 
       <SaveBar message={hasTitle ? t("new.unsaved") : t("new.needTitle")}
         saving={create.isPending} error={create.error?.message} disabled={!hasTitle} saveLabel={t("new.save")}
-        onSave={() => create.mutate({ ...draft, description })} />
+        onSave={() => create.mutate(draft)} />
     </div>
   )
 }

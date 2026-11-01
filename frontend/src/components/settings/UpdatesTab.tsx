@@ -35,6 +35,9 @@ function Failure({ message, detail }: { message: string; detail: string }) {
 function LastResult({ last }: { last: NonNullable<Updates["last"]> }) {
   const t = useT()
   if (last.result === "failed") return <Failure message={t(`updates.error.${last.error || "build"}`)} detail={last.detail} />
+  if (last.result === "canceled") {
+    return <p className="text-muted-foreground">{t("updates.canceled", { time: formatTime(last.finished_at) })}</p>
+  }
   if (!last.restart_required && !last.stashed) return null
   return (
     <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
@@ -92,9 +95,12 @@ export function UpdatesTab() {
           {data.update_available && selected && (
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
               <span>{t("updates.available", { version: release(selected), branch: selected.name })}</span>
-              <Button size="sm" className="ml-auto" disabled={busy} onClick={onInstall}>
+              <Button size="sm" className="ml-auto" disabled={busy || data.active_jobs > 0} onClick={onInstall}>
                 <Download /> {t("updates.update")}
               </Button>
+              {data.active_jobs > 0 && (
+                <p className="w-full text-xs">{t("updates.jobsActive", { count: data.active_jobs })}</p>
+              )}
             </div>
           )}
           {data.last && <LastResult last={data.last} />}

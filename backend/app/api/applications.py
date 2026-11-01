@@ -1,22 +1,22 @@
-from datetime import date
-
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlmodel import Session, func, select
 
 from app.db import get_session, save
 from app.i18n import t
-from app.models import Application, ApplicationAttachment, ApplicationEvent, EventType, TaskStatus, User
+from app.models import Application, ApplicationAttachment, ApplicationEvent, EventType, Job, JobKind, TaskStatus, User
 from app.schemas import (
     ApplicationBulk,
     ApplicationListItem,
     ApplicationRead,
     ApplicationUpdate,
+    JobRead,
 )
-from app.services import security
+from app.services import jobs, security
 from app.services.app_settings import require_llm
-from app.services.attachments import attachment_path, attachments_dir, remove_attachments, save_attachments
-from app.services.report import generate_report
+from app.services.applications import apply_changes, change_status, delete_applications
+from app.services.attachments import attachment_path, save_attachments
+from app.services.sources import check_length, read_job_posting
 
 router = APIRouter(prefix="/api/applications", tags=["applications"])
 
@@ -27,21 +27,6 @@ def get_owned(session: Session, application_id: int, user: User) -> Application:
     if app is None or app.user_id != user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, t("application_not_found"))
     return app
-
-
-def change_status(session: Session, app: Application, new_status: str) -> None:
-    """Set the status, keeping every change in the history."""
-    if new_status == app.status:
-        return
-    session.add(ApplicationEvent(
-        application_id=app.id,
-        type=EventType.STATUS_CHANGE,
-        occurred_on=date.today(),
-        completed=True,
-        # Statuses stored as codes ("applied>interview"); the frontend localizes them
-        title=f"{app.status}>{new_status}",
-    ))
-    app.status = new_status
 
 
 @router.get("", response_model=list[ApplicationListItem])
@@ -73,9 +58,57 @@ def create_application(
     payload: ApplicationUpdate, user: User = Depends(security.current_user),
     session: Session = Depends(get_session),
 ):
-    """Create an application with fields filled by hand or by the LLM (see /api/ai)."""
+    """Create an application with fields filled by hand."""
     app = Application(**payload.model_dump(exclude_unset=True), user_id=user.id)
     return save(session, app)
+
+
+@router.post("/ai", response_model=ApplicationRead, status_code=status.HTTP_201_CREATED)
+async def create_with_ai(
+    text: str | None = Form(None),
+    url: str | None = Form(None),
+    file: UploadFile | None = File(None),
+    user: User = Depends(security.current_user),
+    session: Session = Depends(get_session),
+):
+    """Save a new application with its job posting (text, link or file) right away; the local model fills
+    in its fields in the background. Cancelling the job before it is done deletes the application."""
+    require_llm(session)
+    source = await read_job_posting(text, url, file)
+    if source is None:
+        check_length("")
+    link = url.strip() if url and file is None else None
+    app = save(session, Application(user_id=user.id, description=source, source_url=link))
+    jobs.enqueue(session, Job(user_id=user.id, kind=JobKind.APPLICATION, application_id=app.id,
+                              new_application=True, source_text=source))
+    session.refresh(app)
+    return app
+
+
+@router.post("/{application_id}/fill", response_model=JobRead, status_code=status.HTTP_202_ACCEPTED)
+async def fill_with_ai(
+    application_id: int,
+    text: str | None = Form(None),
+    url: str | None = Form(None),
+    file: UploadFile | None = File(None),
+    user: User = Depends(security.current_user),
+    session: Session = Depends(get_session),
+):
+    """Fill the application again from a new job posting, or from the saved one. Empty fields are filled
+    when the job is done; values for filled fields are proposed (see /api/jobs/{id}/apply)."""
+    require_llm(session)
+    app = get_owned(session, application_id, user)
+    if jobs.find_active(session, JobKind.APPLICATION, user.id, app.id):
+        raise HTTPException(status.HTTP_409_CONFLICT, t("job_running"))
+    source = await read_job_posting(text, url, file)
+    if source is None:
+        if not app.description:
+            raise HTTPException(status.HTTP_409_CONFLICT, t("no_saved_posting"))
+        source = app.description
+        check_length(source)
+    link = url.strip() if url and file is None else None
+    return jobs.enqueue(session, Job(user_id=user.id, kind=JobKind.APPLICATION, application_id=app.id,
+                                     source_text=source, source_url=link))
 
 
 @router.post("/bulk", status_code=status.HTTP_204_NO_CONTENT)
@@ -85,15 +118,13 @@ def bulk_update(
 ):
     """Apply one action to several applications; all of them or none (unknown ids fail the whole request)."""
     apps = [get_owned(session, application_id, user) for application_id in dict.fromkeys(payload.ids)]
+    if payload.action == "delete":
+        delete_applications(session, apps)
+        return
     for app in apps:
-        if payload.action == "delete":
-            session.delete(app)
-        else:
-            change_status(session, app, payload.status)
-            session.add(app)
-    folders = [attachments_dir(app) for app in apps] if payload.action == "delete" else []
+        change_status(session, app, payload.status)
+        session.add(app)
     session.commit()
-    remove_attachments(folders)
 
 
 @router.get("/{application_id}", response_model=ApplicationRead)
@@ -110,19 +141,7 @@ def update_application(
     session: Session = Depends(get_session),
 ):
     app = get_owned(session, application_id, user)
-    changes = payload.model_dump(exclude_unset=True)
-
-    if new_status := changes.pop("status", None):
-        change_status(session, app, new_status)
-
-    # The report depends on the position's skills and requirements
-    if app.report_status == TaskStatus.DONE and any(
-        field in changes and changes[field] != getattr(app, field)
-        for field in ("skills", "requirements", "nice_to_have")
-    ):
-        app.report_stale = True
-    for field, value in changes.items():
-        setattr(app, field, value)
+    apply_changes(session, app, payload.model_dump(exclude_unset=True))
     return save(session, app)
 
 
@@ -131,12 +150,7 @@ def delete_application(
     application_id: int, user: User = Depends(security.current_user),
     session: Session = Depends(get_session),
 ):
-    app = get_owned(session, application_id, user)
-    folder = attachments_dir(app)
-    session.delete(app)
-    session.commit()
-    # Attached files go too, so they don't take up space
-    remove_attachments([folder])
+    delete_applications(session, [get_owned(session, application_id, user)])
 
 
 def get_attachment(app: Application, attachment_id: int) -> ApplicationAttachment:
@@ -196,17 +210,15 @@ def delete_attachment(
 
 @router.post("/{application_id}/report", response_model=ApplicationRead, status_code=status.HTTP_202_ACCEPTED)
 def request_report(
-    application_id: int, background: BackgroundTasks, user: User = Depends(security.current_user),
-    session: Session = Depends(get_session),
+    application_id: int, user: User = Depends(security.current_user), session: Session = Depends(get_session),
 ):
-    """Generate (or regenerate) the compatibility report with the local model."""
+    """Queue the generation (or regeneration) of the compatibility report by the local model."""
     require_llm(session)
     app = get_owned(session, application_id, user)
-    if app.report_status in (TaskStatus.PENDING, TaskStatus.RUNNING):
+    if jobs.find_active(session, JobKind.REPORT, user.id, app.id):
         raise HTTPException(status.HTTP_409_CONFLICT, t("report_running"))
     app.report_status = TaskStatus.PENDING
     session.add(app)
-    session.commit()
+    jobs.enqueue(session, Job(user_id=user.id, kind=JobKind.REPORT, application_id=app.id))
     session.refresh(app)
-    background.add_task(generate_report, app.id)
     return app

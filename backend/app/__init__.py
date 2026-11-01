@@ -1,3 +1,3 @@
 # Release shown in Settings > Info (via /api/health)
-__version__ = "1.3"
-__build__ = "20261101.2028"
+__version__ = "2.0"
+__build__ = "20261101.2126"

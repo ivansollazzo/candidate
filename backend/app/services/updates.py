@@ -22,6 +22,8 @@ def release_key(version: str, build: str) -> tuple:
 
 
 INSTALLED = release_key(__version__, __build__)
+# Steps of an install that can still be cancelled: afterwards the services are being replaced
+CANCELABLE_STEPS = ("fetch", "build")
 
 
 def is_newer(version: str, build: str) -> bool:
@@ -36,6 +38,23 @@ def read_state() -> dict | None:
         return None
 
 
+def _file(name: str):
+    return get_settings().updates_dir / name
+
+
+def _write(name: str, data: dict) -> None:
+    target = _file(name)
+    tmp = target.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data))
+    tmp.replace(target)
+
+
+def installing() -> bool:
+    """An install is requested or running: no AI job starts meanwhile (see services/jobs.py)."""
+    state = read_state() or {}
+    return state.get("status") == "updating" or pending_action() == "install"
+
+
 def pending_action() -> str | None:
     """Request written but not yet picked up by the updater (it looks every few seconds)."""
     try:
@@ -48,7 +67,7 @@ def overview(selected: str | None) -> dict:
     """Updater state; an update is available when the selected branch has a newer release.
     Until the admin selects one, the selected branch is the checked-out one."""
     state = read_state() or {"status": "unavailable"}
-    if state.get("status") == "idle" and (action := pending_action()):
+    if state.get("status") == "idle" and (action := pending_action()) in ("install", "check"):
         state = {**state, "status": "updating" if action == "install" else "checking", "step": "fetch", "progress": 0}
     branches = [{**branch, "newer": is_newer(branch.get("version", ""), branch.get("build", ""))}
                 for branch in state.get("branches", [])]
@@ -70,6 +89,7 @@ def overview(selected: str | None) -> dict:
 
 
 def request(action: str, selected: str | None = None) -> None:
+    """Ask the updater to check or install."""
     state = read_state()
     if state is None or state.get("status") == "unavailable":
         raise HTTPException(status.HTTP_409_CONFLICT, t("updates_unavailable"))
@@ -85,7 +105,13 @@ def request(action: str, selected: str | None = None) -> None:
         if not is_newer(branch.get("version", ""), branch.get("build", "")):
             raise HTTPException(status.HTTP_409_CONFLICT, t("update_not_newer"))
         fields["branch"] = name
-    target = get_settings().updates_dir / "request.json"
-    tmp = target.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"action": action, **fields}))
-    tmp.replace(target)
+    _write("request.json", {"action": action, **fields})
+
+
+def cancel() -> None:
+    """Cancel a running install before the services are replaced (the updater rolls back)."""
+    state = read_state() or {}
+    if state.get("status") != "updating" or state.get("step") not in CANCELABLE_STEPS:
+        raise HTTPException(status.HTTP_409_CONFLICT, t("update_not_cancelable"))
+    _write("request.json", {"action": "cancel"})
+

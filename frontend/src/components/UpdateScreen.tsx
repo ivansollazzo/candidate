@@ -1,12 +1,35 @@
+import { Loader2 } from "lucide-react"
+
 import { Logo } from "@/components/Logo"
 import { useT } from "@/lib/i18n"
 import { useUpdateProgress } from "@/lib/updates"
 
-/** Covers the app while a new version is installed, then the page reloads by itself. */
+/** Thin bar under the header while a new version is downloaded and built: the app stays usable. */
+export function UpdateBanner() {
+  const t = useT()
+  const { running, blocking, step, progress } = useUpdateProgress()
+  if (blocking || !running) return null
+  return (
+    <div className="border-b bg-secondary/60">
+      <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-1.5 text-xs text-muted-foreground">
+        <Loader2 className="size-3.5 shrink-0 animate-spin" />
+        <span className="min-w-0 flex-1 truncate">
+          {t("update.title")} · {t(`update.step.${step}`)}
+        </span>
+        <div className="hidden h-1.5 w-32 overflow-hidden rounded-full bg-background sm:block">
+          <div className="h-full rounded-full bg-primary transition-[width] duration-700" style={{ width: `${progress}%` }} />
+        </div>
+        <span className="tabular-nums">{progress}%</span>
+      </div>
+    </div>
+  )
+}
+
+/** Covers the app while the services are replaced by the new version, then the page reloads by itself. */
 export function UpdateScreen() {
   const t = useT()
-  const { running, step, progress } = useUpdateProgress()
-  if (!running) return null
+  const { blocking, step, progress } = useUpdateProgress()
+  if (!blocking) return null
   return (
     <div role="alertdialog" aria-modal="true" aria-labelledby="update-title"
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-5 bg-background p-6 text-center">

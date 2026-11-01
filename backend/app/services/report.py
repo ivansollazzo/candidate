@@ -1,21 +1,16 @@
 """Compatibility report: the local model compares the position's skills with the profile and suggests
 where to improve; the score is computed here from its judgements."""
 
-import logging
 from datetime import datetime, timezone
 
 from sqlalchemy import null, update
-from sqlmodel import Session, col, select
+from sqlmodel import Session
 
-from app.db import engine
 from app.i18n import t
 from app.models import Application, Profile, TaskStatus
 from app.schemas import Report, ReportExtraction, ReportSkill
-from app.services import app_settings
-from app.services.llm import LLMError, generate_structured
+from app.services.llm import generate_structured
 from app.services.users import find_profile
-
-log = logging.getLogger(__name__)
 
 # Score weight of required skills relative to nice-to-have ones
 WEIGHTS = {"required": 2.0, "nice_to_have": 1.0}
@@ -141,40 +136,30 @@ def _apply_level(item: ReportSkill, senior: bool) -> None:
         item.note = t("level_too_low_senior", level=t(f"level_{item.level}"))
 
 
-def generate_report(application_id: int) -> None:
-    with Session(engine) as session:
-        app = session.get(Application, application_id)
-        if app is None:
-            return
-        app.report_status = TaskStatus.RUNNING
-        session.add(app)
-        session.commit()
-
-        profile = find_profile(session, app.user_id)
-        try:
-            result = generate_structured(SYSTEM_PROMPT.format(language=t("report_language")),
-                                         build_prompt(app, profile), ReportExtraction)
-            report, status = build_report(app, profile, result).model_dump(mode="json"), TaskStatus.DONE
-        except LLMError as exc:
-            report, status = {"error": str(exc)}, TaskStatus.FAILED
-
-        session.refresh(app)
-        if not app_settings.load(session).llm_enabled:
-            # AI turned off meanwhile: reports are not kept without AI
-            report, status = None, None
-        app.report, app.report_status, app.report_stale = report, status, False
-        session.add(app)
-        session.commit()
+def prepare(session: Session, app: Application) -> tuple[str, str]:
+    """System prompt and prompt for the model, built when the job starts."""
+    profile = find_profile(session, app.user_id)
+    return SYSTEM_PROMPT.format(language=t("report_language")), build_prompt(app, profile)
 
 
-def recover_interrupted(session: Session) -> None:
-    """A generation cut off by a restart would stay "running" forever: keep the previous report, if any."""
-    stuck = session.exec(select(Application).where(col(Application.report_status).in_([TaskStatus.PENDING,
-                                                                                         TaskStatus.RUNNING])))
-    for app in stuck:
-        app.report_status = TaskStatus.DONE if app.report and "score" in app.report else None
-        session.add(app)
-    session.commit()
+def ask_model(system: str, prompt: str) -> ReportExtraction:
+    return generate_structured(system, prompt, ReportExtraction)
+
+
+def save_result(session: Session, app: Application, result: ReportExtraction) -> None:
+    report = build_report(app, find_profile(session, app.user_id), result)
+    app.report, app.report_status, app.report_stale = report.model_dump(mode="json"), TaskStatus.DONE, False
+    session.add(app)
+
+
+def save_error(session: Session, app: Application, error: str) -> None:
+    app.report, app.report_status = {"error": error}, TaskStatus.FAILED
+    session.add(app)
+
+
+def restore(app: Application) -> None:
+    """A generation that won't finish (cancelled, interrupted): back to the previous report, if any."""
+    app.report_status = TaskStatus.DONE if app.report and "score" in app.report else None
 
 
 def mark_stale(session: Session, user_id: int) -> None:

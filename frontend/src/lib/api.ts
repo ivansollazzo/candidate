@@ -2,7 +2,7 @@ import { getLocale, type Locale, t } from "./i18n"
 import type { ApplicationStatus } from "./status"
 
 type JobSkill = { name: string; importance: "required" | "nice_to_have" | string }
-type TaskStatus = "pending" | "running" | "done" | "failed"
+export type TaskStatus = "pending" | "running" | "done" | "failed"
 
 export interface ApplicationSummary {
   id: number
@@ -201,9 +201,10 @@ export interface PasswordPolicy {
 }
 
 /** Progress of the updater service, see updater/updater.sh */
-interface UpdateStatus {
+export interface UpdateStatus {
   status: "unavailable" | "idle" | "checking" | "updating"
-  step: "fetch" | "build" | "cleanup" | null
+  /** restart: the services are being replaced, the update can no longer be cancelled */
+  step: "fetch" | "build" | "restart" | "cleanup" | null
   /** estimated completion of the running update, 0-100 */
   progress: number
   version: string
@@ -218,7 +219,7 @@ interface BranchRelease {
 }
 
 interface UpdateResult {
-  result: "ok" | "failed"
+  result: "ok" | "failed" | "canceled"
   error: "" | "fetch" | "branch" | "checkout" | "build"
   detail: string
   restart_required: boolean
@@ -237,6 +238,8 @@ export interface Updates extends UpdateStatus {
   checked_at: string | null
   branches: BranchRelease[]
   update_available: boolean
+  /** AI jobs waiting or running (all users): an update can be installed only when there are none */
+  active_jobs: number
   last: UpdateResult | null
   /** The last check couldn't reach the repository */
   check_error: CheckError | null
@@ -297,16 +300,32 @@ export type MeChanges = Partial<Pick<User, "username" | "email" | "language" | "
 type NewUser = Pick<User, "username" | "email" | "role" | "language"> & { password: string }
 type UserChanges = Partial<Pick<User, "username" | "email" | "role">> & { password?: string }
 
-export interface AITask<T = Record<string, unknown>> {
-  id: string
+/** Background LLM operation, run one at a time by the backend */
+export interface Job {
+  id: number
+  kind: "application" | "profile" | "report"
   status: TaskStatus
-  result: T | null
+  application_id: number | null
+  application_title: string | null
+  /** The application was created by this job: cancelling it before it is done deletes the application */
+  new_application: boolean
+  /** Place in the queue shared by all users (1 = next), for waiting jobs */
+  position: number | null
+  /** Values found for fields already filled, applied only if the user confirms */
+  proposal: Record<string, unknown> | null
   error: string | null
-  source_text: string | null
+  created_at: string
+  finished_at: string | null
 }
 
-/** Where to read the job posting for the LLM fill */
-export type JobSource = { text: string } | { url: string } | { file: File } | { application_id: number }
+/** Where to read the job posting: pasted text, link or file; none for the saved one */
+export type JobSource = { text: string } | { url: string } | { file: File }
+
+const sourceForm = (source?: JobSource): RequestInit => {
+  const form = new FormData()
+  for (const [key, value] of Object.entries(source ?? {})) form.append(key, value)
+  return { method: "POST", body: form }
+}
 
 /** Editable application fields, plus the job posting text to store */
 export type ApplicationChanges = Partial<Application> & { description?: string | null }
@@ -398,13 +417,16 @@ export const api = {
   updateProfile: (changes: Partial<Profile>) => request<Profile>("/api/profile", json("PATCH", changes)),
   uploadCv: (file: File) => request<Profile>("/api/profile/cv", upload("POST", file)),
 
-  fillJobPosting: (source: JobSource) => {
-    const form = new FormData()
-    for (const [key, value] of Object.entries(source)) form.append(key, value instanceof File ? value : String(value))
-    return request<AITask<Partial<Application>>>("/api/ai/job-posting", { method: "POST", body: form })
-  },
-  fillFromCv: () => request<AITask<Partial<Profile>>>("/api/ai/cv", { method: "POST" }),
-  getTask: <T>(id: string) => request<AITask<T>>(`/api/ai/tasks/${id}`),
+  /** Saves the application with its posting right away; the AI fills it in the background */
+  createApplicationWithAi: (source: JobSource) => request<Application>("/api/applications/ai", sourceForm(source)),
+  fillApplication: (id: number, source?: JobSource) => request<Job>(`/api/applications/${id}/fill`, sourceForm(source)),
+  fillProfile: () => request<Job>("/api/profile/fill", { method: "POST" }),
+
+  listJobs: () => request<Job[]>("/api/jobs"),
+  /** Cancels a waiting or running job, or dismisses a finished one */
+  cancelJob: (id: number) => request<void>(`/api/jobs/${id}`, { method: "DELETE" }),
+  applyJob: (id: number) => request<void>(`/api/jobs/${id}/apply`, { method: "POST" }),
+  retryJob: (id: number) => request<Job>(`/api/jobs/${id}/retry`, { method: "POST" }),
 
   getSettings: () => request<Settings>("/api/settings"),
   updateSettings: (changes: Partial<Settings>) => request<Settings>("/api/settings", json("PATCH", changes)),
@@ -413,6 +435,7 @@ export const api = {
   updateStatus: () => request<UpdateStatus>("/api/updates/status"),
   checkUpdates: () => request<void>("/api/updates/check", { method: "POST" }),
   installUpdate: () => request<void>("/api/updates/install", { method: "POST" }),
+  cancelUpdate: () => request<void>("/api/updates/cancel", { method: "POST" }),
 }
 
 export const isWorking = (status: TaskStatus | null | undefined) => status === "pending" || status === "running"

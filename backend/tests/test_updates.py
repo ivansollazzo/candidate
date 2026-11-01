@@ -105,3 +105,33 @@ def test_check_error_kept_apart_from_install_result(client, updates_dir):
     data = client.get("/api/updates").json()
     assert data["last"]["restart_required"] is True
     assert data["check_error"]["detail"] == "Could not resolve host"
+
+
+def test_install_needs_no_ai_jobs(client, updates_dir):
+    from app.services import updates
+
+    write_state(updates_dir, branches=[{"name": "main", "version": "9.0", "build": "1"}])
+    r = client.post("/api/applications/ai", data={"text": "Cerchiamo un Backend Developer Python a Milano."})
+    assert r.status_code == 201
+    assert client.get("/api/updates").json()["active_jobs"] == 1
+    r = client.post("/api/updates/install")
+    assert r.status_code == 409 and "operazioni AI" in r.json()["detail"]
+    assert not (updates_dir / "request.json").exists()
+
+    [job] = client.get("/api/jobs").json()
+    client.delete(f"/api/jobs/{job['id']}")
+    assert client.get("/api/updates").json()["active_jobs"] == 0
+    assert client.post("/api/updates/install").status_code == 202
+    # No job starts until the update is over
+    assert updates.installing() is True
+
+
+def test_cancel_running_install(client, updates_dir):
+    write_state(updates_dir, status="updating", step="build", progress=40)
+    assert client.post("/api/updates/cancel").status_code == 204
+    assert json.loads((updates_dir / "request.json").read_text()) == {"action": "cancel"}
+    # While the services are being replaced it is too late
+    write_state(updates_dir, status="updating", step="restart", progress=90)
+    assert client.post("/api/updates/cancel").status_code == 409
+    write_state(updates_dir)
+    assert client.post("/api/updates/cancel").status_code == 409

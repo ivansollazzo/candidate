@@ -26,12 +26,18 @@ class UserRole(StrEnum):
 
 
 class TaskStatus(StrEnum):
-    """Status of an LLM-generated compatibility report."""
+    """Status of a background job and of the compatibility report it generates."""
 
     PENDING = "pending"
     RUNNING = "running"
     DONE = "done"
     FAILED = "failed"
+
+
+class JobKind(StrEnum):
+    APPLICATION = "application"  # fill an application from its job posting
+    PROFILE = "profile"  # fill the profile from the CV
+    REPORT = "report"  # compatibility report of an application
 
 
 class EventType(StrEnum):
@@ -272,3 +278,26 @@ class ApplicationAttachment(SQLModel, table=True):
     created_at: datetime = _timestamp()
 
     application: Application | None = Relationship(back_populates="attachments")
+
+
+class Job(SQLModel, table=True):
+    """Background LLM operation, run one at a time in order of creation (see services/jobs.py).
+    Finished jobs stay listed until the user dismisses them."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(sa_column=sa.Column(sa.ForeignKey("app_user.id", ondelete="CASCADE"), nullable=False,
+                                             index=True))
+    kind: str = Field(sa_type=sa.String(20))
+    application_id: int | None = Field(default=None, sa_column=sa.Column(
+        sa.ForeignKey("application.id", ondelete="CASCADE"), nullable=True, index=True))
+    status: str = Field(default=TaskStatus.PENDING, sa_type=sa.String(20), index=True)
+    # The application was created by this job: cancelling it before it is filled deletes the application
+    new_application: bool = _bool(False)
+    # Job posting to read, and the link it came from
+    source_text: str | None = Field(default=None, sa_type=sa.Text)
+    source_url: str | None = None
+    # Values found by the model for fields the user had already filled: applied only if the user confirms
+    proposal: dict | None = _json_obj_nullable()
+    error: str | None = Field(default=None, sa_type=sa.Text)
+    created_at: datetime = _timestamp()
+    finished_at: datetime | None = Field(default=None, sa_type=sa.DateTime(timezone=True))

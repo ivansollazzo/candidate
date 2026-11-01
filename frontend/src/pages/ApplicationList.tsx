@@ -1,14 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Banknote, MapPin, Plus, Search, Trash2 } from "lucide-react"
+import { Banknote, CircleAlert, Clock, Loader2, MapPin, Plus, Search, Trash2 } from "lucide-react"
 import { useEffect, useState, type InputHTMLAttributes } from "react"
 import { Link, useSearchParams } from "react-router"
 
 import { ErrorText } from "@/components/ErrorText"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input, Select } from "@/components/ui/input"
-import { api, type ApplicationBulk, type ApplicationListItem, type ApplicationSort, type MeChanges, type User } from "@/lib/api"
+import { api, type ApplicationBulk, type ApplicationListItem, type ApplicationSort, isWorking, type Job, type MeChanges, type User } from "@/lib/api"
 import { useCurrentUser, useUpdateMe } from "@/lib/auth"
 import { useT } from "@/lib/i18n"
+import { findJob, jobState, useJobs } from "@/lib/jobs"
 import { STATUSES, statusInfo, statusLabel, type ApplicationStatus } from "@/lib/status"
 import { usePageTitle } from "@/lib/title"
 import { cn, formatDate, formatSalary, scoreColor } from "@/lib/utils"
@@ -39,8 +40,26 @@ function Checkbox({ indeterminate = false, ...props }: InputHTMLAttributes<HTMLI
   )
 }
 
-function ApplicationRow({ app, showEvent, selected, onSelect, onStatus }: {
+/** The AI filling the application in the background, or failing to */
+function FillState({ job }: { job: Job }) {
+  const t = useT()
+  if (isWorking(job.status)) {
+    return (
+      <span className="flex items-center gap-1 text-primary">
+        {job.status === "running" ? <Loader2 className="size-3 animate-spin" /> : <Clock className="size-3" />}{jobState(job)}
+      </span>
+    )
+  }
+  return (
+    <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+      <CircleAlert className="size-3" />{t("jobs.fillFailed")}
+    </span>
+  )
+}
+
+function ApplicationRow({ app, job, showEvent, selected, onSelect, onStatus }: {
   app: ApplicationListItem
+  job: Job | undefined
   showEvent: boolean
   selected: boolean
   onSelect: (selected: boolean) => void
@@ -50,6 +69,7 @@ function ApplicationRow({ app, showEvent, selected, onSelect, onStatus }: {
   const salary = formatSalary(app.salary, app.salary_period, app.salary_basis)
   const status = statusInfo(app.status)
   const details = [
+    job && <FillState key="job" job={job} />,
     app.location && <span key="loc" className="flex items-center gap-1"><MapPin className="size-3" />{app.location}</span>,
     salary && <span key="sal" className="flex items-center gap-1"><Banknote className="size-3" />{salary}</span>,
   ].filter(Boolean)
@@ -65,7 +85,7 @@ function ApplicationRow({ app, showEvent, selected, onSelect, onStatus }: {
           <p className="truncate">
             {/* The link covers the whole row; the status menu stays clickable on top */}
             <Link to={`/applications/${app.id}`} className="font-medium after:absolute after:inset-0">
-              {app.title ?? t("application.untitled")}
+              {app.title ?? (job?.new_application ? t("jobs.newApplication") : t("application.untitled"))}
             </Link>
             <span className="text-muted-foreground"> · {app.company ?? t("application.noCompany")}</span>
           </p>
@@ -121,6 +141,12 @@ export function ApplicationList() {
     setParams({}, { replace: true })
   }, [params])
   const { data = [], isLoading, error } = useQuery({ queryKey: ["applications"], queryFn: api.listApplications })
+  const { data: jobs } = useJobs()
+  // Shown on the row while the AI fills the application, or if it failed
+  const fillState = (id: number) => {
+    const job = findJob(jobs, "application", id)
+    return job && (isWorking(job.status) || job.status === "failed") ? job : undefined
+  }
   const changeStatus = useMutation({
     mutationFn: ({ id, status }: { id: number; status: ApplicationStatus }) => api.updateApplication(id, { status }),
     onMutate: ({ id, status }) => {
@@ -238,7 +264,7 @@ export function ApplicationList() {
           </div>
           <ul className="divide-y">
             {visible.map((app) => (
-              <ApplicationRow key={app.id} app={app} showEvent={sort === "event"} selected={selected.has(app.id)}
+              <ApplicationRow key={app.id} app={app} job={fillState(app.id)} showEvent={sort === "event"} selected={selected.has(app.id)}
                 onSelect={(on) => select([app.id], on)}
                 onStatus={(status) => changeStatus.mutate({ id: app.id, status })} />
             ))}

@@ -4,11 +4,13 @@
 #   state.json    written here: checked-out branch, branches on the remote with their version, progress
 #                 (step and an estimated percentage, from the build steps docker compose reports),
 #                 result of the last install and error of the last check, if it failed
-#   request.json  written by the backend: {"action": "check"} or {"action": "install", "branch": "..."}
+#   request.json  written by the backend: {"action": "check"}, {"action": "install", "branch": "..."} or,
+#                 while an install is building, {"action": "cancel"}
 #   settings.json written by the backend: {"check_hours": 6}, hours between checks (0 = only on request)
 # An install moves the folder to the branch on the remote (local changes go to a stash), rebuilds and
 # recreates every service but this one with docker compose (the old containers keep running until the new
-# images are built), applying the new compose file too, and removes the old images.
+# images are built), applying the new compose file too, and removes the old images. Until the services
+# start being replaced (step "restart") it can be cancelled: the folder goes back to where it was.
 # The image runs this script from the project folder, so after an install the updater restarts itself
 # with the new script. Its own container can't be replaced from inside it: only when an update changes
 # its image (updater/Dockerfile) or its service in the compose file, the state asks for a manual
@@ -186,6 +188,22 @@ published() { # branch
   return 1
 }
 
+# The backend asks to cancel a running install by writing {"action": "cancel"}
+cancel_requested() {
+  grep -qs '"action": *"cancel"' "$REQUEST" && rm -f "$REQUEST"
+}
+
+# Stop docker compose: the images being built are discarded, the running containers stay as they are
+stop_build() { # pid
+  kill -TERM "$1" 2>/dev/null
+  i=0
+  while [ ! -f /tmp/build.status ] && [ $i -lt 15 ]; do
+    sleep 1
+    i=$((i + 1))
+  done
+  kill -KILL "$1" 2>/dev/null
+}
+
 # Back to the commit that was running (the old containers are still up) and to the files as they were
 rollback() {
   if [ -n "$previous_branch" ]; then
@@ -230,14 +248,28 @@ install() { # branch
   [ "$(restart_files)" = "$running_files" ] || restart=true
 
   set_step updating build 10
-  # In the background so a docker compose stop doesn't wait for the build; the build goes from 10% to 90%
-  rm -f /tmp/build.status
+  # In the background so a docker compose stop doesn't wait for the build, and so it can be cancelled;
+  # the build goes from 10% to 90%
   services=$(compose config --services | grep -vx updater)
-  # Unquoted: one argument per service
-  { compose up -d --build $services > /tmp/build.log 2>&1; echo $? > /tmp/build.status.tmp; mv /tmp/build.status.tmp /tmp/build.status; } &
+  rm -f /tmp/build.status /tmp/build.pid
+  # Unquoted: one argument per service. The pid of docker compose is kept to stop it on cancel
+  { compose up -d --build $services > /tmp/build.log 2>&1 & echo $! > /tmp/build.pid; wait $!
+    echo $? > /tmp/build.status.tmp; mv /tmp/build.status.tmp /tmp/build.status; } &
   while [ ! -f /tmp/build.status ]; do
-    progress=$((10 + $(build_done) * 80 / 100))
-    [ "$progress" -gt "$PROGRESS" ] && { PROGRESS=$progress; write_state; }
+    if [ "$STEP" = build ] && grep -qE 'Container .* (Recreate|Create|Stop|Start)' /tmp/build.log; then
+      # Images built: the services are being replaced, too late to cancel
+      set_step updating restart 90
+    elif [ "$STEP" = build ] && cancel_requested; then
+      log "update cancelled"
+      stop_build "$(cat /tmp/build.pid)"
+      rollback
+      list_branches
+      finish canceled "" "" false
+      return
+    elif [ "$STEP" = build ]; then
+      progress=$((10 + $(build_done) * 80 / 100))
+      [ "$progress" -gt "$PROGRESS" ] && { PROGRESS=$progress; write_state; }
+    fi
     sleep 1 &
     wait $!
   done
