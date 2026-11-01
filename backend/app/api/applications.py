@@ -1,11 +1,12 @@
 from datetime import date
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlmodel import Session, func, select
 
 from app.db import get_session, save
 from app.i18n import t
-from app.models import Application, ApplicationEvent, EventType, TaskStatus, User
+from app.models import Application, ApplicationAttachment, ApplicationEvent, EventType, TaskStatus, User
 from app.schemas import (
     ApplicationBulk,
     ApplicationListItem,
@@ -15,6 +16,7 @@ from app.schemas import (
 )
 from app.services import security
 from app.services.app_settings import require_llm
+from app.services.attachments import attachment_path, attachments_dir, remove_attachments, save_attachments
 from app.services.extraction import generate_advice
 from app.services.matching import compute_match
 from app.services.users import find_profile
@@ -89,7 +91,9 @@ def bulk_update(
         else:
             change_status(session, app, payload.status)
             session.add(app)
+    folders = [attachments_dir(app) for app in apps] if payload.action == "delete" else []
     session.commit()
+    remove_attachments(folders)
 
 
 @router.get("/{application_id}", response_model=ApplicationRead)
@@ -124,8 +128,67 @@ def delete_application(
     application_id: int, user: User = Depends(security.current_user),
     session: Session = Depends(get_session),
 ):
-    session.delete(get_owned(session, application_id, user))
+    app = get_owned(session, application_id, user)
+    folder = attachments_dir(app)
+    session.delete(app)
     session.commit()
+    # Attached files go too, so they don't take up space
+    remove_attachments([folder])
+
+
+def get_attachment(app: Application, attachment_id: int) -> ApplicationAttachment:
+    attachment = next((a for a in app.attachments if a.id == attachment_id), None)
+    if attachment is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, t("attachment_not_found"))
+    return attachment
+
+
+@router.post("/{application_id}/attachments", response_model=ApplicationRead, status_code=status.HTTP_201_CREATED)
+async def add_attachments(
+    application_id: int, files: list[UploadFile] = File(...), user: User = Depends(security.current_user),
+    session: Session = Depends(get_session),
+):
+    app = get_owned(session, application_id, user)
+    attachments = await save_attachments(app, files)
+    session.add_all(attachments)
+    try:
+        session.commit()
+    except Exception:
+        for attachment in attachments:
+            attachment_path(app, attachment).unlink(missing_ok=True)
+        raise
+    session.refresh(app)
+    return app
+
+
+@router.get("/{application_id}/attachments/{attachment_id}")
+def download_attachment(
+    application_id: int, attachment_id: int, user: User = Depends(security.current_user),
+    session: Session = Depends(get_session),
+):
+    app = get_owned(session, application_id, user)
+    attachment = get_attachment(app, attachment_id)
+    path = attachment_path(app, attachment)
+    if not path.exists():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, t("attachment_not_found"))
+    # Always served as a download, so an uploaded HTML or SVG file can't run in the app's origin
+    return FileResponse(path, filename=attachment.filename, media_type="application/octet-stream",
+                        headers={"X-Content-Type-Options": "nosniff"})
+
+
+@router.delete("/{application_id}/attachments/{attachment_id}", response_model=ApplicationRead)
+def delete_attachment(
+    application_id: int, attachment_id: int, user: User = Depends(security.current_user),
+    session: Session = Depends(get_session),
+):
+    app = get_owned(session, application_id, user)
+    attachment = get_attachment(app, attachment_id)
+    path = attachment_path(app, attachment)
+    session.delete(attachment)
+    session.commit()
+    path.unlink(missing_ok=True)
+    session.refresh(app)
+    return app
 
 
 @router.get("/{application_id}/match", response_model=MatchResult)

@@ -293,6 +293,16 @@ class ApplicationListItem(ApplicationSummary):
     last_event_on: date | None = None
 
 
+class AttachmentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    filename: str
+    content_type: str | None
+    size: int
+    created_at: datetime
+
+
 class ApplicationRead(ApplicationSummary):
     contract_type: str | None
     seniority: str | None
@@ -312,6 +322,7 @@ class ApplicationRead(ApplicationSummary):
     advice: dict | None
     advice_status: str | None
     events: list[EventRead]
+    attachments: list[AttachmentRead]
 
 
 class ProfileUpdate(BaseModel):

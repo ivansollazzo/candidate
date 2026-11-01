@@ -11,6 +11,7 @@ MESSAGES: dict[str, dict[str, str]] = {
     "it": {
         "application_not_found": "Candidatura non trovata",
         "event_not_found": "Evento non trovato",
+        "attachment_not_found": "Allegato non trovato",
         "event_field_required": "Tipo, data, titolo e completamento non possono essere vuoti",
         "advice_running": "Analisi già in corso",
         "no_cv": "Nessun CV caricato",
@@ -76,6 +77,7 @@ MESSAGES: dict[str, dict[str, str]] = {
     "en": {
         "application_not_found": "Application not found",
         "event_not_found": "Event not found",
+        "attachment_not_found": "Attachment not found",
         "event_field_required": "Type, date, title and completion can't be empty",
         "advice_running": "Analysis already in progress",
         "no_cv": "No CV uploaded",

@@ -5,6 +5,7 @@ import { useNavigate, useParams } from "react-router"
 
 import { JobPostingAssist, useJobSource } from "@/components/AiAssist"
 import { ApplicationFields } from "@/components/ApplicationFields"
+import { Attachments } from "@/components/Attachments"
 import { BackLink } from "@/components/BackLink"
 import { ErrorText } from "@/components/ErrorText"
 import { EventTimeline } from "@/components/EventTimeline"
@@ -81,6 +82,7 @@ function DetailPage({ app }: { app: Application }) {
         <div className="space-y-5">
           <JobPostingAssist hint={t("application.aiHint")} job={job} fill={fill} />
           <ApplicationFields value={value} set={set} />
+          <Attachments application={app} />
         </div>
 
         <div className="space-y-5">

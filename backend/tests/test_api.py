@@ -138,7 +138,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("1.3", "20261026.0042")
+    assert (health["version"], health["build"]) == ("1.3", "20261101.1926")
 
     r = client.post("/api/ai/job-posting", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
@@ -354,3 +354,56 @@ def test_bulk_ignores_other_users_applications(client):
     assert mario.post("/api/auth/login", json={"username": "mario", "password": "Segreta1234"}).status_code == 200
     assert mario.post("/api/applications/bulk", json={"ids": [other_id], "action": "delete"}).status_code == 404
     assert len(client.get("/api/applications").json()) == 1
+
+
+def test_attachments(client, tmp_path):
+    app_id = client.post("/api/applications", json={"title": "Con allegati"}).json()["id"]
+    r = client.post(f"/api/applications/{app_id}/attachments", files=[
+        ("files", ("lettera.pdf", b"%PDF-1.4 lettera", "application/pdf")),
+        ("files", ("../note.html", b"<script>alert(1)</script>", "text/html")),
+    ])
+    assert r.status_code == 201
+    attachments = r.json()["attachments"]
+    assert [(a["filename"], a["size"]) for a in attachments] == [("lettera.pdf", 16), ("note.html", 25)]
+    assert client.get(f"/api/applications/{app_id}").json()["attachments"] == attachments
+
+    # Downloads keep the original name and are never rendered inline
+    r = client.get(f"/api/applications/{app_id}/attachments/{attachments[1]['id']}")
+    assert r.content == b"<script>alert(1)</script>"
+    assert r.headers["content-type"] == "application/octet-stream"
+    assert 'attachment; filename="note.html"' in r.headers["content-disposition"]
+
+    folder = next(tmp_path.glob(f"user_*/applications/{app_id}"))
+    assert len(list(folder.iterdir())) == 2
+    r = client.delete(f"/api/applications/{app_id}/attachments/{attachments[0]['id']}")
+    assert [a["filename"] for a in r.json()["attachments"]] == ["note.html"]
+    assert len(list(folder.iterdir())) == 1
+    assert client.get(f"/api/applications/{app_id}/attachments/{attachments[0]['id']}").status_code == 404
+
+    # Deleting the application deletes its files
+    assert client.delete(f"/api/applications/{app_id}").status_code == 204
+    assert not folder.exists()
+
+
+def test_attachments_rejected(client):
+    app_id = client.post("/api/applications", json={"title": "x"}).json()["id"]
+    r = client.post(f"/api/applications/{app_id}/attachments", files=[
+        ("files", ("ok.txt", b"ok", "text/plain")), ("files", ("vuoto.txt", b"", "text/plain"))])
+    assert r.status_code == 422
+    # Nothing is stored when one of the files is rejected
+    assert client.get(f"/api/applications/{app_id}").json()["attachments"] == []
+
+    client.post("/api/users", json={"username": "mario", "email": "m@example.com", "password": "Segreta1234"})
+    mario = TestClient(app)
+    mario.post("/api/auth/login", json={"username": "mario", "password": "Segreta1234"})
+    r = mario.post(f"/api/applications/{app_id}/attachments", files=[("files", ("a.txt", b"a", "text/plain"))])
+    assert r.status_code == 404
+
+
+def test_bulk_delete_removes_attachments(client, tmp_path):
+    ids = [client.post("/api/applications", json={"title": f"A{i}"}).json()["id"] for i in range(2)]
+    for app_id in ids:
+        client.post(f"/api/applications/{app_id}/attachments", files=[("files", ("cv.pdf", b"cv", "application/pdf"))])
+    assert len(list(tmp_path.glob("user_*/applications/*"))) == 2
+    client.post("/api/applications/bulk", json={"ids": ids, "action": "delete"})
+    assert list(tmp_path.glob("user_*/applications/*")) == []

@@ -225,6 +225,10 @@ class Application(SQLModel, table=True):
         back_populates="application",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "ApplicationEvent.occurred_on"},
     )
+    attachments: list["ApplicationAttachment"] = Relationship(
+        back_populates="application",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "ApplicationAttachment.id"},
+    )
 
 
 class ApplicationEvent(SQLModel, table=True):
@@ -246,3 +250,23 @@ class ApplicationEvent(SQLModel, table=True):
     created_at: datetime = _timestamp()
 
     application: Application | None = Relationship(back_populates="events")
+
+
+class ApplicationAttachment(SQLModel, table=True):
+    """File attached to an application; its file on disk goes away with the application."""
+
+    __tablename__ = "application_attachment"
+
+    id: int | None = Field(default=None, primary_key=True)
+    application_id: int = Field(
+        sa_column=sa.Column(sa.ForeignKey("application.id", ondelete="CASCADE"), nullable=False, index=True)
+    )
+    # Original name, shown in the UI and used for downloads
+    filename: str = Field(sa_type=sa.String(255))
+    # Name on disk, inside the application's attachment folder
+    stored_name: str = Field(sa_type=sa.String(64))
+    content_type: str | None = Field(default=None, sa_type=sa.String(255))
+    size: int
+    created_at: datetime = _timestamp()
+
+    application: Application | None = Relationship(back_populates="attachments")

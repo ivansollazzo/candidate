@@ -1,14 +1,14 @@
 # Candidate
 
 Candidate is a self-hosted web app for keeping track of your job applications. It stores every application with its
-status, dates, events and notes, keeps your professional profile, and tells you how well your skills match each
+status, dates, events, notes and attached files, keeps your professional profile, and tells you how well your skills match each
 position.
 
 Forms can be filled in by hand or with a local language model (Qwen 3 4B served by Ollama) that reads a job posting or
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.3 (build 20261026.0042), by Ivan Sollazzo.
+Version 1.3 (build 20261101.1926), by Ivan Sollazzo.
 
 ## Features
 
@@ -16,6 +16,8 @@ Version 1.3 (build 20261026.0042), by Ivan Sollazzo.
   sort order (date applied, status, name, latest event), both saved per user, multiple selection to change the
   status of or delete several applications at once, and a detail
   page with job details, salary, requirements and status history.
+- **Attachments**: attach any files to an application (cover letter, offer, test...), up to 10 MB each. They are
+  deleted from disk together with the application.
 - **AI fill (optional)**: paste a job posting, give a link or upload a PDF, DOCX or TXT file, and the model fills in
   the form. Empty fields are filled straight away; fields you already filled are only replaced if you confirm. Nothing
   is saved until you press Save.
@@ -185,7 +187,7 @@ The backend reads these environment variables, or `backend/.env` when it runs ou
 | `EMBEDDING_MODEL` | `intfloat/multilingual-e5-small` | Sentence-transformers model for skill matching. |
 | `MATCH_THRESHOLD` | `0.90` | Similarity above which a skill counts as a match. |
 | `PARTIAL_MATCH_THRESHOLD` | `0.85` | Similarity above which a skill counts as a partial match. |
-| `UPLOAD_DIR` | `data/uploads` | Where CVs, job posting files and profile photos are stored. |
+| `UPLOAD_DIR` | `data/uploads` | Where CVs, profile photos and application attachments are stored. |
 | `MAX_UPLOAD_MB` | `10` | Maximum upload size. |
 | `CORS_ORIGINS` | `["http://localhost:5173", "http://127.0.0.1:5173"]` | Origins allowed to call the API (JSON list). |
 

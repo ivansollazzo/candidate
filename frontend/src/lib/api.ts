@@ -53,6 +53,14 @@ interface Advice {
   error?: string
 }
 
+export interface Attachment {
+  id: number
+  filename: string
+  content_type: string | null
+  size: number
+  created_at: string
+}
+
 export interface Application extends ApplicationSummary {
   contract_type: string | null
   seniority: string | null
@@ -72,6 +80,7 @@ export interface Application extends ApplicationSummary {
   advice: Advice | null
   advice_status: TaskStatus | null
   events: ApplicationEvent[]
+  attachments: Attachment[]
 }
 
 export type SkillLevel = 1 | 2 | 3 | 4
@@ -331,6 +340,12 @@ const upload = (method: string, file: File): RequestInit => {
   return { method, body: form }
 }
 
+const uploadMany = (method: string, files: File[]): RequestInit => {
+  const form = new FormData()
+  for (const file of files) form.append("files", file)
+  return { method, body: form }
+}
+
 const json = (method: string, body: unknown): RequestInit => ({
   method,
   headers: { "Content-Type": "application/json" },
@@ -366,6 +381,10 @@ export const api = {
   updateApplication: (id: number, changes: ApplicationChanges) =>
     request<Application>(`/api/applications/${id}`, json("PATCH", changes)),
   deleteApplication: (id: number) => request<void>(`/api/applications/${id}`, { method: "DELETE" }),
+  addAttachments: (id: number, files: File[]) =>
+    request<Application>(`/api/applications/${id}/attachments`, uploadMany("POST", files)),
+  deleteAttachment: (id: number, attachmentId: number) =>
+    request<Application>(`/api/applications/${id}/attachments/${attachmentId}`, { method: "DELETE" }),
   /** Same action on several applications: all of them or none */
   bulkApplications: (bulk: ApplicationBulk) => request<void>("/api/applications/bulk", json("POST", bulk)),
   getMatch: (id: number) => request<MatchResult>(`/api/applications/${id}/match`),
