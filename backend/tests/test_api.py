@@ -1,22 +1,22 @@
 import io
 
-import numpy as np
 import pytest
 from docx import Document
 from fastapi.testclient import TestClient
 
 from app.main import app
 from app.schemas import (
-    AdviceExtraction,
     ExtractedSkill,
     HistoryExtraction,
     JobCompensationExtraction,
     JobCoreExtraction,
     JobRequirementsExtraction,
     PersonalExtraction,
+    ReportExtraction,
+    SkillAssessment,
     SkillsExtraction,
 )
-from app.services import extraction, matching
+from app.services import extraction, report
 
 JOB_TEXT = "Cerchiamo un Backend Developer Python a Milano, RAL 35-42k. Requisiti: Python, Postgres, Docker. Gradito Kubernetes."
 
@@ -48,25 +48,38 @@ def fake_llm(system, user, schema):
     if schema is SkillsExtraction:
         return SkillsExtraction(skills=[{"name": "Python", "level": 3}, {"name": "PostgreSQL", "level": 2},
                                         {"name": "Docker Compose", "level": 3}, {"name": "python", "level": 9}])
-    if schema is AdviceExtraction:
-        return AdviceExtraction(summary="Buona compatibilità", improvements=[{"skill": "Kubernetes", "suggestion": "Corso CKAD"}])
     raise AssertionError(schema)
 
 
-def fake_embed(texts):
-    # Fake vectors: "docker" and "docker compose" very close, the rest orthogonal
-    vocab = ["python", "postgresql", "docker", "kubernetes"]
-    out = []
-    for t in texts:
-        v = np.array([1.0 if w in t.lower() else 0.0 for w in vocab] + [0.3 if "compose" in t.lower() else 0.0])
-        out.append(v / (np.linalg.norm(v) or 1))
-    return np.array(out)
+# How the fake model judges a skill: (kind, status, profile skill it cites)
+JUDGEMENTS = {
+    "python": ("technical", "match", "python"),
+    "postgres": ("technical", "match", "PostgreSQL"),
+    "docker": ("technical", "match", "Docker Compose"),
+    "machine learning": ("technical", "match", "PyTorch"),
+    "english": ("language", "match", "Inglese"),
+    "teamwork": ("soft", "missing", None),
+    "rust": ("technical", "partial", "Non nel profilo"),
+}
+
+
+def fake_report_llm(system, user, schema):
+    assert schema is ReportExtraction
+    listed = user.split("Competenze dell'annuncio:\n")[1].split("\nRequisiti:")[0]
+    names = [line.removeprefix("  - ").rsplit(" (", 1)[0] for line in listed.splitlines()]
+    skills = []
+    for name in names:
+        kind, status, matched = JUDGEMENTS.get(name.lower(), ("technical", "missing", None))
+        skills.append(SkillAssessment(skill=name.upper(), kind=kind, reason="perché sì", matched_with=matched,
+                                      status=status))
+    return ReportExtraction(skills=skills, summary="Buona compatibilità", strengths=["Python"],
+                            improvements=[{"skill": "Kubernetes", "suggestion": "Corso CKAD"}])
 
 
 @pytest.fixture(autouse=True)
 def mocks(monkeypatch):
     monkeypatch.setattr(extraction, "generate_structured", fake_llm)
-    monkeypatch.setattr(matching, "embed", fake_embed)
+    monkeypatch.setattr(report, "generate_structured", fake_report_llm)
 
 
 def ai_fill(client, path, **kwargs) -> dict:
@@ -138,12 +151,12 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("1.2.4", "20261024.1758")
+    assert (health["version"], health["build"]) == ("1.3", "20261101.2028")
 
     r = client.post("/api/ai/job-posting", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
     app_id = client.post("/api/applications", json={"title": "Manuale"}).json()["id"]
-    assert client.post(f"/api/applications/{app_id}/advice").status_code == 409
+    assert client.post(f"/api/applications/{app_id}/report").status_code == 409
     assert client.post("/api/ai/cv").status_code == 409
 
 
@@ -171,14 +184,20 @@ def test_cv_upload_ai_fill_and_match(client):
 
     job = ai_fill(client, "/api/ai/job-posting", data={"text": JOB_TEXT})
     app_id = client.post("/api/applications", json={"skills": job["skills"], "title": job["title"]}).json()["id"]
-    match = client.get(f"/api/applications/{app_id}/match").json()
-    assert {m["skill"] for m in match["matched"]} == {"Python", "Postgres", "Docker"}
-    assert [m["skill"] for m in match["missing"]] == ["Kubernetes"]
-    assert match["score"] == 86  # 6 of 7 points
-
-    client.post(f"/api/applications/{app_id}/advice")
-    advice = client.get(f"/api/applications/{app_id}").json()["advice"]
-    assert advice["improvements"][0]["skill"] == "Kubernetes"
+    # No report until it is requested
+    assert client.get(f"/api/applications/{app_id}").json()["report"] is None
+    assert client.post(f"/api/applications/{app_id}/report").status_code == 202
+    data = client.get(f"/api/applications/{app_id}").json()
+    assert data["report_status"] == "done" and data["report_stale"] is False
+    result = data["report"]
+    by_skill = {s["skill"]: s for s in result["skills"]}
+    assert {k for k, s in by_skill.items() if s["status"] == "match"} == {"Python", "Postgres", "Docker"}
+    assert by_skill["Kubernetes"]["status"] == "missing"
+    # Cited skills are the profile's own names
+    assert by_skill["Docker"]["matched_with"] == "Docker Compose" and by_skill["Python"]["level"] == 4
+    assert result["score"] == 86  # 6 of 7 points
+    assert result["improvements"][0]["skill"] == "Kubernetes" and result["summary"]
+    assert {a["id"]: a["match_score"] for a in client.get("/api/applications").json()} == {app_id: 86}
 
 
 def test_ai_cv_requires_upload(client):
@@ -186,17 +205,60 @@ def test_ai_cv_requires_upload(client):
 
 
 def test_skill_level_affects_match(client):
-    client.patch("/api/profile", json={"skills": [{"name": "Python", "level": 1}, {"name": "Docker", "level": 2}]})
+    client.patch("/api/profile", json={"skills": [{"name": "Python", "level": 1},
+                                                  {"name": "Docker Compose", "level": 2}]})
     skills = [{"name": n, "importance": "required"} for n in ("Python", "Docker")]
     app_id = client.post("/api/applications", json={"title": "Dev", "skills": skills}).json()["id"]
-    match = client.get(f"/api/applications/{app_id}/match").json()
-    partial = {m["skill"]: m for m in match["partial"]}
-    assert partial["Python"]["level"] == 1 and "base" in partial["Python"]["note"]
-    assert [m["skill"] for m in match["matched"]] == ["Docker"]
+    client.post(f"/api/applications/{app_id}/report")
+    skills = {s["skill"]: s for s in client.get(f"/api/applications/{app_id}").json()["report"]["skills"]}
+    assert skills["Python"]["status"] == "partial" and "base" in skills["Python"]["note"]
+    assert skills["Docker"]["status"] == "match"
 
     client.patch(f"/api/applications/{app_id}", json={"seniority": "Senior"})
-    match = client.get(f"/api/applications/{app_id}/match").json()
-    assert match["matched"] == [] and {m["skill"] for m in match["partial"]} == {"Python", "Docker"}
+    client.post(f"/api/applications/{app_id}/report")
+    skills = client.get(f"/api/applications/{app_id}").json()["report"]["skills"]
+    assert {s["status"] for s in skills} == {"partial"}
+
+
+def test_report_soft_skills_languages_and_unknown_citations(client):
+    client.patch("/api/profile", json={"skills": [{"name": "PyTorch", "level": 3}],
+                                       "languages": [{"language": "Inglese", "level": "C1"}]})
+    skills = [{"name": n, "importance": "required"} for n in ("Machine Learning", "English", "Teamwork", "Rust")]
+    app_id = client.post("/api/applications", json={"title": "ML", "skills": skills}).json()["id"]
+    client.post(f"/api/applications/{app_id}/report")
+    result = client.get(f"/api/applications/{app_id}").json()["report"]
+    by_skill = {s["skill"]: s for s in result["skills"]}
+    assert (by_skill["English"]["kind"], by_skill["English"]["matched_with"]) == ("language", "Inglese")
+    assert by_skill["Teamwork"]["kind"] == "soft"
+    # A profile skill the model made up is not shown
+    assert by_skill["Rust"]["matched_with"] is None
+    # Soft skills don't count: ML and English match, Rust partial -> 2.5 of 3
+    assert result["score"] == 83
+
+
+def test_report_goes_stale_and_is_cleared_without_ai(client):
+    client.patch("/api/profile", json={"skills": [{"name": "Python", "level": 3}], "phone": "1"})
+    skills = [{"name": "Python", "importance": "required"}]
+    app_id = client.post("/api/applications", json={"title": "Dev", "skills": skills}).json()["id"]
+    other_id = client.post("/api/applications", json={"title": "Altro"}).json()["id"]
+    client.post(f"/api/applications/{app_id}/report")
+    stale = lambda i: client.get(f"/api/applications/{i}").json()["report_stale"]  # noqa: E731
+
+    # Changes that don't touch skills leave the report as it is
+    client.patch("/api/profile", json={"phone": "2"})
+    client.patch(f"/api/applications/{app_id}", json={"notes": "x"})
+    assert stale(app_id) is False
+
+    client.patch("/api/profile", json={"skills": [{"name": "Python", "level": 4}]})
+    assert stale(app_id) is True and stale(other_id) is False
+    client.post(f"/api/applications/{app_id}/report")
+    assert stale(app_id) is False
+    client.patch(f"/api/applications/{app_id}", json={"requirements": ["Laurea"]})
+    assert stale(app_id) is True
+
+    client.patch("/api/settings", json={"llm_enabled": False})
+    data = client.get(f"/api/applications/{app_id}").json()
+    assert (data["report"], data["report_status"], data["report_stale"]) == (None, None, False)
 
 
 def test_profile_sections_editable(client):
@@ -354,3 +416,56 @@ def test_bulk_ignores_other_users_applications(client):
     assert mario.post("/api/auth/login", json={"username": "mario", "password": "Segreta1234"}).status_code == 200
     assert mario.post("/api/applications/bulk", json={"ids": [other_id], "action": "delete"}).status_code == 404
     assert len(client.get("/api/applications").json()) == 1
+
+
+def test_attachments(client, tmp_path):
+    app_id = client.post("/api/applications", json={"title": "Con allegati"}).json()["id"]
+    r = client.post(f"/api/applications/{app_id}/attachments", files=[
+        ("files", ("lettera.pdf", b"%PDF-1.4 lettera", "application/pdf")),
+        ("files", ("../note.html", b"<script>alert(1)</script>", "text/html")),
+    ])
+    assert r.status_code == 201
+    attachments = r.json()["attachments"]
+    assert [(a["filename"], a["size"]) for a in attachments] == [("lettera.pdf", 16), ("note.html", 25)]
+    assert client.get(f"/api/applications/{app_id}").json()["attachments"] == attachments
+
+    # Downloads keep the original name and are never rendered inline
+    r = client.get(f"/api/applications/{app_id}/attachments/{attachments[1]['id']}")
+    assert r.content == b"<script>alert(1)</script>"
+    assert r.headers["content-type"] == "application/octet-stream"
+    assert 'attachment; filename="note.html"' in r.headers["content-disposition"]
+
+    folder = next(tmp_path.glob(f"user_*/applications/{app_id}"))
+    assert len(list(folder.iterdir())) == 2
+    r = client.delete(f"/api/applications/{app_id}/attachments/{attachments[0]['id']}")
+    assert [a["filename"] for a in r.json()["attachments"]] == ["note.html"]
+    assert len(list(folder.iterdir())) == 1
+    assert client.get(f"/api/applications/{app_id}/attachments/{attachments[0]['id']}").status_code == 404
+
+    # Deleting the application deletes its files
+    assert client.delete(f"/api/applications/{app_id}").status_code == 204
+    assert not folder.exists()
+
+
+def test_attachments_rejected(client):
+    app_id = client.post("/api/applications", json={"title": "x"}).json()["id"]
+    r = client.post(f"/api/applications/{app_id}/attachments", files=[
+        ("files", ("ok.txt", b"ok", "text/plain")), ("files", ("vuoto.txt", b"", "text/plain"))])
+    assert r.status_code == 422
+    # Nothing is stored when one of the files is rejected
+    assert client.get(f"/api/applications/{app_id}").json()["attachments"] == []
+
+    client.post("/api/users", json={"username": "mario", "email": "m@example.com", "password": "Segreta1234"})
+    mario = TestClient(app)
+    mario.post("/api/auth/login", json={"username": "mario", "password": "Segreta1234"})
+    r = mario.post(f"/api/applications/{app_id}/attachments", files=[("files", ("a.txt", b"a", "text/plain"))])
+    assert r.status_code == 404
+
+
+def test_bulk_delete_removes_attachments(client, tmp_path):
+    ids = [client.post("/api/applications", json={"title": f"A{i}"}).json()["id"] for i in range(2)]
+    for app_id in ids:
+        client.post(f"/api/applications/{app_id}/attachments", files=[("files", ("cv.pdf", b"cv", "application/pdf"))])
+    assert len(list(tmp_path.glob("user_*/applications/*"))) == 2
+    client.post("/api/applications/bulk", json={"ids": ids, "action": "delete"})
+    assert list(tmp_path.glob("user_*/applications/*")) == []

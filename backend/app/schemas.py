@@ -181,10 +181,24 @@ class SkillImprovement(BaseModel):
     suggestion: str = Field(description="Azione concreta per colmare il gap")
 
 
-class AdviceExtraction(BaseModel):
+class SkillAssessment(BaseModel):
+    # Every field is required, so a small model can't answer with an empty object
+    skill: str = Field(description="Competenza dell'annuncio, scritta esattamente come nell'elenco ricevuto")
+    kind: Literal["technical", "language", "soft"] = Field(
+        description="technical: competenza tecnica o di mestiere; language: lingua; soft: soft skill")
+    reason: str = Field(description="Motivazione in una frase breve, basata sul profilo")
+    matched_with: str | None = Field(
+        description="Competenza o lingua del candidato che la copre, scritta esattamente come nel profilo; "
+                    "null se nessuna")
+    status: Literal["match", "partial", "missing"] = Field(
+        description="match: il candidato la possiede; partial: ha qualcosa di simile o vicino; missing: non la possiede")
+
+
+class ReportExtraction(BaseModel):
+    skills: list[SkillAssessment]
     summary: str = Field(description="Valutazione sintetica della compatibilità con la posizione")
-    strengths: list[str] = []
-    improvements: list[SkillImprovement] = []
+    strengths: list[str]
+    improvements: list[SkillImprovement]
 
 
 # API
@@ -291,6 +305,18 @@ class ApplicationSummary(BaseModel):
 class ApplicationListItem(ApplicationSummary):
     # Date of the latest agenda event (status changes excluded), for sorting the list
     last_event_on: date | None = None
+    # Score of the compatibility report, when one has been generated
+    match_score: int | None = None
+
+
+class AttachmentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    filename: str
+    content_type: str | None
+    size: int
+    created_at: datetime
 
 
 class ApplicationRead(ApplicationSummary):
@@ -309,9 +335,13 @@ class ApplicationRead(ApplicationSummary):
     contact_email: str | None
     notes: str | None
     has_description: bool = Field(description="True se è salvato il testo dell'annuncio, per compilare con l'LLM")
-    advice: dict | None
-    advice_status: str | None
+    # Report, or {"error": ...} when the generation failed
+    report: dict | None
+    report_status: str | None
+    # The skills changed after the report was generated
+    report_stale: bool
     events: list[EventRead]
+    attachments: list[AttachmentRead]
 
 
 class ProfileUpdate(BaseModel):
@@ -353,22 +383,26 @@ class ProfileRead(BaseModel):
     updated_at: datetime
 
 
-class SkillMatchItem(BaseModel):
+class ReportSkill(BaseModel):
     skill: str
     importance: str
+    kind: str  # technical | language | soft
     status: str  # match | partial | missing
     matched_with: str | None = None
-    similarity: float | None = None
     level: int | None = None  # skill level in the profile
+    reason: str | None = None
     note: str | None = None
 
 
-class MatchResult(BaseModel):
-    score: int = Field(description="Percentuale di compatibilità 0-100")
-    matched: list[SkillMatchItem]
-    partial: list[SkillMatchItem]
-    missing: list[SkillMatchItem]
-    has_profile: bool
+class Report(BaseModel):
+    """Compatibility report stored on the application."""
+
+    score: int = Field(description="Percentuale di compatibilità 0-100, soft skill escluse")
+    skills: list[ReportSkill]
+    summary: str
+    strengths: list[str]
+    improvements: list[SkillImprovement]
+    generated_at: datetime
 
 
 class SettingsRead(BaseModel):

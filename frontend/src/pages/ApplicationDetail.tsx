@@ -5,10 +5,11 @@ import { useNavigate, useParams } from "react-router"
 
 import { JobPostingAssist, useJobSource } from "@/components/AiAssist"
 import { ApplicationFields } from "@/components/ApplicationFields"
+import { Attachments } from "@/components/Attachments"
 import { BackLink } from "@/components/BackLink"
 import { ErrorText } from "@/components/ErrorText"
 import { EventTimeline } from "@/components/EventTimeline"
-import { MatchPanel } from "@/components/MatchPanel"
+import { ReportPanel } from "@/components/ReportPanel"
 import { SaveBar } from "@/components/SaveBar"
 import { Button } from "@/components/ui/button"
 import { Select } from "@/components/ui/input"
@@ -81,10 +82,11 @@ function DetailPage({ app }: { app: Application }) {
         <div className="space-y-5">
           <JobPostingAssist hint={t("application.aiHint")} job={job} fill={fill} />
           <ApplicationFields value={value} set={set} />
+          <Attachments application={app} />
         </div>
 
         <div className="space-y-5">
-          <MatchPanel application={app} />
+          <ReportPanel application={app} />
           <EventTimeline application={app} />
         </div>
       </div>
@@ -103,7 +105,7 @@ export function ApplicationDetail() {
   const { data: app, error } = useQuery({
     queryKey: ["application", id],
     queryFn: () => api.getApplication(id),
-    refetchInterval: (q) => (isWorking(q.state.data?.advice_status) ? 3000 : false),
+    refetchInterval: (q) => (isWorking(q.state.data?.report_status) ? 3000 : false),
   })
   if (error) return <ErrorText error={error} />
   if (!app) return <p className="text-sm text-muted-foreground">{t("common.loading")}</p>

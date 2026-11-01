@@ -1,28 +1,33 @@
 # Candidate
 
 Candidate is a self-hosted web app for keeping track of your job applications. It stores every application with its
-status, dates, events and notes, keeps your professional profile, and tells you how well your skills match each
+status, dates, events, notes and attached files, keeps your professional profile, and tells you how well your skills match each
 position.
 
 Forms can be filled in by hand or with a local language model (Qwen 3 4B served by Ollama) that reads a job posting or
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.2.4 (build 20261024.1758), by Ivan Sollazzo.
+Version 1.3 (build 20261101.2028), by Ivan Sollazzo.
 
 ## Features
 
 - **Applications**: list with search, status filter (applied, interview, offer, inactive, rejected, completed),
   sort order (date applied, status, name, latest event), both saved per user, multiple selection to change the
-  status of or delete several applications at once, and a detail
-  page with job details, salary, requirements and status history.
+  status of or delete several applications at once, the match score of each application when its report
+  exists, and a detail page with job details, salary, requirements and status history.
+- **Attachments**: attach any files to an application (cover letter, offer, test...), up to 10 MB each. They are
+  deleted from disk together with the application.
 - **AI fill (optional)**: paste a job posting, give a link or upload a PDF, DOCX or TXT file, and the model fills in
   the form. Empty fields are filled straight away; fields you already filled are only replaced if you confirm. Nothing
   is saved until you press Save.
 - **Profile**: personal details, experience, education, projects, certifications and skills, filled in by hand or
   from your CV. Technologies used in projects and experience are added to your skills automatically.
-- **Skill match**: for every application, a score with matching, partial and missing skills, plus optional advice on
-  where to improve.
+- **Match report (AI)**: on request, the local model compares an application's skills with your profile and returns
+  a score, matching, partial and missing skills with a short reason each, and advice on where to improve. It works for
+  any job, not only tech. Soft skills are listed apart and don't count in the score. When the skills of the profile or
+  of the application change, the report suggests regenerating it. Reports exist only with AI on: turning AI off
+  deletes them.
 - **Agenda**: interviews, calls, emails, follow-ups and notes for each application, with overdue and upcoming events
   at a glance.
 - **Multi-user**: sign-in, admin and user roles, password recovery keys (no email needed), configurable password and
@@ -55,8 +60,7 @@ On first start:
    somewhere safe: it is the only way to reset the password.
 2. You choose whether to enable the AI features, then fill in your profile and, if you like, your first application.
 
-The first start downloads the language model (about 2.5 GB). The embedding model used for skill matching (about
-470 MB) is downloaded the first time a match is computed. Settings › System shows when the model is ready.
+The first start downloads the language model (about 2.5 GB). Settings › System shows when the model is ready.
 
 ### Stopping and removing
 
@@ -64,7 +68,7 @@ The first start downloads the language model (about 2.5 GB). The embedding model
 |---|---|
 | `Ctrl+C` or `docker compose stop` | Stops the app. Data and downloaded models are kept. |
 | `docker compose down` | Removes the containers. Data and downloaded models are kept. |
-| `docker compose down -v` | Also removes the database, uploaded files and the embedding model. |
+| `docker compose down -v` | Also removes the database and uploaded files. |
 | `docker volume rm candidate_ollama` | Removes the downloaded language model (the prefix is the project folder name). |
 
 The Ollama container is created by the `llm` service and removed whenever the app stops. The `updates` volume only
@@ -79,8 +83,9 @@ settings icon and the version can be installed. A version is installed only if i
 the database is never taken back to an older schema: selecting a branch with an older version simply waits until it
 gets a newer one.
 
-Installing a version is handled by the `updater` service: it checks out the branch, rebuilds the backend and frontend
-while the current version keeps running, replaces them and removes the old images. The app shows an "Updating" screen
+Installing a version is handled by the `updater` service: it checks out the branch, rebuilds every other service
+(backend, frontend, llm, database) with the new `docker-compose.yml` while the current version keeps running, replaces
+them and removes the old images. The app shows an "Updating" screen
 and reloads by itself when the new version is up. If the build fails, the previous version stays in use.
 
 If GitHub can't be reached, a check gives up after two minutes instead of waiting forever: the tab keeps showing the
@@ -94,10 +99,15 @@ This needs a folder created with `git clone`. The updater manages that folder: i
 GitHub, so you never have to pull or commit there. If tracked files were changed locally, they are set aside with
 `git stash` (see `git stash list`) instead of blocking the update; untracked files such as `.env` and
 `docker-compose.override.yml` are never touched, so that is where your own settings go (see
-[Your own changes](#your-own-changes-docker-composeoverrideyml)). Develop in a separate copy. When an update also
-changes `docker-compose.yml`, `llm/` or `updater/Dockerfile`, the app asks you to run `docker compose up --build -d`
-once to apply it. The updater script itself (`updater/updater.sh`) is run from the project folder, so a new version of
-it takes over right after the install, with no manual step.
+[Your own changes](#your-own-changes-docker-composeoverrideyml)). Develop in a separate copy. The updater can't
+replace its own container: only when an update changes `updater/Dockerfile` or the `updater` service in
+`docker-compose.yml`, the app asks you to run `docker compose up --build -d` once. The updater script itself
+(`updater/updater.sh`) is run from the project folder, so a new version of it takes over right after the install,
+with no manual step.
+
+Docker sets a container's DNS servers when it starts. If the server's change later (a new DHCP lease, a VPN), the
+updater can no longer resolve the repository's host name. When a check fails that way, the updater restarts its own
+container (at most once every 15 minutes) and checks again.
 
 You can always update by hand:
 
@@ -180,15 +190,9 @@ The backend reads these environment variables, or `backend/.env` when it runs ou
 | `LLM_MODEL` | `qwen3:4b` | Model name, with `LLM_PROVIDER=ollama`. |
 | `LLM_TIMEOUT_SECONDS` | `600` | Maximum time for a single model request. |
 | `LLM_NUM_CTX` | `8192` | Model context size in tokens. |
-| `EMBEDDING_MODEL` | `intfloat/multilingual-e5-small` | Sentence-transformers model for skill matching. |
-| `MATCH_THRESHOLD` | `0.90` | Similarity above which a skill counts as a match. |
-| `PARTIAL_MATCH_THRESHOLD` | `0.85` | Similarity above which a skill counts as a partial match. |
-| `UPLOAD_DIR` | `data/uploads` | Where CVs, job posting files and profile photos are stored. |
+| `UPLOAD_DIR` | `data/uploads` | Where CVs, profile photos and application attachments are stored. |
 | `MAX_UPLOAD_MB` | `10` | Maximum upload size. |
 | `CORS_ORIGINS` | `["http://localhost:5173", "http://127.0.0.1:5173"]` | Origins allowed to call the API (JSON list). |
-
-The match thresholds are a starting point. You can tune them by looking at the `similarity` values returned by
-`GET /api/applications/{id}/match`.
 
 ## Hardware acceleration
 
@@ -209,7 +213,7 @@ With the 4B model, each extraction step takes roughly 30 to 60 seconds on a mode
 CV can take a few minutes. A GPU is much faster. The work runs in the background, so you can keep using the app.
 
 If you don't need the AI features, turn them off in Settings › System: the model is stopped and its memory freed, and
-everything else, skill matching included, keeps working.
+everything else keeps working. Match reports need the model, so turning AI off deletes them.
 
 ## Development
 
@@ -232,7 +236,7 @@ npm install
 npm run dev
 ```
 
-Backend tests need an empty `candidate_test` database; the model and embeddings are mocked:
+Backend tests need an empty `candidate_test` database; the model is mocked:
 
 ```bash
 createdb -h localhost -U candidate candidate_test
@@ -251,7 +255,7 @@ updater/     Service that installs new versions from the Git repository
 ## Built with
 
 FastAPI, SQLModel, Alembic, PostgreSQL · React, TypeScript, Vite, Tailwind CSS, TanStack Query, Lucide · Ollama,
-Qwen 3 4B, sentence-transformers (multilingual-e5-small) · pdfplumber, python-docx, trafilatura · pwdlib (Argon2),
+Qwen 3 4B · pdfplumber, python-docx, trafilatura · pwdlib (Argon2),
 PyJWT, Pillow · Docker Compose.
 
 Thanks to the open source projects Candidate is built on.

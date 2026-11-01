@@ -26,7 +26,7 @@ class UserRole(StrEnum):
 
 
 class TaskStatus(StrEnum):
-    """Status of LLM-generated advice."""
+    """Status of an LLM-generated compatibility report."""
 
     PENDING = "pending"
     RUNNING = "running"
@@ -90,7 +90,8 @@ class AppSettings(SQLModel, table=True):
     password_require_uppercase: bool = _bool(True)
     password_require_digit: bool = _bool(True)
     password_require_symbol: bool = _bool(False)
-    session_hours: int = _int(12)
+    # Sessions expire after this many hours without using the app
+    session_hours: int = _int(168)
     # 0 = no lockout after failed attempts
     max_login_attempts: int = _int(5)
     lockout_minutes: int = _int(15)
@@ -210,9 +211,10 @@ class Application(SQLModel, table=True):
     applied_on: date | None = Field(default_factory=date.today)
     notes: str | None = Field(default=None, sa_type=sa.Text)
 
-    # LLM-generated advice on the skill gap
-    advice: dict | None = _json_obj_nullable()
-    advice_status: str | None = Field(default=None, sa_type=sa.String(20))
+    # LLM-generated compatibility report (schemas.Report), generated on request
+    report: dict | None = _json_obj_nullable()
+    report_status: str | None = Field(default=None, sa_type=sa.String(20))
+    report_stale: bool = _bool(False)
 
     created_at: datetime = _timestamp()
     updated_at: datetime = _timestamp(onupdate=True)
@@ -224,6 +226,10 @@ class Application(SQLModel, table=True):
     events: list["ApplicationEvent"] = Relationship(
         back_populates="application",
         sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "ApplicationEvent.occurred_on"},
+    )
+    attachments: list["ApplicationAttachment"] = Relationship(
+        back_populates="application",
+        sa_relationship_kwargs={"cascade": "all, delete-orphan", "order_by": "ApplicationAttachment.id"},
     )
 
 
@@ -246,3 +252,23 @@ class ApplicationEvent(SQLModel, table=True):
     created_at: datetime = _timestamp()
 
     application: Application | None = Relationship(back_populates="events")
+
+
+class ApplicationAttachment(SQLModel, table=True):
+    """File attached to an application; its file on disk goes away with the application."""
+
+    __tablename__ = "application_attachment"
+
+    id: int | None = Field(default=None, primary_key=True)
+    application_id: int = Field(
+        sa_column=sa.Column(sa.ForeignKey("application.id", ondelete="CASCADE"), nullable=False, index=True)
+    )
+    # Original name, shown in the UI and used for downloads
+    filename: str = Field(sa_type=sa.String(255))
+    # Name on disk, inside the application's attachment folder
+    stored_name: str = Field(sa_type=sa.String(64))
+    content_type: str | None = Field(default=None, sa_type=sa.String(255))
+    size: int
+    created_at: datetime = _timestamp()
+
+    application: Application | None = Relationship(back_populates="attachments")

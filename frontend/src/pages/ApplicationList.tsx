@@ -11,7 +11,7 @@ import { useCurrentUser, useUpdateMe } from "@/lib/auth"
 import { useT } from "@/lib/i18n"
 import { STATUSES, statusInfo, statusLabel, type ApplicationStatus } from "@/lib/status"
 import { usePageTitle } from "@/lib/title"
-import { cn, formatDate, formatSalary } from "@/lib/utils"
+import { cn, formatDate, formatSalary, scoreColor } from "@/lib/utils"
 
 const SORTS: ApplicationSort[] = ["applied", "status", "name", "event"]
 // Most advanced first: completed > offer > interview > applied > inactive > rejected
@@ -74,6 +74,12 @@ function ApplicationRow({ app, showEvent, selected, onSelect, onStatus }: {
           )}
         </div>
         <div className="relative z-10 flex items-center gap-3">
+          {app.match_score != null && (
+            <span className={cn("text-sm font-semibold tabular-nums", scoreColor(app.match_score))}
+              title={t("list.matchScore")}>
+              {app.match_score}%
+            </span>
+          )}
           <span className="hidden w-36 whitespace-nowrap text-right text-xs text-muted-foreground md:block">
             {showEvent
               ? app.last_event_on && t("list.lastEvent", { date: formatDate(app.last_event_on) ?? "" })

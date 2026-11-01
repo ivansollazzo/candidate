@@ -23,6 +23,8 @@ ALGORITHM = "HS256"
 # Alphabet without ambiguous characters (0/O, 1/I/L)
 KEY_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 KEY_GROUPS, KEY_GROUP_SIZE = 6, 4
+# A session in use is renewed when its token is older than this
+RENEW_MINUTES = 10
 
 password_hash = PasswordHash.recommended()
 # Used when the username doesn't exist, so response time stays the same
@@ -112,17 +114,23 @@ def end_session(response: Response) -> None:
     response.delete_cookie(COOKIE_NAME, path="/api")
 
 
-def current_user(request: Request, session: Session = Depends(get_session)) -> User:
+def current_user(request: Request, response: Response, session: Session = Depends(get_session)) -> User:
     token = request.cookies.get(COOKIE_NAME)
     if not token:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, t("not_authenticated"))
+    settings = app_settings.load(session)
     try:
-        payload = jwt.decode(token, app_settings.load(session).secret_key, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
         user = session.get(User, int(payload["sub"]))
     except (jwt.PyJWTError, KeyError, ValueError):
         user = None
     if user is None or user.session_version != payload.get("sv"):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, t("not_authenticated"))
+    # Sliding session: using the app pushes the expiry forward, so it only ends after
+    # session_hours of inactivity (renewed at most every RENEW_MINUTES)
+    left = payload["exp"] - _now().timestamp()
+    if left < settings.session_hours * 3600 - RENEW_MINUTES * 60:
+        start_session(response, user, settings)
     return user
 
 

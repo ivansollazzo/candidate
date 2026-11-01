@@ -1,5 +1,7 @@
 import logging
+import shutil
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +12,7 @@ from app.api import ai, applications, auth, events, me, profile, settings, updat
 from app.config import get_settings
 from app.db import engine
 from app.i18n import LanguageMiddleware
-from app.services import app_settings
+from app.services import app_settings, report
 from app.services.llm import check_llm, hardware_support
 
 logging.basicConfig(level=logging.INFO)
@@ -21,6 +23,9 @@ async def lifespan(_: FastAPI):
     # Tell the llm service whether to start the model, per the last saved setting
     with Session(engine) as session:
         app_settings.publish(app_settings.load(session))
+        report.recover_interrupted(session)
+    # Cache of the embedding model used for skill matching before 1.3 (up to 2.2 GB): no longer needed
+    shutil.rmtree(Path("data/hf-cache"), ignore_errors=True)
     yield
 
 

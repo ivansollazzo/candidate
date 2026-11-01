@@ -20,12 +20,6 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 600.0
     llm_num_ctx: int = 8192
 
-    # Embeddings for skill matching
-    embedding_model: str = "intfloat/multilingual-e5-small"
-    # Cosine similarity thresholds (e5 scores high even for loosely related texts)
-    match_threshold: float = 0.90
-    partial_match_threshold: float = 0.85
-
     # Shared with the updater service (docker compose)
     updates_dir: Path = Path("/updates")
 

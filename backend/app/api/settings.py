@@ -4,6 +4,7 @@ from sqlmodel import Session
 from app.db import get_session
 from app.schemas import SettingsRead, SettingsUpdate
 from app.services import app_settings, security
+from app.services.report import clear_reports
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -16,6 +17,9 @@ def get_settings(session: Session = Depends(get_session)):
 @router.patch("", response_model=SettingsRead, dependencies=[Depends(security.admin_user)])
 def update_settings(payload: SettingsUpdate, session: Session = Depends(get_session)):
     settings = app_settings.load(session)
+    if settings.llm_enabled and payload.llm_enabled is False:
+        # Reports exist only with AI on
+        clear_reports(session)
     for field, value in payload.model_dump(exclude_unset=True, exclude_none=True).items():
         setattr(settings, field, value)
     settings.update_branch = settings.update_branch or None

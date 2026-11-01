@@ -7,6 +7,12 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** Text color of a compatibility score */
+export function scoreColor(score: number) {
+  return score >= 70 ? "text-emerald-600 dark:text-emerald-400"
+    : score >= 40 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+}
+
 export const SALARY_PERIODS = ["annual", "monthly", "daily", "hourly"] as const
 export const SALARY_BASES = ["gross", "net"] as const
 
