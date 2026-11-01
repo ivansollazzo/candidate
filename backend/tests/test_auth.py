@@ -220,3 +220,22 @@ def test_security_policy_from_settings(client):
     assert client.post("/api/users", json={**USER, "password": "abcdefgh1234!"}).status_code == 201
     policy = client.get("/api/auth/status").json()["password_policy"]
     assert (policy["password_min_length"], policy["password_require_symbol"]) == (12, True)
+
+
+def test_session_is_persistent_and_sliding(client, monkeypatch):
+    from datetime import timedelta
+
+    from app.services import security
+
+    # Persistent cookie (Max-Age), so closing the browser doesn't end the session
+    r = client.post("/api/auth/login", json={"username": ADMIN["username"], "password": ADMIN["password"]})
+    assert "Max-Age=604800" in r.headers["set-cookie"]
+    # A fresh token is not renewed on every request
+    assert "set-cookie" not in client.get("/api/me").headers
+
+    # Later, using the app pushes the expiry forward
+    later = security._now() + timedelta(hours=2)
+    monkeypatch.setattr(security, "_now", lambda: later)
+    r = client.get("/api/me")
+    assert r.status_code == 200 and "Max-Age=604800" in r.headers["set-cookie"]
+    assert client.get("/api/me").status_code == 200

@@ -90,7 +90,8 @@ class AppSettings(SQLModel, table=True):
     password_require_uppercase: bool = _bool(True)
     password_require_digit: bool = _bool(True)
     password_require_symbol: bool = _bool(False)
-    session_hours: int = _int(12)
+    # Sessions expire after this many hours without using the app
+    session_hours: int = _int(168)
     # 0 = no lockout after failed attempts
     max_login_attempts: int = _int(5)
     lockout_minutes: int = _int(15)
