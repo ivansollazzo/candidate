@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.3 (build 20261101.1926), by Ivan Sollazzo.
+Version 1.3 (build 20261101.1941), by Ivan Sollazzo.
 
 ## Features
 
@@ -57,8 +57,8 @@ On first start:
    somewhere safe: it is the only way to reset the password.
 2. You choose whether to enable the AI features, then fill in your profile and, if you like, your first application.
 
-The first start downloads the language model (about 2.5 GB). The embedding model used for skill matching (about
-470 MB) is downloaded the first time a match is computed. Settings › System shows when the model is ready.
+The first start downloads the language model (about 2.5 GB). The embedding model used for skill matching (BGE-M3,
+about 2.2 GB) is downloaded the first time a match is computed. Settings › System shows when the model is ready.
 
 ### Stopping and removing
 
@@ -102,6 +102,10 @@ replace its own container: only when an update changes `updater/Dockerfile` or t
 `docker-compose.yml`, the app asks you to run `docker compose up --build -d` once. The updater script itself
 (`updater/updater.sh`) is run from the project folder, so a new version of it takes over right after the install,
 with no manual step.
+
+Docker sets a container's DNS servers when it starts. If the server's change later (a new DHCP lease, a VPN), the
+updater can no longer resolve the repository's host name. When a check fails that way, the updater restarts its own
+container (at most once every 15 minutes) and checks again.
 
 You can always update by hand:
 
@@ -184,9 +188,9 @@ The backend reads these environment variables, or `backend/.env` when it runs ou
 | `LLM_MODEL` | `qwen3:4b` | Model name, with `LLM_PROVIDER=ollama`. |
 | `LLM_TIMEOUT_SECONDS` | `600` | Maximum time for a single model request. |
 | `LLM_NUM_CTX` | `8192` | Model context size in tokens. |
-| `EMBEDDING_MODEL` | `intfloat/multilingual-e5-small` | Sentence-transformers model for skill matching. |
-| `MATCH_THRESHOLD` | `0.90` | Similarity above which a skill counts as a match. |
-| `PARTIAL_MATCH_THRESHOLD` | `0.85` | Similarity above which a skill counts as a partial match. |
+| `EMBEDDING_MODEL` | `BAAI/bge-m3` | Sentence-transformers model for skill matching. |
+| `MATCH_THRESHOLD` | `0.80` | Similarity above which a skill counts as a match. |
+| `PARTIAL_MATCH_THRESHOLD` | `0.70` | Similarity above which a skill counts as a partial match. |
 | `UPLOAD_DIR` | `data/uploads` | Where CVs, profile photos and application attachments are stored. |
 | `MAX_UPLOAD_MB` | `10` | Maximum upload size. |
 | `CORS_ORIGINS` | `["http://localhost:5173", "http://127.0.0.1:5173"]` | Origins allowed to call the API (JSON list). |
@@ -255,7 +259,7 @@ updater/     Service that installs new versions from the Git repository
 ## Built with
 
 FastAPI, SQLModel, Alembic, PostgreSQL · React, TypeScript, Vite, Tailwind CSS, TanStack Query, Lucide · Ollama,
-Qwen 3 4B, sentence-transformers (multilingual-e5-small) · pdfplumber, python-docx, trafilatura · pwdlib (Argon2),
+Qwen 3 4B, sentence-transformers (BGE-M3) · pdfplumber, python-docx, trafilatura · pwdlib (Argon2),
 PyJWT, Pillow · Docker Compose.
 
 Thanks to the open source projects Candidate is built on.

@@ -45,8 +45,8 @@ def _model():
 
 
 def embed(texts: list[str]) -> np.ndarray:
-    # e5 models need the "query: " prefix for symmetric comparisons
-    vectors = _model().encode([f"query: {t}" for t in texts], normalize_embeddings=True)
+    # BGE-M3 needs no instruction prefix
+    vectors = _model().encode(texts, normalize_embeddings=True)
     return np.asarray(vectors)
 
 

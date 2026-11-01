@@ -13,6 +13,8 @@
 # with the new script. Its own container can't be replaced from inside it: only when an update changes
 # its image (updater/Dockerfile) or its service in the compose file, the state asks for a manual
 # "docker compose up --build -d".
+# When the repository's host name stops resolving (stale DNS servers in this container), the updater
+# restarts its own container, at most once every 15 minutes.
 set -u
 
 REPO=/project
@@ -28,6 +30,10 @@ RETRY_SECONDS=900
 STALE_LOCK_MINUTES=10
 # When the last check succeeded, kept across restarts of the updater
 CHECKED_FILE=/updates/checked_at
+# When the updater last restarted itself because the repository's host name didn't resolve
+RESTARTED_FILE=/updates/restarted_at
+# Restart at most once in this many seconds, so a network that is really down doesn't cause a loop
+RESTART_SECONDS=900
 
 SCRIPT=$REPO/updater/updater.sh
 # The script now running: an install that changes it restarts the updater with the new one
@@ -133,6 +139,17 @@ fetch() {
   return 1
 }
 
+# Docker gives a container its DNS servers when it starts: if the server's change later (new DHCP lease,
+# VPN...), names stop resolving here until the container restarts. Restart only this container; when it
+# starts again it checks right away
+restart_self() {
+  restarted=$(cat "$RESTARTED_FILE" 2>/dev/null)
+  [ $(($(date +%s) - ${restarted:-0})) -ge "$RESTART_SECONDS" ] || return
+  date +%s > "$RESTARTED_FILE"
+  log "the repository host name doesn't resolve: restarting the updater container"
+  docker restart "$SELF" >/dev/null
+}
+
 # The error of a failed check is shown until a fetch succeeds; it is kept apart from the result of the
 # last install, so a notice like "restart required" is not lost
 check() {
@@ -146,6 +163,9 @@ check() {
   list_branches
   STATUS=idle STEP="" PROGRESS=0
   write_state
+  case $CHECK_ERROR in
+    *"Could not resolve host"*) restart_self ;;
+  esac
 }
 
 # Fingerprint of what only a manual restart applies: the image of this service (not this script, which is
