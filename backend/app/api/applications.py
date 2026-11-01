@@ -12,14 +12,11 @@ from app.schemas import (
     ApplicationListItem,
     ApplicationRead,
     ApplicationUpdate,
-    MatchResult,
 )
 from app.services import security
 from app.services.app_settings import require_llm
 from app.services.attachments import attachment_path, attachments_dir, remove_attachments, save_attachments
-from app.services.extraction import generate_advice
-from app.services.matching import compute_match
-from app.services.users import find_profile
+from app.services.report import generate_report
 
 router = APIRouter(prefix="/api/applications", tags=["applications"])
 
@@ -115,9 +112,12 @@ def update_application(
     if new_status := changes.pop("status", None):
         change_status(session, app, new_status)
 
-    if changes.get("skills") is not None:
-        # Advice depends on skills, so it must be regenerated
-        app.advice_status = None
+    # The report depends on the position's skills and requirements
+    if app.report_status == TaskStatus.DONE and any(
+        field in changes and changes[field] != getattr(app, field)
+        for field in ("skills", "requirements", "nice_to_have")
+    ):
+        app.report_stale = True
     for field, value in changes.items():
         setattr(app, field, value)
     return save(session, app)
@@ -191,27 +191,19 @@ def delete_attachment(
     return app
 
 
-@router.get("/{application_id}/match", response_model=MatchResult)
-def get_match(
-    application_id: int, user: User = Depends(security.current_user),
-    session: Session = Depends(get_session),
-):
-    app = get_owned(session, application_id, user)
-    return compute_match(app, find_profile(session, user.id))
-
-
-@router.post("/{application_id}/advice", response_model=ApplicationRead, status_code=status.HTTP_202_ACCEPTED)
-def request_advice(
+@router.post("/{application_id}/report", response_model=ApplicationRead, status_code=status.HTTP_202_ACCEPTED)
+def request_report(
     application_id: int, background: BackgroundTasks, user: User = Depends(security.current_user),
     session: Session = Depends(get_session),
 ):
+    """Generate (or regenerate) the compatibility report with the local model."""
     require_llm(session)
     app = get_owned(session, application_id, user)
-    if app.advice_status == TaskStatus.RUNNING:
-        raise HTTPException(status.HTTP_409_CONFLICT, t("advice_running"))
-    app.advice_status = TaskStatus.PENDING
+    if app.report_status in (TaskStatus.PENDING, TaskStatus.RUNNING):
+        raise HTTPException(status.HTTP_409_CONFLICT, t("report_running"))
+    app.report_status = TaskStatus.PENDING
     session.add(app)
     session.commit()
     session.refresh(app)
-    background.add_task(generate_advice, app.id)
+    background.add_task(generate_report, app.id)
     return app

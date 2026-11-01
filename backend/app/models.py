@@ -26,7 +26,7 @@ class UserRole(StrEnum):
 
 
 class TaskStatus(StrEnum):
-    """Status of LLM-generated advice."""
+    """Status of an LLM-generated compatibility report."""
 
     PENDING = "pending"
     RUNNING = "running"
@@ -211,9 +211,10 @@ class Application(SQLModel, table=True):
     applied_on: date | None = Field(default_factory=date.today)
     notes: str | None = Field(default=None, sa_type=sa.Text)
 
-    # LLM-generated advice on the skill gap
-    advice: dict | None = _json_obj_nullable()
-    advice_status: str | None = Field(default=None, sa_type=sa.String(20))
+    # LLM-generated compatibility report (schemas.Report), generated on request
+    report: dict | None = _json_obj_nullable()
+    report_status: str | None = Field(default=None, sa_type=sa.String(20))
+    report_stale: bool = _bool(False)
 
     created_at: datetime = _timestamp()
     updated_at: datetime = _timestamp(onupdate=True)

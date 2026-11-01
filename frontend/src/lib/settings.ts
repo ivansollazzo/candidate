@@ -18,6 +18,8 @@ export function useUpdateSettings() {
       queryClient.invalidateQueries({ queryKey: ["health"] })
       queryClient.invalidateQueries({ queryKey: ["auth-status"] })
       queryClient.invalidateQueries({ queryKey: ["updates"] })
+      // Turning AI off deletes the compatibility reports
+      queryClient.invalidateQueries({ queryKey: ["application"] })
     },
   })
 }

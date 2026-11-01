@@ -202,16 +202,16 @@ const it = {
 
   "match.title": "Compatibilità",
   "match.addSkills": "Aggiungi le skill richieste per vedere la compatibilità.",
-  "match.computing": "Calcolo in corso…",
-  "match.noProfile": "Aggiungi le tue skill nel {link} per vedere quali sono compatibili.",
-  "match.profileLink": "profilo",
   "match.matched": "Compatibili",
   "match.partial": "Parzialmente compatibili",
   "match.missing": "Da migliorare",
+  "match.soft": "Soft skill (non pesano sul punteggio)",
+  "report.intro": "Il modello locale confronta le competenze della posizione con il tuo profilo e ti suggerisce dove migliorare.",
+  "report.generate": "Genera compatibilità e consigli",
+  "report.regenerate": "Ricalcola report compatibilità",
+  "report.running": "Il modello sta confrontando la posizione con il tuo profilo…",
+  "report.stale": "Hai modificato le competenze dopo aver generato questo report: è consigliabile rigenerarlo.",
   "match.advice": "Dove migliorare",
-  "match.regenerate": "Rigenera",
-  "match.generate": "Genera consigli",
-  "match.adviceRunning": "Il modello sta analizzando la posizione…",
 
   "events.title": "Eventi",
   "events.titlePlaceholder": "Titolo (es. colloquio tecnico con il team lead)",
@@ -334,7 +334,7 @@ const it = {
   "settings.ai": "Funzioni AI",
   "settings.aiToggle": "Attiva le funzioni AI",
   "settings.aiText":
-    "Il modello locale compila i campi di candidature e profilo partendo da annunci e CV, e genera i consigli su dove migliorare. Senza AI puoi sempre compilare tutto a mano; anche la compatibilità delle skill resta disponibile, perché non usa il modello.",
+    "Il modello locale compila i campi di candidature e profilo partendo da annunci e CV, e prepara il report di compatibilità con i consigli su dove migliorare. Senza AI puoi sempre compilare tutto a mano, ma il report di compatibilità non è disponibile e quelli già generati vengono cancellati.",
   "settings.aiMemory":
     "Quando disattivi l'AI il modello viene fermato e libera la memoria che occupa (circa 3-4 GB). Quando la riattivi riparte da solo: servono alcuni secondi, il download avviene solo la prima volta.",
   "settings.hardware": "Accelerazione hardware",
@@ -719,16 +719,16 @@ const en: Record<MessageKey, string> = {
 
   "match.title": "Match",
   "match.addSkills": "Add the required skills to see how well you match.",
-  "match.computing": "Calculating…",
-  "match.noProfile": "Add your skills to your {link} to see which ones match.",
-  "match.profileLink": "profile",
   "match.matched": "Matching",
   "match.partial": "Partially matching",
   "match.missing": "To improve",
+  "match.soft": "Soft skills (not counted in the score)",
+  "report.intro": "The local model compares the position's skills with your profile and suggests where to improve.",
+  "report.generate": "Get match and advice",
+  "report.regenerate": "Recalculate match report",
+  "report.running": "The model is comparing the position with your profile…",
+  "report.stale": "The skills changed after this report was generated: you should regenerate it.",
   "match.advice": "Where to improve",
-  "match.regenerate": "Regenerate",
-  "match.generate": "Get advice",
-  "match.adviceRunning": "The model is analysing the position…",
 
   "events.title": "Events",
   "events.titlePlaceholder": "Title (e.g. technical interview with the team lead)",
@@ -850,7 +850,7 @@ const en: Record<MessageKey, string> = {
   "settings.ai": "AI features",
   "settings.aiToggle": "Turn on AI features",
   "settings.aiText":
-    "The local model fills in applications and your profile from job postings and CVs, and gives advice on where to improve. Without AI you can always fill in everything by hand; the skill match stays available too, because it doesn't use the model.",
+    "The local model fills in applications and your profile from job postings and CVs, and prepares the match report with advice on where to improve. Without AI you can always fill in everything by hand, but the match report isn't available and the ones already generated are deleted.",
   "settings.aiMemory":
     "When you turn AI off the model is stopped and frees the memory it uses (about 3-4 GB). When you turn it back on it restarts by itself: it takes a few seconds, and the download only happens the first time.",
   "settings.hardware": "Hardware acceleration",

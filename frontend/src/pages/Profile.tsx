@@ -110,7 +110,8 @@ export function ProfilePage() {
   const { data: profile, error } = useQuery({ queryKey: ["profile"], queryFn: api.getProfile })
   const onSaved = (data: Profile) => {
     queryClient.setQueryData(["profile"], data)
-    queryClient.invalidateQueries({ queryKey: ["match"] })
+    // Changed skills mark the applications' reports as stale
+    queryClient.invalidateQueries({ queryKey: ["application"] })
   }
   // Upload only stores the file; fields are filled by hand or with AI
   const upload = useMutation({ mutationFn: api.uploadCv, onSuccess: (data) => queryClient.setQueryData(["profile"], data) })

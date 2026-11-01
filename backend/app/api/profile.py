@@ -12,6 +12,7 @@ from app.models import Profile, User
 from app.schemas import ProfileRead, ProfileUpdate
 from app.services import security
 from app.services.documents import UnsupportedDocument, extract_text
+from app.services.report import mark_stale, profile_skills
 from app.services.users import add_project_skills, find_profile, user_dir
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
@@ -33,9 +34,12 @@ def get_profile(user: User = Depends(security.current_user), session: Session = 
 def update_profile(payload: ProfileUpdate, user: User = Depends(security.current_user),
                    session: Session = Depends(get_session)):
     profile = _get_or_create(session, user)
+    skills_before = profile_skills(profile)
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(profile, field, value)
     add_project_skills(profile)
+    if profile_skills(profile) != skills_before:
+        mark_stale(session, user.id)
     return save(session, profile)
 
 

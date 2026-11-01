@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.3 (build 20261101.1944), by Ivan Sollazzo.
+Version 1.3 (build 20261101.2013), by Ivan Sollazzo.
 
 ## Features
 
@@ -23,8 +23,11 @@ Version 1.3 (build 20261101.1944), by Ivan Sollazzo.
   is saved until you press Save.
 - **Profile**: personal details, experience, education, projects, certifications and skills, filled in by hand or
   from your CV. Technologies used in projects and experience are added to your skills automatically.
-- **Skill match**: for every application, a score with matching, partial and missing skills, plus optional advice on
-  where to improve.
+- **Match report (AI)**: on request, the local model compares an application's skills with your profile and returns
+  a score, matching, partial and missing skills with a short reason each, and advice on where to improve. It works for
+  any job, not only tech. Soft skills are listed apart and don't count in the score. When the skills of the profile or
+  of the application change, the report suggests regenerating it. Reports exist only with AI on: turning AI off
+  deletes them.
 - **Agenda**: interviews, calls, emails, follow-ups and notes for each application, with overdue and upcoming events
   at a glance.
 - **Multi-user**: sign-in, admin and user roles, password recovery keys (no email needed), configurable password and
@@ -57,8 +60,7 @@ On first start:
    somewhere safe: it is the only way to reset the password.
 2. You choose whether to enable the AI features, then fill in your profile and, if you like, your first application.
 
-The first start downloads the language model (about 2.5 GB). The embedding model used for skill matching (BGE-M3,
-about 2.2 GB) is downloaded the first time a match is computed. Settings › System shows when the model is ready.
+The first start downloads the language model (about 2.5 GB). Settings › System shows when the model is ready.
 
 ### Stopping and removing
 
@@ -66,7 +68,7 @@ about 2.2 GB) is downloaded the first time a match is computed. Settings › Sys
 |---|---|
 | `Ctrl+C` or `docker compose stop` | Stops the app. Data and downloaded models are kept. |
 | `docker compose down` | Removes the containers. Data and downloaded models are kept. |
-| `docker compose down -v` | Also removes the database, uploaded files and the embedding model. |
+| `docker compose down -v` | Also removes the database and uploaded files. |
 | `docker volume rm candidate_ollama` | Removes the downloaded language model (the prefix is the project folder name). |
 
 The Ollama container is created by the `llm` service and removed whenever the app stops. The `updates` volume only
@@ -188,15 +190,9 @@ The backend reads these environment variables, or `backend/.env` when it runs ou
 | `LLM_MODEL` | `qwen3:4b` | Model name, with `LLM_PROVIDER=ollama`. |
 | `LLM_TIMEOUT_SECONDS` | `600` | Maximum time for a single model request. |
 | `LLM_NUM_CTX` | `8192` | Model context size in tokens. |
-| `EMBEDDING_MODEL` | `BAAI/bge-m3` | Sentence-transformers model for skill matching. |
-| `MATCH_THRESHOLD` | `0.80` | Similarity above which a skill counts as a match. |
-| `PARTIAL_MATCH_THRESHOLD` | `0.70` | Similarity above which a skill counts as a partial match. |
 | `UPLOAD_DIR` | `data/uploads` | Where CVs, profile photos and application attachments are stored. |
 | `MAX_UPLOAD_MB` | `10` | Maximum upload size. |
 | `CORS_ORIGINS` | `["http://localhost:5173", "http://127.0.0.1:5173"]` | Origins allowed to call the API (JSON list). |
-
-The match thresholds are a starting point. You can tune them by looking at the `similarity` values returned by
-`GET /api/applications/{id}/match`.
 
 ## Hardware acceleration
 
@@ -217,7 +213,7 @@ With the 4B model, each extraction step takes roughly 30 to 60 seconds on a mode
 CV can take a few minutes. A GPU is much faster. The work runs in the background, so you can keep using the app.
 
 If you don't need the AI features, turn them off in Settings › System: the model is stopped and its memory freed, and
-everything else, skill matching included, keeps working.
+everything else keeps working. Match reports need the model, so turning AI off deletes them.
 
 ## Development
 
@@ -240,7 +236,7 @@ npm install
 npm run dev
 ```
 
-Backend tests need an empty `candidate_test` database; the model and embeddings are mocked:
+Backend tests need an empty `candidate_test` database; the model is mocked:
 
 ```bash
 createdb -h localhost -U candidate candidate_test
@@ -259,7 +255,7 @@ updater/     Service that installs new versions from the Git repository
 ## Built with
 
 FastAPI, SQLModel, Alembic, PostgreSQL · React, TypeScript, Vite, Tailwind CSS, TanStack Query, Lucide · Ollama,
-Qwen 3 4B, sentence-transformers (BGE-M3) · pdfplumber, python-docx, trafilatura · pwdlib (Argon2),
+Qwen 3 4B · pdfplumber, python-docx, trafilatura · pwdlib (Argon2),
 PyJWT, Pillow · Docker Compose.
 
 Thanks to the open source projects Candidate is built on.

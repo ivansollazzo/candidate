@@ -1,15 +1,9 @@
-"""LLM usage: filling fields from job postings and CVs, and generating advice."""
+"""LLM usage: filling fields from job postings and CVs."""
 
 import logging
 import re
 
-from sqlmodel import Session
-
-from app.db import engine
-from app.i18n import t
-from app.models import Application, Profile, TaskStatus
 from app.schemas import (
-    AdviceExtraction,
     HistoryExtraction,
     JobCompensationExtraction,
     JobCoreExtraction,
@@ -18,10 +12,8 @@ from app.schemas import (
     SkillsExtraction,
 )
 from app.services.cv import apply_contact_fallbacks, total_experience_years
-from app.services.llm import LLMError, generate_structured
-from app.services.matching import compute_match
+from app.services.llm import generate_structured
 from app.services.salary import SalaryHint, parse_salary
-from app.services.users import find_profile
 
 log = logging.getLogger(__name__)
 
@@ -97,13 +89,6 @@ SKILLS_TASK = """Compito: elenca le competenze del candidato e stima il livello 
   4 = esperto: anni di uso professionale documentato, ruolo di riferimento o certificazione avanzata.
 - evidence: in poche parole dove compare l'uso (es. "progetto Roboverse, tesi magistrale")."""
 
-ADVICE_SYSTEM_PROMPT = """Sei un career coach. Ricevi una posizione lavorativa, il profilo del candidato e
-l'esito di un confronto automatico tra le skill. Rispondi in {language}, in modo concreto e sintetico:
-- summary: 2-3 frasi sulla compatibilità complessiva.
-- strengths: punti di forza del candidato per questa posizione.
-- improvements: per ogni competenza mancante o parziale rilevante, un'azione concreta per migliorare
-  (corso, progetto pratico, certificazione, come valorizzare esperienza simile nel CV)."""
-
 
 def extract_job_fields(description: str) -> dict:
     """Fill application fields from the job posting text."""
@@ -170,60 +155,3 @@ def _dedupe_skills(skills: list[dict]) -> list[dict]:
         if key and (key not in seen or skill["level"] > seen[key]["level"]):
             seen[key] = skill
     return list(seen.values())
-
-
-def generate_advice(application_id: int) -> None:
-    with Session(engine) as session:
-        app = session.get(Application, application_id)
-        if app is None:
-            return
-        profile = find_profile(session, app.user_id)
-        app.advice_status = TaskStatus.RUNNING
-        session.add(app)
-        session.commit()
-
-        match = compute_match(app, profile)
-        prompt = _advice_prompt(app, profile, match)
-        try:
-            advice = generate_structured(ADVICE_SYSTEM_PROMPT.format(language=t("advice_language")), prompt, AdviceExtraction)
-        except LLMError as exc:
-            app.advice_status = TaskStatus.FAILED
-            app.advice = {"error": str(exc)}
-            session.add(app)
-            session.commit()
-            return
-
-        app.advice = {**advice.model_dump(), "score": match.score}
-        app.advice_status = TaskStatus.DONE
-        session.add(app)
-        session.commit()
-
-
-def _advice_prompt(app: Application, profile: Profile | None, match) -> str:
-    def fmt(items) -> str:
-        return ", ".join(i.skill for i in items) or "nessuna"
-
-    lines = [
-        f"Posizione: {app.title or 'n/d'} presso {app.company or 'n/d'} ({app.seniority or 'seniority n/d'})",
-        "Requisiti: " + "; ".join(app.requirements or []),
-        "Preferenziali: " + "; ".join(app.nice_to_have or []),
-        "",
-    ]
-    if profile is not None:
-        lines += [
-            f"Candidato: {profile.headline or 'n/d'}, {profile.years_of_experience or 'n/d'} anni di esperienza",
-            f"Sintesi: {profile.summary or 'n/d'}",
-            "Skill del candidato (livello 1-4): "
-            + ", ".join(f"{s.get('name')} ({s.get('level') or '?'})" for s in profile.skills),
-            "Esperienze: " + "; ".join(
-                f"{e.get('role') or ''} @ {e.get('company') or ''}" for e in profile.experiences
-            ),
-            "",
-        ]
-    lines += [
-        f"Compatibilità stimata: {match.score}%",
-        f"Skill compatibili: {fmt(match.matched)}",
-        f"Skill parzialmente compatibili: {fmt(match.partial)}",
-        f"Skill mancanti: {fmt(match.missing)}",
-    ]
-    return "\n".join(lines)
