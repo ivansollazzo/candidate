@@ -8,14 +8,14 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.3 (build 20261101.2013), by Ivan Sollazzo.
+Version 1.3 (build 20261101.2028), by Ivan Sollazzo.
 
 ## Features
 
 - **Applications**: list with search, status filter (applied, interview, offer, inactive, rejected, completed),
   sort order (date applied, status, name, latest event), both saved per user, multiple selection to change the
-  status of or delete several applications at once, and a detail
-  page with job details, salary, requirements and status history.
+  status of or delete several applications at once, the match score of each application when its report
+  exists, and a detail page with job details, salary, requirements and status history.
 - **Attachments**: attach any files to an application (cover letter, offer, test...), up to 10 MB each. They are
   deleted from disk together with the application.
 - **AI fill (optional)**: paste a job posting, give a link or upload a PDF, DOCX or TXT file, and the model fills in

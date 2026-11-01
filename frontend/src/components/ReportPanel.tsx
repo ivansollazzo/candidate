@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAiStatus } from "@/lib/ai"
 import { api, type Application, isWorking, type ReportSkill } from "@/lib/api"
 import { useT } from "@/lib/i18n"
-import { cn } from "@/lib/utils"
+import { cn, scoreColor } from "@/lib/utils"
 
 function SkillRow({ item }: { item: ReportSkill }) {
   const t = useT()
@@ -57,8 +57,7 @@ export function ReportPanel({ application }: { application: Application }) {
       <CardHeader>
         <CardTitle>{t("match.title")}</CardTitle>
         {done && (
-          <span className={cn("text-2xl font-semibold tabular-nums",
-            score >= 70 ? "text-emerald-600 dark:text-emerald-400" : score >= 40 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400")}>
+          <span className={cn("text-2xl font-semibold tabular-nums", scoreColor(score))}>
             {score}%
           </span>
         )}

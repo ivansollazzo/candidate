@@ -60,7 +60,10 @@ def list_applications(user: User = Depends(security.current_user), session: Sess
         .order_by(Application.updated_at.desc())
     )
     return [
-        ApplicationListItem.model_validate(app).model_copy(update={"last_event_on": last_on})
+        ApplicationListItem.model_validate(app).model_copy(update={
+            "last_event_on": last_on,
+            "match_score": app.report.get("score") if app.report_status == TaskStatus.DONE and app.report else None,
+        })
         for app, last_on in session.exec(query).all()
     ]
 

@@ -151,7 +151,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("1.3", "20261101.2013")
+    assert (health["version"], health["build"]) == ("1.3", "20261101.2028")
 
     r = client.post("/api/ai/job-posting", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
@@ -197,6 +197,7 @@ def test_cv_upload_ai_fill_and_match(client):
     assert by_skill["Docker"]["matched_with"] == "Docker Compose" and by_skill["Python"]["level"] == 4
     assert result["score"] == 86  # 6 of 7 points
     assert result["improvements"][0]["skill"] == "Kubernetes" and result["summary"]
+    assert {a["id"]: a["match_score"] for a in client.get("/api/applications").json()} == {app_id: 86}
 
 
 def test_ai_cv_requires_upload(client):

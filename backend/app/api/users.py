@@ -42,9 +42,8 @@ def create_user(payload: UserCreate, session: Session = Depends(get_session)):
     return UserWithKey(user=UserRead.model_validate(user), recovery_key=key)
 
 
-@router.patch("/{user_id}", response_model=UserRead)
-def update_user(user_id: int, payload: UserUpdate, admin: User = Depends(security.admin_user),
-                session: Session = Depends(get_session)):
+@router.patch("/{user_id}", response_model=UserRead, dependencies=[Depends(security.admin_user)])
+def update_user(user_id: int, payload: UserUpdate, session: Session = Depends(get_session)):
     user = _get(session, user_id)
     changes = payload.model_dump(exclude_unset=True, exclude_none=True)
     for field in ("username", "email"):

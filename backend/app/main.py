@@ -24,7 +24,7 @@ async def lifespan(_: FastAPI):
     with Session(engine) as session:
         app_settings.publish(app_settings.load(session))
         report.recover_interrupted(session)
-    # Cache of the embedding model used for skill matching up to 1.3 (up to 2.2 GB): no longer needed
+    # Cache of the embedding model used for skill matching before 1.3 (up to 2.2 GB): no longer needed
     shutil.rmtree(Path("data/hf-cache"), ignore_errors=True)
     yield
 

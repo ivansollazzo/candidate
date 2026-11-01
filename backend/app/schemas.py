@@ -305,6 +305,8 @@ class ApplicationSummary(BaseModel):
 class ApplicationListItem(ApplicationSummary):
     # Date of the latest agenda event (status changes excluded), for sorting the list
     last_event_on: date | None = None
+    # Score of the compatibility report, when one has been generated
+    match_score: int | None = None
 
 
 class AttachmentRead(BaseModel):

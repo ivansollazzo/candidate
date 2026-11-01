@@ -22,6 +22,8 @@ export interface ApplicationSummary {
 export interface ApplicationListItem extends ApplicationSummary {
   /** Date of the latest agenda event, status changes excluded */
   last_event_on: string | null
+  /** Score of the compatibility report, when one has been generated */
+  match_score: number | null
 }
 
 export interface ApplicationEvent {
@@ -208,14 +210,14 @@ interface UpdateStatus {
   build: string
 }
 
-export interface BranchRelease {
+interface BranchRelease {
   name: string
   version: string
   build: string
   newer: boolean
 }
 
-export interface UpdateResult {
+interface UpdateResult {
   result: "ok" | "failed"
   error: "" | "fetch" | "branch" | "checkout" | "build"
   detail: string
@@ -224,7 +226,7 @@ export interface UpdateResult {
   finished_at: string
 }
 
-export interface CheckError {
+interface CheckError {
   detail: string
   failed_at: string
 }
@@ -261,7 +263,7 @@ export type ApplicationBulk =
   | { ids: number[]; action: "status"; status: ApplicationStatus }
 
 export type ApplicationSort = "applied" | "status" | "name" | "event"
-export type ApplicationFilter = "all" | ApplicationStatus
+type ApplicationFilter = "all" | ApplicationStatus
 
 export interface User {
   id: number
