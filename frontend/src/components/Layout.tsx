@@ -38,7 +38,8 @@ export function Layout() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
+      {/* Above the page content, some of which sits on its own layer (e.g. rows of the list) */}
+      <header className="sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-7xl items-center gap-6 px-4">
           <nav className="flex gap-1">
             {links.map(({ to, label, icon: Icon, isActive }) => (

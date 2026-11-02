@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.4 (build 20261102.1536), by Ivan Sollazzo.
+Version 1.4.1 (build 20261102.1606), by Ivan Sollazzo.
 
 ## Features
 
@@ -105,7 +105,9 @@ Installing is handled by the `updater` service:
 While it runs, the app shows an "Updating" screen and reloads by itself when the new version is up.
 
 Version 1.4 is the bridge from the 1.x updater, which built the images on the server: the updater of 1.3 installs
-1.4 the old way and hands over to the new updater right after.
+1.4.x the old way and hands over to the new updater right after. Recommended path to 2.0: 1.3 → latest 1.4.x → 2.0.
+The step to 1.4.x has no database migrations, and the step to 2.0, which has several, is then made by the new updater
+with the database copy and the automatic rollback.
 
 If GitHub can't be reached, a check gives up after a minute: the tab keeps showing the versions of the last
 successful check with an error message, and the updater tries again after 15 minutes (or at the next interval, if
