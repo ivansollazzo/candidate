@@ -126,11 +126,10 @@ def test_check_interval(client, updates_dir):
 
 
 def test_check_error_kept_apart_from_install_result(client, updates_dir):
-    # A result of the updater of version 2.0 has more fields
-    last = {"result": "failed", "error": "start", "restart_required": True, "finished_at": "2026-10-24T10:00:00Z"}
+    last = {"result": "failed", "error": "start", "detail": "", "finished_at": "2026-10-24T10:00:00Z"}
     write_state(updates_dir, last=last, check_error={"detail": "Could not resolve host", "failed_at": "2026-10-24T11:00:00Z"})
     data = client.get("/api/updates").json()
-    assert data["last"] == {"result": "failed", "error": "start", "detail": "", "finished_at": "2026-10-24T10:00:00Z"}
+    assert data["last"] == last
     assert data["check_error"]["detail"] == "Could not resolve host"
 
 

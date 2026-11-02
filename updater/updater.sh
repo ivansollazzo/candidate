@@ -56,8 +56,7 @@ esac
 OWNER=$(stat -c %u:%g "$DIR" 2>/dev/null)
 
 STATUS=idle STEP="" PROGRESS=0 CHECK_ERROR="" CHECK_DETAIL=""
-# LAST may also come from the updater of version 2.0, which hands over to this script after installing it
-LAST=${LAST:-$(cat "$LAST_FILE" 2>/dev/null)}
+LAST=$(cat "$LAST_FILE" 2>/dev/null)
 CHECKED_AT=$(cat "$CHECKED_FILE" 2>/dev/null)
 
 log() { echo "[updater] $*"; }
