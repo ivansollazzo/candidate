@@ -3,16 +3,18 @@ import shutil
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlmodel import Session
 
 from app import __build__, __version__
-from app.api import applications, auth, events, jobs, me, profile, settings, updates, users
+from app.api import applications, auth, backups, events, jobs, me, profile, settings, updates, users
 from app.config import get_settings
 from app.db import engine
-from app.i18n import LanguageMiddleware
+from app.i18n import LanguageMiddleware, t
 from app.services import app_settings
+from app.services import backups as backup_service
 from app.services import jobs as job_queue
 from app.services.llm import check_llm, hardware_support
 
@@ -41,6 +43,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+
+@app.middleware("http")
+async def maintenance(request: Request, call_next):
+    """While a backup is restored the database is being replaced: only the health check answers."""
+    if backup_service.restoring() and request.url.path != "/api/health":
+        return JSONResponse({"detail": t("restoring"), "code": "restoring"}, status_code=503)
+    return await call_next(request)
+
+
+# Added last, so it runs first: the maintenance message is in the user's language
 app.add_middleware(LanguageMiddleware)
 
 app.include_router(auth.router)
@@ -52,10 +65,13 @@ app.include_router(profile.router)
 app.include_router(jobs.router)
 app.include_router(settings.router)
 app.include_router(updates.router)
+app.include_router(backups.router)
 
 
 @app.get("/api/health")
 def health():
+    if backup_service.restoring():
+        return {"status": "restoring", "version": __version__, "build": __build__, "llm": None}
     with Session(engine) as session:
         enabled = app_settings.load(session).llm_enabled
     llm = {"enabled": enabled, **(check_llm() if enabled else {}), "hardware": hardware_support()}

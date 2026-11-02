@@ -58,6 +58,26 @@ services:
     ports:
       - "5173:5173"
 
+  # Backups of database and files (backup/backup.py): scheduled ones set in Settings › Backup, one before every
+  # update. The archives are in the backups folder next to this file. Shares the backend's volumes, so the data
+  # folder is the one the backend uses, also when moved in docker-compose.override.yml.
+  backup:
+    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-backup:${CANDIDATE_TAG:-stable}
+    build: ./backup
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: candidate
+      PGPASSWORD: ${POSTGRES_PASSWORD:-candidate}
+      PGDATABASE: candidate
+    volumes_from:
+      - backend
+    volumes:
+      - ./backups:/backups
+    restart: unless-stopped
+
   # Installs new versions when asked in Settings › Updates, see updater/updater.sh. Needs the project folder
   # (it writes docker-compose.yml and CANDIDATE_TAG in .env) and the Docker socket to replace the services.
   updater:

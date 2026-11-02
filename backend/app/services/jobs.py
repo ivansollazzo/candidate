@@ -17,7 +17,7 @@ from sqlmodel import Session, col, select
 from app.db import engine
 from app.i18n import current_language, t
 from app.models import Application, Job, JobKind, TaskStatus, User
-from app.services import app_settings, report, updates
+from app.services import app_settings, backups, report, updates
 from app.services.applications import apply_changes, delete_applications
 from app.services.extraction import extract_cv_fields, extract_job_fields
 from app.services.llm import Cancelled, CancelToken, LLMError, cancel_token, check_llm
@@ -297,8 +297,8 @@ def _loop() -> None:
     while not _stop.is_set():
         _wake.clear()
         try:
-            # No job starts while an update is installed
-            if updates.installing():
+            # No job starts while an update is installed or a backup restored
+            if updates.installing() or backups.restoring():
                 _stop.wait(2)
                 continue
             if not _has_pending() or not _llm_ready():

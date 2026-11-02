@@ -188,6 +188,7 @@ interface Health {
   status: string
   version: string
   build: string
+  /** null while a backup is being restored */
   llm: {
     enabled: boolean
     model?: string | null
@@ -198,7 +199,7 @@ interface Health {
     error?: string
     /** null until the llm service has probed the hardware */
     hardware: Record<Accelerator, HardwareStatus> | null
-  }
+  } | null
 }
 
 export interface PasswordPolicy {
@@ -253,6 +254,42 @@ export interface Updates extends UpdateStatus {
   /** The last check couldn't reach the repository */
   check_error: CheckError | null
 }
+
+/** Schedule and cleanup of the automatic backups, see backup/backup.py */
+export interface BackupSettings {
+  frequency: "off" | "daily" | "weekly"
+  /** Hour and weekday (Monday 0) in `timezone`, the time zone of the browser that saved them */
+  hour: number
+  weekday: number
+  timezone: string
+  /** Automatic backups kept, and the age after which they are removed (0 = no limit) */
+  keep: number
+  max_age_days: number
+}
+
+export interface Backup {
+  name: string
+  /** update: before an update; restore: the state replaced by a restore */
+  kind: "auto" | "manual" | "update" | "restore" | string
+  note: string
+  created_at: string | null
+  version: string
+  build: string
+  revision: string | null
+  size: number
+  broken: boolean
+}
+
+export interface Backups {
+  settings: BackupSettings
+  backups: Backup[]
+  running: { operation: string; started_at: string } | null
+  last_auto: { result: "ok" | "failed"; detail: string; at: string | null } | null
+  last_restore: { name: string; result: "ok" | "failed"; detail: string; finished_at: string } | null
+}
+
+/** Fired when the backend answers that a backup is being restored */
+export const RESTORING_EVENT = "candidate:restoring"
 
 /** System settings: readable by everyone, writable by the admin only */
 export interface Settings extends PasswordPolicy {
@@ -370,6 +407,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     let message = t("common.error", { status: res.status })
     try {
       const body = await res.json()
+      if (res.status === 503 && body.code === "restoring") window.dispatchEvent(new Event(RESTORING_EVENT))
       if (typeof body.detail === "string") message = body.detail
       else if (Array.isArray(body.detail)) message = body.detail.map((d: { msg: string }) => d.msg).join(", ")
     } catch {
@@ -463,6 +501,14 @@ export const api = {
   updateStatus: () => request<UpdateStatus>("/api/updates/status"),
   checkUpdates: () => request<void>("/api/updates/check", { method: "POST" }),
   installUpdate: () => request<void>("/api/updates/install", { method: "POST" }),
+
+  getBackups: () => request<Backups>("/api/backups"),
+  saveBackupSettings: (settings: BackupSettings) => request<BackupSettings>("/api/backups/settings", json("PUT", settings)),
+  createBackup: (note: string) => request<Backup>("/api/backups", json("POST", { note })),
+  deleteBackup: (name: string) => request<void>(`/api/backups/${encodeURIComponent(name)}`, { method: "DELETE" }),
+  restoreBackup: (name: string) => request<void>(`/api/backups/${encodeURIComponent(name)}/restore`, { method: "POST" }),
 }
+
+export const backupFileUrl = (name: string) => `/api/backups/${encodeURIComponent(name)}/file`
 
 export const isWorking = (status: TaskStatus | null | undefined) => status === "pending" || status === "running"

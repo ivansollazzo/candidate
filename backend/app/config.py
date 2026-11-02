@@ -22,6 +22,8 @@ class Settings(BaseSettings):
 
     # Shared with the updater service (docker compose)
     updates_dir: Path = Path("/updates")
+    # The backup service (docker compose)
+    backup_url: str = "http://backup:8080"
 
     upload_dir: Path = Path("data/uploads")
     max_upload_mb: int = 10

@@ -21,8 +21,8 @@ export function SystemTab() {
   const settings = useSettings()
   const { data: health } = useHealth()
   const update = useUpdateSettings()
-  const hardware = health?.llm.hardware
-  const inUse = ai.ready ? health?.llm.accelerator : null
+  const hardware = health?.llm?.hardware
+  const inUse = ai.ready ? health?.llm?.accelerator : null
 
   return (
     <>

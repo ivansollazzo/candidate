@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client"
 import { BrowserRouter, Route, Routes } from "react-router"
 
 import { Layout } from "@/components/Layout"
+import { RestoreScreen } from "@/components/RestoreScreen"
 import { ApiError } from "@/lib/api"
 import { useAuthStatus, useCurrentUser } from "@/lib/auth"
 import { I18nProvider } from "@/lib/i18n"
@@ -70,6 +71,7 @@ createRoot(document.getElementById("root")!).render(
         <BrowserRouter>
           <AuthGate />
         </BrowserRouter>
+        <RestoreScreen />
       </I18nProvider>
     </QueryClientProvider>
   </StrictMode>,

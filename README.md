@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 2.0 (build 20261102.1943), by Ivan Sollazzo.
+Version 2.0 (build 20261102.2004), by Ivan Sollazzo.
 
 ## Features
 
@@ -43,9 +43,11 @@ Version 2.0 (build 20261102.1943), by Ivan Sollazzo.
 - **Multi-user**: sign-in, admin and user roles, password recovery keys (no email needed), configurable password and
   lockout policy.
 - **Updates from the app**: follow a branch (stable, beta or any other) and install a newer version with one
-  click. Ready-made images are downloaded from GitHub, the database is saved first, and if the new version doesn't
+  click. Ready-made images are downloaded from GitHub, a full backup is made first, and if the new version doesn't
   start everything goes back as it was. An update can be installed only when no AI operation is queued or running,
   and none starts until it is over.
+- **Backups**: database, CV, photos and attachments, automatically (daily or weekly, with cleanup rules), by hand
+  and before every update; restore, download or delete them from the settings.
 - **Italian and English** interface, light and dark theme.
 
 ## Requirements
@@ -81,7 +83,7 @@ The first start downloads the language model (about 2.5 GB). Settings › System
 |---|---|
 | `Ctrl+C` or `docker compose stop` | Stops the app. Data and downloaded models are kept. |
 | `docker compose down` | Removes the containers. Data and downloaded models are kept. |
-| `docker compose down -v` | Also removes the database and uploaded files. |
+| `docker compose down -v` | Also removes the database and uploaded files. The backups in `./backups` are kept. |
 | `docker volume rm candidate_ollama` | Removes the downloaded language model (the prefix is the project folder name). |
 
 The Ollama container is created by the `llm` service and removed whenever the app stops. The `updates` volume only
@@ -104,13 +106,13 @@ or 12 hours, daily, weekly or only on request).
 
 Installing is handled by the `updater` service:
 
-1. It saves a dump of the database to the `updates` volume (`database-before-update.sql`).
+1. It asks the `backup` service for a backup (see [Backups](#backups)); if the backup fails, the update is cancelled.
 2. It writes the `docker-compose.yml` of the new version and `CANDIDATE_TAG=sha-<commit>` in `.env` (only that line
    changes), then downloads the images. The app stays usable, with a progress bar under the header.
 3. It recreates the services. The app shows an "Updating" screen and reloads by itself when the new version is up.
 4. It waits for the app to answer with the new build through the web server, database migrations included. If it
-   doesn't within five minutes, it puts back the previous `docker-compose.yml`, `.env` and database and starts the
-   previous version again; the Updates tab shows the backend and frontend logs.
+   doesn't within five minutes, it puts back the previous `docker-compose.yml`, `.env` and images, has the `backup`
+   service restore the backup of step 1 and starts the previous version again; the Updates tab shows the logs.
 5. It removes the images of the previous version and, when its own image changed, replaces its own container.
 
 An update can't be installed while AI operations are queued or running, and none starts until it is over.
@@ -118,7 +120,7 @@ An update can't be installed while AI operations are queued or running, and none
 Versions before 1.4 have an older updater, which builds the images on the server: the first update installs this
 updater, and from then on updates work as described here. Recommended path from 1.3: 1.3 → latest 1.4.x (branch
 `stable`) → 2.0. The step to 1.4.x has no database migrations, and the step to 2.0, which has several, is then made by
-the new updater with the database copy and the automatic rollback.
+the new updater with the backup and the automatic rollback.
 
 If GitHub can't be reached, a check gives up after a minute: the tab keeps showing the versions of the last
 successful check with an error message, and the updater tries again after 15 minutes (or at the next interval, if
@@ -137,6 +139,31 @@ docker compose up -d
 ```
 
 Database migrations run automatically when the backend starts.
+
+### Backups
+
+The `backup` service saves the database and every file of the backend (profile CVs, photos, application
+attachments) in one archive in the `backups` folder next to `docker-compose.yml`:
+`candidate-<date>-<time>-<kind>.tar.gz`, with `manifest.json` (version, build, database revision), `database.sql` and
+`files/`. It has no access to the Docker socket.
+
+Settings › Backups (admin only):
+
+- **Automatic backups**: daily or weekly at the chosen hour (in the time zone of the browser that saved the setting),
+  or off. By default every day at 3:00, keeping the last 7. Cleanup keeps the latest N automatic backups and can also
+  delete those older than a number of days. If the server was off at the scheduled time, the backup is made as soon
+  as Candidate is running again.
+- **Back up now**, with an optional note.
+- The list of backups: automatic, manual, made before an update, made before a restore. Each one can be restored,
+  downloaded or deleted. Only automatic backups are deleted by the cleanup: the others stay until you delete them.
+- **Restore**: database and files go back as they were in the backup. The current state is saved first as a backup
+  ("before a restore"), so a restore can be undone. Meanwhile every user sees a "Restoring" screen; afterwards the
+  database migrations bring an older backup up to the installed version, and the page reloads. A backup made by a
+  newer version can't be restored, and a restore can't start while AI operations are queued or running or an update is
+  being installed.
+
+A backup can also be restored by hand: extract the archive, load `database.sql` into an empty database with `psql`
+and copy `files/` into the backend data volume.
 
 ### Building from source and forks
 
@@ -287,6 +314,7 @@ backend/     FastAPI app (app/api, app/services), SQLModel models, Alembic migra
 frontend/    React + TypeScript app (src/pages, src/components, src/lib)
 llm/         Service that detects the hardware and manages the Ollama container
 updater/     Service that installs new versions from the images on GitHub Container Registry
+backup/      Service that makes, cleans up and restores the backups
 .github/     Workflow that builds and publishes the images
 ```
 

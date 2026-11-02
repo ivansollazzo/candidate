@@ -17,7 +17,7 @@ const release = (item: { version: string; build: string }) => `${item.version} Â
 const formatTime = (value: string | null) =>
   value ? new Date(value).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" }) : "â€”"
 
-function Failure({ message, detail }: { message: string; detail: string }) {
+export function Failure({ message, detail }: { message: string; detail: string }) {
   const t = useT()
   return (
     <div className="space-y-1 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
