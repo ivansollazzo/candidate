@@ -412,7 +412,7 @@ class SettingsRead(BaseModel):
 
     llm_enabled: bool
     llm_accelerator: str
-    update_source: str | None
+    update_branch: str | None
     update_check_hours: int
     password_min_length: int
     password_require_uppercase: bool
@@ -426,8 +426,8 @@ class SettingsRead(BaseModel):
 class SettingsUpdate(BaseModel):
     llm_enabled: bool | None = None
     llm_accelerator: Literal["auto", "cuda", "rocm", "vulkan", "cpu"] | None = None
-    # Channel ("@stable", "@beta") or branch to update from; empty string: the stable channel
-    update_source: str | None = Field(default=None, max_length=200)
+    # Branch to update from; empty string: the default branch ("stable")
+    update_branch: str | None = Field(default=None, max_length=200)
     update_check_hours: Literal[0, 1, 6, 12, 24, 168] | None = None
     password_min_length: int | None = Field(default=None, ge=8, le=128)
     password_require_uppercase: bool | None = None
@@ -561,13 +561,8 @@ class UpdateStatus(BaseModel):
     build: str
 
 
-class UpdateSource(BaseModel):
-    # "@stable", "@beta" or a branch
+class UpdateBranch(BaseModel):
     name: str
-    # channel or branch
-    kind: str
-    # Release tag of a channel
-    tag: str | None = None
     commit: str = ""
     version: str
     build: str
@@ -579,7 +574,7 @@ class UpdateSource(BaseModel):
 class UpdateResult(BaseModel):
     # ok, failed
     result: str
-    # source, image, backup, download, start
+    # branch, image, backup, download, start
     error: str = ""
     detail: str = ""
     finished_at: str
@@ -592,9 +587,9 @@ class CheckError(BaseModel):
 
 
 class UpdatesRead(UpdateStatus):
-    selected_source: str
+    selected_branch: str
     checked_at: str | None = None
-    sources: list[UpdateSource]
+    branches: list[UpdateBranch]
     update_available: bool
     last: UpdateResult | None = None
     check_error: CheckError | None = None

@@ -20,7 +20,7 @@ services:
   # Runs Ollama on the available GPU (NVIDIA, AMD, Intel) or CPU, see llm/launcher.sh.
   # Uses the Docker socket to create the Ollama container with the right GPU and removes it on shutdown.
   llm:
-    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-llm:${CANDIDATE_TAG:-latest}
+    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-llm:${CANDIDATE_TAG:-stable}
     build: ./llm
     environment:
       LLM_MODEL: ${LLM_MODEL:-qwen3:4b}
@@ -32,7 +32,7 @@ services:
     stop_grace_period: 30s
 
   backend:
-    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-backend:${CANDIDATE_TAG:-latest}
+    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-backend:${CANDIDATE_TAG:-stable}
     build: ./backend
     depends_on:
       db:
@@ -51,7 +51,7 @@ services:
       - updates:/updates
 
   frontend:
-    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-frontend:${CANDIDATE_TAG:-latest}
+    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-frontend:${CANDIDATE_TAG:-stable}
     build: ./frontend
     depends_on: [backend]
     environment:
@@ -62,7 +62,7 @@ services:
   # Installs new versions when asked in Settings › Updates, see updater/updater.sh. Needs the project folder
   # (it writes docker-compose.yml and CANDIDATE_TAG in .env) and the Docker socket to replace the services.
   updater:
-    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-updater:${CANDIDATE_TAG:-latest}
+    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-updater:${CANDIDATE_TAG:-stable}
     build: ./updater
     environment:
       CANDIDATE_REPOSITORY: ${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}

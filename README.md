@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 1.4 (build 20261102.1458), by Ivan Sollazzo.
+Version 1.4 (build 20261102.1536), by Ivan Sollazzo.
 
 ## Features
 
@@ -32,7 +32,7 @@ Version 1.4 (build 20261102.1458), by Ivan Sollazzo.
   at a glance.
 - **Multi-user**: sign-in, admin and user roles, password recovery keys (no email needed), configurable password and
   lockout policy.
-- **Updates from the app**: follow the stable or beta channel, or a branch, and install a newer version with one
+- **Updates from the app**: follow a branch (stable, beta or any other) and install a newer version with one
   click. Ready-made images are downloaded from GitHub, the database is saved first, and if the new version doesn't
   start everything goes back as it was.
 - **Italian and English** interface, light and dark theme.
@@ -80,16 +80,12 @@ holds the update status.
 
 Every push to the repository builds the images of all services for amd64 and arm64 with GitHub Actions
 (`.github/workflows/images.yml`) and publishes them on GitHub Container Registry, tagged with the commit
-(`sha-<commit>`), the branch and, for release tags, the tag plus `latest` (releases such as `v2.1`) or `beta` (all
-tags, pre-releases such as `v2.1-beta.1` included).
+(`sha-<commit>`) and the branch.
 
-Settings › Updates (admin only) shows the installed version and lets you choose where updates come from:
+Settings › Updates (admin only) shows the installed version and lets you choose the branch updates come from:
+`stable` (the default) for stable versions, `beta` for previews, or any other branch to try work in progress.
 
-- **Stable**: the newest release (the default).
-- **Beta**: the newest release or pre-release.
-- **A branch**: its latest commit, for testing work in progress.
-
-When the chosen channel or branch has a newer version and its images are published, a dot appears on the settings
+When the chosen branch has a newer version and its images are published, a dot appears on the settings
 icon and the version can be installed. A version is installed only if it is newer than the installed one, so the
 database is never taken back to an older schema. Right after a push the images take a few minutes to build: until
 they are published, the new version is shown as "being prepared". You also choose how often to check (every hour, 6
@@ -109,7 +105,7 @@ Installing is handled by the `updater` service:
 While it runs, the app shows an "Updating" screen and reloads by itself when the new version is up.
 
 Version 1.4 is the bridge from the 1.x updater, which built the images on the server: the updater of 1.3 installs
-1.4 the old way and hands over to the new updater right after. Version 2.0 is installed from 1.4.
+1.4 the old way and hands over to the new updater right after.
 
 If GitHub can't be reached, a check gives up after a minute: the tab keeps showing the versions of the last
 successful check with an error message, and the updater tries again after 15 minutes (or at the next interval, if
@@ -119,7 +115,7 @@ every 15 minutes).
 
 The updater needs the Docker socket, which gives it full control of Docker on the host, like the `llm` service.
 
-You can always update by hand, choosing the version in `.env` (`CANDIDATE_TAG=latest`, `beta`, a branch name or
+You can always update by hand, choosing the version in `.env` (`CANDIDATE_TAG=stable`, `beta`, another branch or
 `sha-<commit>`):
 
 ```bash
@@ -148,7 +144,7 @@ Set them in a `.env` file next to `docker-compose.yml` (or in the shell):
 
 | Variable | Default | Description |
 |---|---|---|
-| `CANDIDATE_TAG` | `latest` | Version of the images: `latest`, `beta`, a branch name or `sha-<commit>`. Written by the updater. |
+| `CANDIDATE_TAG` | `stable` | Version of the images: a branch name (`stable`, `beta`...) or `sha-<commit>`. Written by the updater. |
 | `CANDIDATE_REPOSITORY` | `ivansollazzo/candidate` | GitHub repository of the images and of the updates, for a fork. |
 | `LLM_MODEL` | `qwen3:4b` | Ollama model to use. `qwen3:1.7b` is about twice as fast but less accurate. |
 | `OLLAMA_PORT` | *(unset)* | Publishes Ollama on `127.0.0.1:<port>`, for running the backend outside Docker. |

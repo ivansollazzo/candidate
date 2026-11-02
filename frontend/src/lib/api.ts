@@ -210,12 +210,9 @@ interface UpdateStatus {
   build: string
 }
 
-/** A release channel ("@stable", "@beta") or a branch of the repository */
-interface UpdateSource {
+/** A branch of the repository, with the release of its latest commit */
+interface UpdateBranch {
   name: string
-  kind: "channel" | "branch"
-  /** release tag of a channel */
-  tag: string | null
   version: string
   build: string
   /** its images are published: only then it can be installed */
@@ -225,7 +222,7 @@ interface UpdateSource {
 
 interface UpdateResult {
   result: "ok" | "failed"
-  error: "" | "source" | "image" | "backup" | "download" | "start"
+  error: "" | "branch" | "image" | "backup" | "download" | "start"
   detail: string
   finished_at: string
 }
@@ -236,10 +233,10 @@ interface CheckError {
 }
 
 export interface Updates extends UpdateStatus {
-  /** The channel or branch the admin picked; until then "@stable" */
-  selected_source: string
+  /** The branch the admin picked; until then "stable" */
+  selected_branch: string
   checked_at: string | null
-  sources: UpdateSource[]
+  branches: UpdateBranch[]
   update_available: boolean
   last: UpdateResult | null
   /** The last check couldn't reach the repository */
@@ -250,8 +247,8 @@ export interface Updates extends UpdateStatus {
 export interface Settings extends PasswordPolicy {
   llm_enabled: boolean
   llm_accelerator: Accelerator | "auto"
-  /** Channel ("@stable", "@beta") or branch to update from; null = "@stable" */
-  update_source: string | null
+  /** Branch to update from; null = "stable" */
+  update_branch: string | null
   /** Hours between update checks; 0 = only on request */
   update_check_hours: number
   session_hours: number
