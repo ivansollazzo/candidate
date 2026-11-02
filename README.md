@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 2.0 (build 20261102.1315), by Ivan Sollazzo.
+Version 2.0 (build 20261102.1325), by Ivan Sollazzo.
 
 ## Features
 

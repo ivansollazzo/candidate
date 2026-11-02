@@ -46,16 +46,17 @@ export function EventForm({ initial, applications, saving, error, onSubmit, onCa
   const valid = form.application_id > 0 && form.title.trim() !== "" && form.occurred_on !== "" && !endInvalid
 
   return (
-    <form className="space-y-3" onSubmit={(e) => {
+    <form className="@container space-y-3" onSubmit={(e) => {
       e.preventDefault()
       if (valid) onSubmit({
         ...form, title: form.title.trim(), starts_at: form.starts_at || null,
         ends_at: (form.starts_at && form.ends_at) || null, details: form.details || null,
       })
     }}>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_130px_130px]">
+      {/* Columns follow the width of the form, which sits in narrow cards too (application detail) */}
+      <div className="grid grid-cols-2 gap-2 *:min-w-0 @xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,1fr)]">
         {applications && (
-          <div className="col-span-2 sm:col-span-4">
+          <div className="col-span-2 @xl:col-span-4">
             <Label className="mb-1 block">{t("eventForm.application")}</Label>
             <Select value={form.application_id} onChange={(e) => set({ application_id: Number(e.target.value) })}>
               <option value={0} disabled>{t("eventForm.chooseApplication")}</option>
@@ -75,17 +76,17 @@ export function EventForm({ initial, applications, saving, error, onSubmit, onCa
         </div>
         <div>
           <Label className="mb-1 block">{t("eventForm.date")}</Label>
-          <Input type="date" required value={form.occurred_on} onChange={(e) => set({ occurred_on: e.target.value })} />
+          <Input type="date" className="min-w-0" required value={form.occurred_on} onChange={(e) => set({ occurred_on: e.target.value })} />
         </div>
         <div>
           <Label className="mb-1 block">{t("eventForm.time")}</Label>
-          <Input type="time" value={form.starts_at}
+          <Input type="time" className="min-w-0" value={form.starts_at}
             onChange={(e) => set({ starts_at: e.target.value, ...(e.target.value ? {} : { ends_at: "" }) })} />
         </div>
         <div>
           <Label className="mb-1 block">{t("eventForm.end")}</Label>
           <Input type="time" value={form.ends_at} disabled={!form.starts_at} aria-invalid={endInvalid}
-            className={cn(endInvalid && "border-red-500 focus-visible:ring-red-500/40")}
+            className={cn("min-w-0", endInvalid && "border-red-500 focus-visible:ring-red-500/40")}
             onChange={(e) => set({ ends_at: e.target.value })} />
         </div>
       </div>
