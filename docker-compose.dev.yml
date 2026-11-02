@@ -1,0 +1,9 @@
+# For development on the host (see README.md, Development): publishes database and API on this computer only.
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db llm
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"
+  backend:
+    ports:
+      - "127.0.0.1:8000:8000"

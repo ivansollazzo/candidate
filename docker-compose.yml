@@ -1,15 +1,15 @@
 # Images published on GHCR by .github/workflows/images.yml: docker compose up downloads them. CANDIDATE_TAG
 # (in .env, written by the updater) picks the version, CANDIDATE_REPOSITORY the repository (for a fork).
 # Without a published image, or with docker compose up --build, the services are built from this folder.
+# Only the web app is published (port 5173): database and API are reached inside the Compose network.
 services:
   db:
     image: postgres:17
     environment:
       POSTGRES_USER: candidate
-      POSTGRES_PASSWORD: candidate
+      # Applied only when the database is created: set it in .env before the first start
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-candidate}
       POSTGRES_DB: candidate
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -38,11 +38,9 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg://candidate:candidate@db:5432/candidate
+      DATABASE_URL: postgresql+psycopg://candidate:${POSTGRES_PASSWORD:-candidate}@db:5432/candidate
       # The backend uses the model started by the llm service
       LLM_PROVIDER: auto
-    ports:
-      - "8000:8000"
     volumes:
       - backend-data:/app/data
       # Reads the running model, writes settings.json (LLM on/off)
@@ -50,6 +48,7 @@ services:
       # Update requests for the updater service
       - updates:/updates
 
+  # The built app served by Caddy, which forwards /api to the backend (frontend/Caddyfile)
   frontend:
     image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-frontend:${CANDIDATE_TAG:-stable}
     build: ./frontend

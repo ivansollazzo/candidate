@@ -8,7 +8,7 @@
 # The admin follows a branch of the repository: its latest commit can be installed once the images of that
 # commit are published.
 # An install dumps the database, writes the docker-compose.yml of that commit and CANDIDATE_TAG in .env,
-# pulls the images and recreates the services, then waits for the backend to answer with the new build:
+# pulls the images and recreates the services, then waits for the app to answer with the new build:
 # if it doesn't, compose file, .env and database go back and the previous version starts again.
 # Last, the updater replaces its own container when its image changed.
 set -u
@@ -172,14 +172,16 @@ restore_files() {
   if [ -f /tmp/previous/.env ]; then cp /tmp/previous/.env "$DIR/.env"; else rm -f "$DIR/.env"; fi
 }
 
-backend_build() {
-  timeout 5 wget -qO- http://backend:8000/api/health 2>/dev/null | sed -n 's/.*"build": *"\([^"]*\)".*/\1/p'
+# Build answering through the web app: the page and the API forwarded to the backend must both work
+app_build() {
+  timeout 5 wget -qO /dev/null http://frontend:5173/ 2>/dev/null || return 0
+  timeout 5 wget -qO- http://frontend:5173/api/health 2>/dev/null | sed -n 's/.*"build": *"\([^"]*\)".*/\1/p'
 }
 
 # The new version didn't start: previous compose file, .env, database and containers
 roll_back() { # services
   log "the new version didn't start: rolling back"
-  detail=$(compose logs --no-color --tail 40 backend 2>&1)
+  detail=$(compose logs --no-color --tail 40 backend frontend 2>&1)
   failed_images=$(compose config --images 2>/dev/null)
   restore_files
   compose stop backend >/dev/null 2>&1
@@ -247,7 +249,7 @@ install() { # branch
 
   set_step updating verify 92
   waited=0
-  until [ "$(backend_build)" = "$build" ]; do
+  until [ "$(app_build)" = "$build" ]; do
     [ "$waited" -ge "$START_SECONDS" ] && { roll_back "$services"; return; }
     sleep 3
     waited=$((waited + 3))

@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 2.0 (build 20261102.1606), by Ivan Sollazzo.
+Version 2.0 (build 20261102.1943), by Ivan Sollazzo.
 
 ## Features
 
@@ -108,9 +108,9 @@ Installing is handled by the `updater` service:
 2. It writes the `docker-compose.yml` of the new version and `CANDIDATE_TAG=sha-<commit>` in `.env` (only that line
    changes), then downloads the images. The app stays usable, with a progress bar under the header.
 3. It recreates the services. The app shows an "Updating" screen and reloads by itself when the new version is up.
-4. It waits for the backend to answer with the new build, database migrations included. If it doesn't within five
-   minutes, it puts back the previous `docker-compose.yml`, `.env` and database and starts the previous version again;
-   the Updates tab shows the backend log.
+4. It waits for the app to answer with the new build through the web server, database migrations included. If it
+   doesn't within five minutes, it puts back the previous `docker-compose.yml`, `.env` and database and starts the
+   previous version again; the Updates tab shows the backend and frontend logs.
 5. It removes the images of the previous version and, when its own image changed, replaces its own container.
 
 An update can't be installed while AI operations are queued or running, and none starts until it is over.
@@ -161,6 +161,7 @@ Set them in a `.env` file next to `docker-compose.yml` (or in the shell):
 | `CANDIDATE_REPOSITORY` | `ivansollazzo/candidate` | GitHub repository of the images and of the updates, for a fork. |
 | `LLM_MODEL` | `qwen3:4b` | Ollama model to use. `qwen3:1.7b` is about twice as fast but less accurate. |
 | `OLLAMA_PORT` | *(unset)* | Publishes Ollama on `127.0.0.1:<port>`, for running the backend outside Docker. |
+| `POSTGRES_PASSWORD` | `candidate` | Database password. PostgreSQL applies it only when the database is created: set it before the first start (letters and digits), and don't change it afterwards. |
 
 Example: `LLM_MODEL=qwen3:1.7b docker compose up -d`
 
@@ -190,11 +191,17 @@ To move existing data, stop the app and copy it out of the volumes first.
 
 ### Ports
 
-| Port | Service |
-|---|---|
-| `5173` | Web app |
-| `8000` | REST API, with interactive documentation at http://localhost:8000/docs |
-| `5432` | PostgreSQL |
+Only the web app is published, on port `5173`: it is served by Caddy, which forwards `/api` to the backend, so the
+REST API is under http://localhost:5173/api and its interactive documentation at http://localhost:5173/docs. The
+database and the backend are reachable only inside the Compose network. To reach them from the host (a SQL client,
+for instance), publish them on `127.0.0.1` in `docker-compose.override.yml`:
+
+```yaml
+services:
+  db:
+    ports:
+      - "127.0.0.1:5432:5432"
+```
 
 To change a port, override it in `docker-compose.override.yml`:
 
@@ -246,10 +253,11 @@ everything else keeps working. Match reports need the model, so turning AI off d
 
 ## Development
 
-Run the database and the model in Docker, and the backend and frontend on the host:
+Run the database and the model in Docker, and the backend and frontend on the host. `docker-compose.dev.yml`
+publishes the database (and the API) on `127.0.0.1`:
 
 ```bash
-OLLAMA_PORT=11434 docker compose up -d db llm
+OLLAMA_PORT=11434 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db llm
 
 # Backend
 cd backend
