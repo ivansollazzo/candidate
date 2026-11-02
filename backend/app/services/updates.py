@@ -1,7 +1,11 @@
-"""Updates through the updater service, which shares the folder updates_dir with the backend (see updater/updater.sh)."""
+"""Updates through the updater service, which shares the folder updates_dir with the backend (see updater/updater.sh).
+
+The updater lists the branches and release tags of the repository with their release and whether the images of
+their commit are published. The admin follows a channel or a branch: "@stable" is the newest release tag without
+"-" (v2.1), "@beta" the newest of all tags (v2.1-beta.1 included), a branch its latest commit.
+"""
 
 import json
-import logging
 
 from fastapi import HTTPException, status
 
@@ -9,7 +13,8 @@ from app import __build__, __version__
 from app.config import get_settings
 from app.i18n import t
 
-log = logging.getLogger(__name__)
+STABLE, BETA = "@stable", "@beta"
+CHANNELS = (STABLE, BETA)
 
 
 def release_key(version: str, build: str) -> tuple:
@@ -28,48 +33,73 @@ def is_newer(version: str, build: str) -> bool:
     return bool(version) and release_key(version, build) > INSTALLED
 
 
-def read_state() -> dict | None:
-    """State written by the updater; None when it is not running (e.g. backend outside Docker)."""
+def _file(name: str):
+    return get_settings().updates_dir / name
+
+
+def _read(name: str) -> dict | None:
     try:
-        return json.loads((get_settings().updates_dir / "state.json").read_text())
+        return json.loads(_file(name).read_text())
     except (OSError, ValueError):
         return None
+
+
+def read_state() -> dict | None:
+    """State written by the updater; None when it is not running (e.g. backend outside Docker)."""
+    return _read("state.json")
 
 
 def pending_action() -> str | None:
     """Request written but not yet picked up by the updater (it looks every few seconds)."""
-    try:
-        return json.loads((get_settings().updates_dir / "request.json").read_text()).get("action")
-    except (OSError, ValueError):
+    return (_read("request.json") or {}).get("action")
+
+
+def _channel(tags: list[dict], name: str) -> dict | None:
+    """The newest published tag of a channel, as a source named after the channel."""
+    candidates = [tag for tag in tags if tag.get("published") and (name == BETA or "-" not in tag.get("name", ""))]
+    if not candidates:
         return None
+    newest = max(candidates, key=lambda tag: release_key(tag.get("version", ""), tag.get("build", "")))
+    return {**newest, "name": name, "kind": "channel", "tag": newest.get("name")}
+
+
+def sources(state: dict) -> list[dict]:
+    """Channels first, then branches, each with whether it is newer than the installed release."""
+    listed = state.get("sources", [])
+    tags = [source for source in listed if source.get("kind") == "tag"]
+    branches = [source for source in listed if source.get("kind") == "branch"]
+    channels = [channel for name in CHANNELS if (channel := _channel(tags, name))]
+    return [{**source, "published": bool(source.get("published")),
+             "newer": is_newer(source.get("version", ""), source.get("build", ""))}
+            for source in channels + branches]
 
 
 def overview(selected: str | None) -> dict:
-    """Updater state; an update is available when the selected branch has a newer release.
-    Until the admin selects one, the selected branch is the checked-out one."""
+    """Updater state; an update is available when the selected source has a newer release whose images are
+    published. Until the admin picks one, the stable channel is followed."""
     state = read_state() or {"status": "unavailable"}
-    if state.get("status") == "idle" and (action := pending_action()):
-        state = {**state, "status": "updating" if action == "install" else "checking", "step": "fetch", "progress": 0}
-    branches = [{**branch, "newer": is_newer(branch.get("version", ""), branch.get("build", ""))}
-                for branch in state.get("branches", [])]
-    selected = selected or state.get("branch") or None
-    target = next((branch for branch in branches if branch["name"] == selected), None)
+    if state.get("status") == "idle" and (action := pending_action()) in ("install", "check"):
+        state = {**state, "status": "updating" if action == "install" else "checking", "step": "backup", "progress": 0}
+    listed = sources(state)
+    selected = selected or STABLE
+    target = next((source for source in listed if source["name"] == selected), None)
     return {
         "status": state.get("status", "unavailable"),
         "step": state.get("step") or None,
         "progress": state.get("progress") or 0,
-        "selected_branch": selected,
+        "selected_source": selected,
         "checked_at": state.get("checked_at") or None,
         "version": __version__,
         "build": __build__,
-        "branches": branches,
-        "update_available": bool(target and target["newer"]),
+        "sources": listed,
+        "update_available": bool(target and target["newer"] and target["published"]),
         "last": state.get("last"),
         "check_error": state.get("check_error"),
     }
 
 
 def request(action: str, selected: str | None = None) -> None:
+    """Ask the updater to check, or to install the release of the selected source."""
     state = read_state()
     if state is None or state.get("status") == "unavailable":
         raise HTTPException(status.HTTP_409_CONFLICT, t("updates_unavailable"))
@@ -77,15 +107,16 @@ def request(action: str, selected: str | None = None) -> None:
         raise HTTPException(status.HTTP_409_CONFLICT, t("update_busy"))
     fields = {}
     if action == "install":
-        name = selected or state.get("branch")
-        branch = next((b for b in state.get("branches", []) if b.get("name") == name), None)
-        if branch is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, t("branch_not_found"))
+        name = selected or STABLE
+        source = next((source for source in sources(state) if source["name"] == name), None)
+        if source is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, t("source_not_found"))
         # Only a newer release can be installed: the database is never taken back to an older schema
-        if not is_newer(branch.get("version", ""), branch.get("build", "")):
+        if not source["newer"]:
             raise HTTPException(status.HTTP_409_CONFLICT, t("update_not_newer"))
-        fields["branch"] = name
-    target = get_settings().updates_dir / "request.json"
-    tmp = target.with_suffix(".tmp")
+        if not source["published"]:
+            raise HTTPException(status.HTTP_409_CONFLICT, t("update_not_published"))
+        fields["ref"] = source["ref"]
+    tmp = _file("request.tmp")
     tmp.write_text(json.dumps({"action": action, **fields}))
-    tmp.replace(target)
+    tmp.replace(_file("request.json"))

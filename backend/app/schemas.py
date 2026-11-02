@@ -412,7 +412,7 @@ class SettingsRead(BaseModel):
 
     llm_enabled: bool
     llm_accelerator: str
-    update_branch: str | None
+    update_source: str | None
     update_check_hours: int
     password_min_length: int
     password_require_uppercase: bool
@@ -426,8 +426,8 @@ class SettingsRead(BaseModel):
 class SettingsUpdate(BaseModel):
     llm_enabled: bool | None = None
     llm_accelerator: Literal["auto", "cuda", "rocm", "vulkan", "cpu"] | None = None
-    # Branch to update from; empty string: the checked-out one
-    update_branch: str | None = Field(default=None, max_length=200)
+    # Channel ("@stable", "@beta") or branch to update from; empty string: the stable channel
+    update_source: str | None = Field(default=None, max_length=200)
     update_check_hours: Literal[0, 1, 6, 12, 24, 168] | None = None
     password_min_length: int | None = Field(default=None, ge=8, le=128)
     password_require_uppercase: bool | None = None
@@ -551,9 +551,9 @@ class AITaskRead(BaseModel):
 
 
 class UpdateStatus(BaseModel):
-    # unavailable (no updater or not a Git clone), idle, checking, updating
+    # unavailable (no updater), idle, checking, updating
     status: str
-    # fetch, build, cleanup
+    # backup, download, restart (services being replaced), verify (waiting for the new backend)
     step: str | None = None
     # Estimated completion of the running update, 0-100
     progress: int = 0
@@ -561,22 +561,27 @@ class UpdateStatus(BaseModel):
     build: str
 
 
-class BranchRelease(BaseModel):
+class UpdateSource(BaseModel):
+    # "@stable", "@beta" or a branch
     name: str
+    # channel or branch
+    kind: str
+    # Release tag of a channel
+    tag: str | None = None
+    commit: str = ""
     version: str
     build: str
+    # The images of its commit are on GHCR: only then it can be installed
+    published: bool
     newer: bool
 
 
 class UpdateResult(BaseModel):
     # ok, failed
     result: str
-    # fetch, branch, checkout, build
+    # source, image, backup, download, start
     error: str = ""
     detail: str = ""
-    restart_required: bool = False
-    # Local changes to the project files were kept with git stash
-    stashed: bool = False
     finished_at: str
 
 
@@ -587,9 +592,9 @@ class CheckError(BaseModel):
 
 
 class UpdatesRead(UpdateStatus):
-    selected_branch: str | None = None
+    selected_source: str
     checked_at: str | None = None
-    branches: list[BranchRelease]
+    sources: list[UpdateSource]
     update_available: bool
     last: UpdateResult | None = None
     check_error: CheckError | None = None

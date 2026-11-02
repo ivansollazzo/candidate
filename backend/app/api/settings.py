@@ -22,7 +22,7 @@ def update_settings(payload: SettingsUpdate, session: Session = Depends(get_sess
         clear_reports(session)
     for field, value in payload.model_dump(exclude_unset=True, exclude_none=True).items():
         setattr(settings, field, value)
-    settings.update_branch = settings.update_branch or None
+    settings.update_source = settings.update_source or None
     session.add(settings)
     session.commit()
     session.refresh(settings)

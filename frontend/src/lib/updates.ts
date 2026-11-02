@@ -56,8 +56,9 @@ export function useInstallUpdate() {
 }
 
 /**
- * Whether an update is running, for every signed-in user. While it runs the backend and frontend are
- * rebuilt and restarted: requests fail for a moment, and once the new build answers the page reloads.
+ * Whether an update is running, for every signed-in user. While it runs the database is saved, the new
+ * images downloaded and the services restarted: requests fail for a moment, and once the new build answers
+ * the page reloads.
  */
 export function useUpdateProgress() {
   const [started, setStarted] = useState(readStarted)
@@ -87,11 +88,11 @@ export function useUpdateProgress() {
     }
   }, [data, started, queryClient])
 
-  // While the backend restarts the status can't be read: the build is done by then
+  // While the backend restarts the status can't be read
   const restarting = status.isError
   return {
     running: started != null,
-    step: restarting ? "restart" as const : data?.step ?? "fetch",
+    step: restarting ? "restart" as const : data?.step ?? "backup",
     progress: restarting ? 96 : data?.status === "updating" ? data.progress : 0,
   }
 }

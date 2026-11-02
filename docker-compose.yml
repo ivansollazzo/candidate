@@ -1,3 +1,6 @@
+# Images published on GHCR by .github/workflows/images.yml: docker compose up downloads them. CANDIDATE_TAG
+# (in .env, written by the updater) picks the version, CANDIDATE_REPOSITORY the repository (for a fork).
+# Without a published image, or with docker compose up --build, the services are built from this folder.
 services:
   db:
     image: postgres:17
@@ -17,6 +20,7 @@ services:
   # Runs Ollama on the available GPU (NVIDIA, AMD, Intel) or CPU, see llm/launcher.sh.
   # Uses the Docker socket to create the Ollama container with the right GPU and removes it on shutdown.
   llm:
+    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-llm:${CANDIDATE_TAG:-latest}
     build: ./llm
     environment:
       LLM_MODEL: ${LLM_MODEL:-qwen3:4b}
@@ -28,6 +32,7 @@ services:
     stop_grace_period: 30s
 
   backend:
+    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-backend:${CANDIDATE_TAG:-latest}
     build: ./backend
     depends_on:
       db:
@@ -46,6 +51,7 @@ services:
       - updates:/updates
 
   frontend:
+    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-frontend:${CANDIDATE_TAG:-latest}
     build: ./frontend
     depends_on: [backend]
     environment:
@@ -53,10 +59,13 @@ services:
     ports:
       - "5173:5173"
 
-  # Updates Candidate from its Git repository when asked in Settings › Updates, see updater/updater.sh.
-  # Needs the project folder (a Git clone) and the Docker socket to rebuild the backend and frontend.
+  # Installs new versions when asked in Settings › Updates, see updater/updater.sh. Needs the project folder
+  # (it writes docker-compose.yml and CANDIDATE_TAG in .env) and the Docker socket to replace the services.
   updater:
+    image: ghcr.io/${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}-updater:${CANDIDATE_TAG:-latest}
     build: ./updater
+    environment:
+      CANDIDATE_REPOSITORY: ${CANDIDATE_REPOSITORY:-ivansollazzo/candidate}
     volumes:
       - .:/project
       - /var/run/docker.sock:/var/run/docker.sock
