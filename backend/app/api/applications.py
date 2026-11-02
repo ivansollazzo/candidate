@@ -68,11 +68,13 @@ async def create_with_ai(
     text: str | None = Form(None),
     url: str | None = Form(None),
     file: UploadFile | None = File(None),
+    report: bool = Form(False),
     user: User = Depends(security.current_user),
     session: Session = Depends(get_session),
 ):
     """Save a new application with its job posting (text, link or file) right away; the local model fills
-    in its fields in the background. Cancelling the job before it is done deletes the application."""
+    in its fields in the background, then (with report) generates its compatibility report.
+    Cancelling the job before it is done deletes the application."""
     require_llm(session)
     source = await read_job_posting(text, url, file)
     if source is None:
@@ -80,7 +82,7 @@ async def create_with_ai(
     link = url.strip() if url and file is None else None
     app = save(session, Application(user_id=user.id, description=source, source_url=link))
     jobs.enqueue(session, Job(user_id=user.id, kind=JobKind.APPLICATION, application_id=app.id,
-                              new_application=True, source_text=source))
+                              new_application=True, then_report=report, source_text=source))
     session.refresh(app)
     return app
 

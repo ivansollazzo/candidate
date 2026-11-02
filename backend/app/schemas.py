@@ -550,6 +550,7 @@ class JobRead(BaseModel):
     application_id: int | None
     application_title: str | None = None
     new_application: bool
+    then_report: bool
     # Place in the queue shared by all users (1 = next), for waiting jobs
     position: int | None = None
     # Values found for fields already filled, waiting for the user to apply them

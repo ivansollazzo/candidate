@@ -293,6 +293,8 @@ class Job(SQLModel, table=True):
     status: str = Field(default=TaskStatus.PENDING, sa_type=sa.String(20), index=True)
     # The application was created by this job: cancelling it before it is filled deletes the application
     new_application: bool = _bool(False)
+    # Once the application is filled, queue its compatibility report
+    then_report: bool = _bool(False)
     # Job posting to read, and the link it came from
     source_text: str | None = Field(default=None, sa_type=sa.Text)
     source_url: str | None = None

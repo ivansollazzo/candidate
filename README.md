@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 2.0 (build 20261101.2126), by Ivan Sollazzo.
+Version 2.0 (build 20261102.1251), by Ivan Sollazzo.
 
 ## Features
 
@@ -21,6 +21,7 @@ Version 2.0 (build 20261101.2126), by Ivan Sollazzo.
 - **AI fill (optional)**: paste a job posting, give a link or upload a PDF, DOCX or TXT file: the application is saved
   right away and the model fills in its fields in the background. Filling an application or the profile again fills
   the empty fields and proposes the different values for the ones you already filled, applied only if you confirm.
+  A checkbox on the new application page also queues the match report once the fields are filled.
 - **Background operations**: AI fills and match reports are queued and run one at a time as soon as the model is
   free, so a slow machine works through them while you do something else, also after leaving the page or a restart.
   The operations button in the header lists them with their place in the queue: each one can be cancelled (a new

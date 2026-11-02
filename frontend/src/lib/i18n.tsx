@@ -195,6 +195,8 @@ const it = {
   "new.introAi": "Dai l'annuncio all'AI e pensa lei al resto, oppure compila i campi a mano.",
   "new.manual": "Oppure compila a mano",
   "new.createWithAi": "Crea con l'AI",
+  "new.withReport": "Calcola anche il report di compatibilità",
+  "new.withReportHint": "Appena l'AI ha compilato la candidatura, mette in coda il report con il tuo profilo.",
   "new.intro": "Compila i dati della posizione.",
   "new.aiHint":
     "Incolla l'annuncio, inserisci il link o carica un file: la candidatura viene salvata subito e l'AI ne compila i campi in background. Puoi lasciare la pagina.",
@@ -740,6 +742,8 @@ const en: Record<MessageKey, string> = {
   "new.introAi": "Give the posting to the AI and let it do the rest, or fill in the fields by hand.",
   "new.manual": "Or fill in by hand",
   "new.createWithAi": "Create with AI",
+  "new.withReport": "Also generate the match report",
+  "new.withReportHint": "As soon as the AI has filled in the application, it queues the report against your profile.",
   "new.intro": "Fill in the position details.",
   "new.aiHint":
     "Paste the posting, enter its link or upload a file: the application is saved right away and the AI fills in its fields in the background. You can leave the page.",

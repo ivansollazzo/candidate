@@ -309,6 +309,8 @@ export interface Job {
   application_title: string | null
   /** The application was created by this job: cancelling it before it is done deletes the application */
   new_application: boolean
+  /** Once the application is filled, its compatibility report is queued */
+  then_report: boolean
   /** Place in the queue shared by all users (1 = next), for waiting jobs */
   position: number | null
   /** Values found for fields already filled, applied only if the user confirms */
@@ -321,9 +323,9 @@ export interface Job {
 /** Where to read the job posting: pasted text, link or file; none for the saved one */
 export type JobSource = { text: string } | { url: string } | { file: File }
 
-const sourceForm = (source?: JobSource): RequestInit => {
+const sourceForm = (source?: JobSource, fields: Record<string, string> = {}): RequestInit => {
   const form = new FormData()
-  for (const [key, value] of Object.entries(source ?? {})) form.append(key, value)
+  for (const [key, value] of Object.entries({ ...source, ...fields })) form.append(key, value)
   return { method: "POST", body: form }
 }
 
@@ -418,7 +420,8 @@ export const api = {
   uploadCv: (file: File) => request<Profile>("/api/profile/cv", upload("POST", file)),
 
   /** Saves the application with its posting right away; the AI fills it in the background */
-  createApplicationWithAi: (source: JobSource) => request<Application>("/api/applications/ai", sourceForm(source)),
+  createApplicationWithAi: (source: JobSource, report: boolean) =>
+    request<Application>("/api/applications/ai", sourceForm(source, { report: String(report) })),
   fillApplication: (id: number, source?: JobSource) => request<Job>(`/api/applications/${id}/fill`, sourceForm(source)),
   fillProfile: () => request<Job>("/api/profile/fill", { method: "POST" }),
 

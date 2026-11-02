@@ -191,6 +191,11 @@ def _finish(session: Session, job: Job, result) -> None:
         if job.source_url and not app.source_url:
             fill["source_url"] = job.source_url
         apply_changes(session, app, fill)
+        if job.then_report and app.skills and not find_active(session, JobKind.REPORT, job.user_id, app.id):
+            # Queued now, so it runs after the jobs already waiting; committed with this job's result
+            app.report_status = TaskStatus.PENDING
+            session.add(Job(user_id=job.user_id, kind=JobKind.REPORT, application_id=app.id))
+            _wake.set()
     elif job.kind == JobKind.PROFILE:
         profile = find_profile(session, job.user_id)
         fill, job.proposal = _split(profile.model_dump(), result)

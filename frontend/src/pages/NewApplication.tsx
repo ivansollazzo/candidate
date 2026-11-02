@@ -12,6 +12,17 @@ import { useT } from "@/lib/i18n"
 import { usePageTitle } from "@/lib/title"
 import { today } from "@/lib/utils"
 
+// Whether to also generate the compatibility report, remembered on this browser
+const REPORT_KEY = "candidate.new-with-report"
+
+function readWithReport() {
+  try {
+    return localStorage.getItem(REPORT_KEY) === "true"
+  } catch {
+    return false
+  }
+}
+
 const EMPTY: Partial<Application> = {
   applied_on: today(),
   skills: [],
@@ -29,6 +40,15 @@ export function NewApplication() {
   const queryClient = useQueryClient()
   const [draft, setDraft] = useState<Partial<Application>>(EMPTY)
   const job = useJobSource()
+  const [withReport, setWithReport] = useState(readWithReport)
+  const toggleReport = (on: boolean) => {
+    setWithReport(on)
+    try {
+      localStorage.setItem(REPORT_KEY, String(on))
+    } catch {
+      /* storage unavailable: the choice lasts for this page */
+    }
+  }
   const ai = useAiStatus()
 
   const value = <K extends keyof Application>(key: K) => draft[key] as Application[K]
@@ -43,7 +63,7 @@ export function NewApplication() {
   })
   // Saved at once with its posting: the AI fills it in the background, shown in the list meanwhile
   const createWithAi = async () => {
-    await api.createApplicationWithAi(job.source!)
+    await api.createApplicationWithAi(job.source!, withReport)
     queryClient.invalidateQueries({ queryKey: ["applications"] })
     navigate("/applications")
   }
@@ -62,6 +82,14 @@ export function NewApplication() {
       <AiAssist hint={t("new.aiHint")} runLabel={t("new.createWithAi")} job={undefined}
         canRun={job.source != null} onRun={createWithAi}>
         {job.input}
+        <label className="flex items-start gap-2 text-sm">
+          <input type="checkbox" className="mt-0.5 size-4 cursor-pointer accent-primary" checked={withReport}
+            onChange={(e) => toggleReport(e.target.checked)} />
+          <span>
+            {t("new.withReport")}
+            <span className="block text-xs text-muted-foreground">{t("new.withReportHint")}</span>
+          </span>
+        </label>
       </AiAssist>
 
       {ai.enabled && <h2 className="pt-2 text-sm font-medium text-muted-foreground">{t("new.manual")}</h2>}

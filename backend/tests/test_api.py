@@ -158,6 +158,17 @@ def test_ai_creates_application_in_background(client):
     assert client.get("/api/jobs").json() == []
 
 
+def test_report_queued_after_fill(client):
+    client.patch("/api/profile", json={"skills": [{"name": "Python", "level": 3}]})
+    app = create_with_ai(client, data={"text": JOB_TEXT, "report": "true"})
+    [job] = client.get("/api/jobs").json()
+    assert job["then_report"] is True
+    run_jobs()
+    data = client.get(f"/api/applications/{app['id']}").json()
+    assert data["report_status"] == "done" and data["report"]["score"] > 0
+    assert [j["kind"] for j in client.get("/api/jobs").json()] == ["application", "report"]
+
+
 def test_ai_reads_link_and_file(client, monkeypatch):
     from app.services.webpage import FetchError
 
@@ -244,7 +255,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("2.0", "20261101.2126")
+    assert (health["version"], health["build"]) == ("2.0", "20261102.1251")
 
     r = client.post("/api/applications/ai", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]

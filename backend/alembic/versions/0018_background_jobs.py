@@ -22,6 +22,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("app_user.id", ondelete="CASCADE"), nullable=False),
         sa.Column("kind", sa.String(20), nullable=False),
+        sa.Column("application_id", sa.Integer(), sa.ForeignKey("application.id", ondelete="CASCADE"), nullable=True),
         sa.Column("status", sa.String(20), nullable=False),
         sa.Column("new_application", sa.Boolean(), server_default=sa.false(), nullable=False),
         sa.Column("source_text", sa.Text(), nullable=True),

@@ -29,7 +29,7 @@ function JobRow({ job, onOpen }: { job: Job; onOpen: () => void }) {
     cancel.mutate(job)
   }
   return (
-    <li className="flex items-start gap-2.5 px-3 py-2.5">
+    <li className="flex items-start gap-3 px-4 py-3">
       <span className="pt-0.5"><JobIcon job={job} /></span>
       <Link to={jobLink(job)} onClick={onOpen} className="min-w-0 flex-1 hover:underline">
         <span className="block truncate text-sm">{jobTitle(job)}</span>
@@ -54,7 +54,7 @@ function UpdateRow() {
   const cancel = useCancelUpdate()
   if (!update.running) return null
   return (
-    <li className="flex items-start gap-2.5 px-3 py-2.5">
+    <li className="flex items-start gap-3 px-4 py-3">
       <span className="pt-0.5"><Download className="size-4 shrink-0" /></span>
       <div className="min-w-0 flex-1">
         <span className="block text-sm">{t("update.title")}</span>
@@ -119,8 +119,8 @@ export function JobsMenu() {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border bg-background shadow-lg">
-          <div className="flex items-center justify-between border-b px-3 py-2">
+        <div className="absolute right-0 z-50 mt-2 w-[28rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border bg-background shadow-xl">
+          <div className="flex items-center justify-between border-b px-4 py-3">
             <span className="text-sm font-medium">{t("jobs.title")}</span>
             {finished.length > 0 && (
               <button type="button" className="text-xs text-muted-foreground hover:text-foreground"
@@ -130,9 +130,9 @@ export function JobsMenu() {
             )}
           </div>
           {jobs.length === 0 && !updating ? (
-            <p className="px-3 py-6 text-center text-sm text-muted-foreground">{t("jobs.empty")}</p>
+            <p className="px-4 py-10 text-center text-sm text-muted-foreground">{t("jobs.empty")}</p>
           ) : (
-            <ul className="max-h-96 divide-y overflow-y-auto">
+            <ul className="max-h-[min(36rem,calc(100vh-8rem))] divide-y overflow-y-auto">
               <UpdateRow />
               {[...active, ...finished].map((job) => <JobRow key={job.id} job={job} onOpen={() => setOpen(false)} />)}
             </ul>
