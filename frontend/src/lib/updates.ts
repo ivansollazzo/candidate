@@ -31,7 +31,6 @@ export function useUpdates() {
     queryKey: ["updates"],
     queryFn: api.getUpdates,
     enabled: me?.role === "admin",
-    // Follow a running check quickly, otherwise pick up the periodic checks of the updater
     // Follow a running check or update quickly, and the AI jobs that hold an update back
     refetchInterval: (query) => (["checking", "updating"].includes(query.state.data?.status ?? "") ? 2_000
       : query.state.data?.active_jobs ? 5_000 : 300_000),
@@ -57,20 +56,9 @@ export function useInstallUpdate() {
   })
 }
 
-export function useCancelUpdate() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: api.cancelUpdate,
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["update-status"] })
-      queryClient.invalidateQueries({ queryKey: ["updates"] })
-    },
-  })
-}
-
 /**
- * Whether an update is running, for every signed-in user. The app stays usable while the new
- * version is downloaded and built; when the services are replaced requests fail for a moment
+ * Whether an update is running, for every signed-in user. The app stays usable while the database is
+ * saved and the new version downloaded; when the services are replaced requests fail for a moment
  * (`blocking`), and once the new build answers the page reloads.
  */
 export function useUpdateProgress() {
@@ -101,13 +89,12 @@ export function useUpdateProgress() {
     }
   }, [data, started, queryClient])
 
-  // While the backend restarts the status can't be read: the build is done by then
+  // While the backend restarts the status can't be read: the download is done by then
   const restarting = started != null && status.isError
-  const step = restarting ? "restart" as const : data?.step ?? "fetch"
+  const step = restarting ? "restart" as const : data?.step ?? "backup"
   return {
     running: started != null,
-    blocking: restarting || (started != null && step === "restart"),
-    cancelable: !restarting && data?.status === "updating" && (step === "fetch" || step === "build"),
+    blocking: restarting || (started != null && (step === "restart" || step === "verify")),
     step,
     progress: restarting ? 96 : data?.status === "updating" ? data.progress : 0,
   }

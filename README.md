@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 2.0 (build 20261102.1325), by Ivan Sollazzo.
+Version 2.0 (build 20261102.1427), by Ivan Sollazzo.
 
 ## Features
 
@@ -42,10 +42,10 @@ Version 2.0 (build 20261102.1325), by Ivan Sollazzo.
   regenerate, skills missing most often and applications with no news for two weeks.
 - **Multi-user**: sign-in, admin and user roles, password recovery keys (no email needed), configurable password and
   lockout policy.
-- **Updates from the app**: pick a branch of the repository and install its version when it is newer than the
-  installed one. The app stays usable while the new version is downloaded and built, and the update can be cancelled
-  until the services are replaced. An update can be installed only when no AI operation is queued or running, and
-  none starts until it is over.
+- **Updates from the app**: follow the stable or beta channel, or a branch, and install a newer version with one
+  click. Ready-made images are downloaded from GitHub, the database is saved first, and if the new version doesn't
+  start everything goes back as it was. An update can be installed only when no AI operation is queued or running,
+  and none starts until it is over.
 - **Italian and English** interface, light and dark theme.
 
 ## Requirements
@@ -59,11 +59,12 @@ Nothing else needs to be installed on the host.
 ## Installation
 
 ```bash
-git clone <repository-url> candidate
+git clone https://github.com/ivansollazzo/candidate.git
 cd candidate
-docker compose up --build
+docker compose up -d
 ```
 
+Docker Compose downloads the images published on GitHub Container Registry, so nothing is built on your machine.
 Then open http://localhost:5173.
 
 On first start:
@@ -88,48 +89,61 @@ holds the update status.
 
 ### Updating
 
-Settings › Updates (admin only) lists the branches of the repository with the version each one contains. There you
-select the branch to update from (at first, the one the folder was cloned from) and how often to check it (every hour,
-6 or 12 hours, daily, weekly or only on request). When the selected branch has a newer version, a dot appears on the
-settings icon and the version can be installed. A version is installed only if it is newer than the installed one, so
-the database is never taken back to an older schema: selecting a branch with an older version simply waits until it
-gets a newer one.
+Every push to the repository builds the images of all services for amd64 and arm64 with GitHub Actions
+(`.github/workflows/images.yml`) and publishes them on GitHub Container Registry, tagged with the commit
+(`sha-<commit>`), the branch and, for release tags, the tag plus `latest` (releases such as `v2.1`) or `beta` (all
+tags, pre-releases such as `v2.1-beta.1` included).
 
-Installing a version is handled by the `updater` service: it checks out the branch, rebuilds every other service
-(backend, frontend, llm, database) with the new `docker-compose.yml` while the current version keeps running, replaces
-them and removes the old images. While it downloads and builds, a bar under the header shows its progress and the
-app stays usable; only while the services are replaced the app shows an "Updating" screen, and it reloads by itself
-when the new version is up. If the build fails or the update is cancelled, the previous version stays in use.
+Settings › Updates (admin only) shows the installed version and lets you choose where updates come from:
 
-If GitHub can't be reached, a check gives up after two minutes instead of waiting forever: the tab keeps showing the
-branches of the last successful check with an error message, and the updater tries again after 15 minutes (or at the
-next interval, if shorter) until the repository answers. That error is shown apart from the result of the last
-install, so a notice such as "run `docker compose up --build -d`" stays visible. Git lock files left over by a fetch
-that was killed halfway (for example when the container stopped during it) are removed after 10 minutes, so they
-can't block the following checks.
+- **Stable**: the newest release (the default).
+- **Beta**: the newest release or pre-release.
+- **A branch**: its latest commit, for testing work in progress.
 
-This needs a folder created with `git clone`. The updater manages that folder: it always moves it to the branch on
-GitHub, so you never have to pull or commit there. If tracked files were changed locally, they are set aside with
-`git stash` (see `git stash list`) instead of blocking the update; untracked files such as `.env` and
-`docker-compose.override.yml` are never touched, so that is where your own settings go (see
-[Your own changes](#your-own-changes-docker-composeoverrideyml)). Develop in a separate copy. The updater can't
-replace its own container: only when an update changes `updater/Dockerfile` or the `updater` service in
-`docker-compose.yml`, the app asks you to run `docker compose up --build -d` once. The updater script itself
-(`updater/updater.sh`) is run from the project folder, so a new version of it takes over right after the install,
-with no manual step.
+When the chosen channel or branch has a newer version and its images are published, a dot appears on the settings
+icon and the version can be installed. A version is installed only if it is newer than the installed one, so the
+database is never taken back to an older schema. Right after a push the images take a few minutes to build: until
+they are published, the new version is shown as "being prepared". You also choose how often to check (every hour, 6
+or 12 hours, daily, weekly or only on request).
 
-Docker sets a container's DNS servers when it starts. If the server's change later (a new DHCP lease, a VPN), the
-updater can no longer resolve the repository's host name. When a check fails that way, the updater restarts its own
-container (at most once every 15 minutes) and checks again.
+Installing is handled by the `updater` service:
 
-You can always update by hand:
+1. It saves a dump of the database to the `updates` volume (`database-before-update.sql`).
+2. It writes the `docker-compose.yml` of the new version and `CANDIDATE_TAG=sha-<commit>` in `.env` (only that line
+   changes), then downloads the images. The app stays usable, with a progress bar under the header.
+3. It recreates the services. The app shows an "Updating" screen and reloads by itself when the new version is up.
+4. It waits for the backend to answer with the new build, database migrations included. If it doesn't within five
+   minutes, it puts back the previous `docker-compose.yml`, `.env` and database and starts the previous version again;
+   the Updates tab shows the backend log.
+5. It removes the images of the previous version and, when its own image changed, replaces its own container.
+
+An update can't be installed while AI operations are queued or running, and none starts until it is over.
+
+If GitHub can't be reached, a check gives up after a minute: the tab keeps showing the versions of the last
+successful check with an error message, and the updater tries again after 15 minutes (or at the next interval, if
+shorter). Docker sets a container's DNS servers when it starts: if the server's change later (a new DHCP lease, a VPN),
+the updater can no longer resolve GitHub, so when a check fails that way it restarts its own container (at most once
+every 15 minutes).
+
+The updater needs the Docker socket, which gives it full control of Docker on the host, like the `llm` service.
+
+You can always update by hand, choosing the version in `.env` (`CANDIDATE_TAG=latest`, `beta`, a branch name or
+`sha-<commit>`):
 
 ```bash
-git pull
-docker compose up --build -d
+docker compose pull
+docker compose up -d
 ```
 
 Database migrations run automatically when the backend starts.
+
+### Building from source and forks
+
+`docker compose up --build` builds the images from the folder instead of downloading them, and so does `docker compose
+up` when no image is published for `CANDIDATE_TAG`. A fork publishes its own images with the same workflow: set
+`CANDIDATE_REPOSITORY=<owner>/<repository>` (lowercase) in `.env` to use them and to update from the fork. On GitHub,
+make the packages public (package settings › Change visibility) so that installations can download them without
+signing in.
 
 ## Configuration
 
@@ -142,17 +156,18 @@ Set them in a `.env` file next to `docker-compose.yml` (or in the shell):
 
 | Variable | Default | Description |
 |---|---|---|
+| `CANDIDATE_TAG` | `latest` | Version of the images: `latest`, `beta`, a branch name or `sha-<commit>`. Written by the updater. |
+| `CANDIDATE_REPOSITORY` | `ivansollazzo/candidate` | GitHub repository of the images and of the updates, for a fork. |
 | `LLM_MODEL` | `qwen3:4b` | Ollama model to use. `qwen3:1.7b` is about twice as fast but less accurate. |
 | `OLLAMA_PORT` | *(unset)* | Publishes Ollama on `127.0.0.1:<port>`, for running the backend outside Docker. |
 
-Example: `LLM_MODEL=qwen3:1.7b docker compose up --build`
+Example: `LLM_MODEL=qwen3:1.7b docker compose up -d`
 
 ### Your own changes: docker-compose.override.yml
 
-Don't edit `docker-compose.yml`: it belongs to the repository and every update replaces it with the version of the
-branch (your edits are kept in a `git stash`, but no longer applied). Put your changes in a
+Don't edit `docker-compose.yml`: every update replaces it with the one of the new version. Put your changes in a
 `docker-compose.override.yml` next to it instead: Docker Compose merges it automatically on every `docker compose`
-command, and Git and the updater never touch it.
+command, and the updater never touches it.
 
 Lists such as `ports` and `volumes` are added to the ones in `docker-compose.yml`; to replace them, tag them with
 `!override`. For example, to keep the data in folders of your choice (bind mounts) instead of Docker volumes:
@@ -262,7 +277,8 @@ cd backend && pytest
 backend/     FastAPI app (app/api, app/services), SQLModel models, Alembic migrations, tests
 frontend/    React + TypeScript app (src/pages, src/components, src/lib)
 llm/         Service that detects the hardware and manages the Ollama container
-updater/     Service that installs new versions from the Git repository
+updater/     Service that installs new versions from the images on GitHub Container Registry
+.github/     Workflow that builds and publishes the images
 ```
 
 ## Built with

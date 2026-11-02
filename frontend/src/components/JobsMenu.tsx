@@ -2,13 +2,11 @@ import { CircleAlert, CircleCheck, Clock, Download, ListChecks, Loader2, X } fro
 import { useEffect, useRef, useState } from "react"
 import { Link } from "react-router"
 
-import { ErrorText } from "@/components/ErrorText"
 import { Button } from "@/components/ui/button"
 import { isWorking, type Job } from "@/lib/api"
-import { useCurrentUser } from "@/lib/auth"
 import { useT } from "@/lib/i18n"
 import { jobLink, jobState, jobTitle, needsAttention, useJobActions, useJobs } from "@/lib/jobs"
-import { useCancelUpdate, useUpdateProgress } from "@/lib/updates"
+import { useUpdateProgress } from "@/lib/updates"
 import { cn } from "@/lib/utils"
 
 function JobIcon({ job }: { job: Job }) {
@@ -49,9 +47,7 @@ function JobRow({ job, onOpen }: { job: Job; onOpen: () => void }) {
 
 function UpdateRow() {
   const t = useT()
-  const me = useCurrentUser()
   const update = useUpdateProgress()
-  const cancel = useCancelUpdate()
   if (!update.running) return null
   return (
     <li className="flex items-start gap-3 px-4 py-3">
@@ -61,21 +57,12 @@ function UpdateRow() {
         <span className="block text-xs text-muted-foreground">
           {t(`update.step.${update.step}`)} {update.progress}%
         </span>
-        <ErrorText className="text-xs" error={cancel.error} />
       </div>
-      {me?.role === "admin" && (
-        <Button variant="ghost" size="icon" className="-my-1 size-7 shrink-0"
-          disabled={!update.cancelable || cancel.isPending} aria-label={t("jobs.cancel")}
-          title={update.cancelable ? t("jobs.cancel") : t("update.notCancelable")}
-          onClick={() => { if (confirm(t("update.confirmCancel"))) cancel.mutate() }}>
-          <X />
-        </Button>
-      )}
     </li>
   )
 }
 
-/** Header button with the background operations: AI jobs and the update, each with its X. */
+/** Header button with the background operations: AI jobs, each with its X, and the update. */
 export function JobsMenu() {
   const t = useT()
   const [open, setOpen] = useState(false)

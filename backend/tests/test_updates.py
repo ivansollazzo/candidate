@@ -14,9 +14,14 @@ def updates_dir(tmp_path, monkeypatch):
 
 
 def write_state(folder, **state):
-    base = {"status": "idle", "step": "", "branch": "main", "checked_at": "2026-10-19T12:00:00Z",
-            "branches": [], "last": None}
+    base = {"status": "idle", "step": "", "checked_at": "2026-10-19T12:00:00Z", "sources": [], "last": None}
     (folder / "state.json").write_text(json.dumps({**base, **state}))
+
+
+def source(name, kind="branch", version="9.0", build="20991231.0000", published=True):
+    ref = f"refs/heads/{name}" if kind == "branch" else f"refs/tags/{name}"
+    return {"name": name, "kind": kind, "ref": ref, "commit": "abc1234def", "version": version, "build": build,
+            "published": published}
 
 
 def test_release_order():
@@ -32,37 +37,57 @@ def test_unavailable_without_updater(client, updates_dir):
     assert client.post("/api/updates/check").status_code == 409
 
 
-def test_branches_and_install(client, updates_dir):
-    write_state(updates_dir, branches=[
-        {"name": "main", "version": "9.0", "build": "20991231.0000"},
-        {"name": "old", "version": __version__, "build": __build__},
-        {"name": "empty", "version": "", "build": ""},
+def test_channels_from_tags(client, updates_dir):
+    write_state(updates_dir, sources=[
+        source("v9.0", "tag", "9.0", "1"),
+        source("v9.1-beta.1", "tag", "9.1", "1"),
+        # Newest tag, but its images are not published yet: not part of a channel
+        source("v9.2-beta.1", "tag", "9.2", "1", published=False),
+        source("main", version="9.2", build="2"),
     ])
     data = client.get("/api/updates").json()
-    assert [b["newer"] for b in data["branches"]] == [True, False, False]
-    assert data["update_available"] is True
+    assert [(s["name"], s["kind"], s["tag"]) for s in data["sources"]] == [
+        ("@stable", "channel", "v9.0"), ("@beta", "channel", "v9.1-beta.1"), ("main", "branch", None)]
+    # Nothing picked yet: the stable channel
+    assert (data["selected_source"], data["update_available"]) == ("@stable", True)
+    assert client.post("/api/updates/install").status_code == 202
+    assert json.loads((updates_dir / "request.json").read_text()) == {"action": "install", "ref": "refs/tags/v9.0"}
+
+
+def test_sources_and_install(client, updates_dir):
+    write_state(updates_dir, sources=[
+        source("main"),
+        source("old", version=__version__, build=__build__),
+        source("building", published=False),
+        source("empty", version="", build=""),
+    ])
+    data = client.get("/api/updates").json()
+    assert [(s["newer"], s["published"]) for s in data["sources"]] == [(True, True), (False, True), (True, False),
+                                                                        (False, True)]
+    # No release tag: the stable channel doesn't exist yet
+    assert (data["selected_source"], data["update_available"]) == ("@stable", False)
     assert client.get("/api/updates/status").json()["status"] == "idle"
 
-    # A selected branch without a newer release, or a missing one: nothing to install
-    for name, code in (("old", 409), ("nope", 404)):
-        settings = client.patch("/api/settings", json={"update_branch": name}).json()
-        assert settings["update_branch"] == name
+    # Not newer, images not published yet, missing: nothing to install
+    for name, code in (("old", 409), ("building", 409), ("nope", 404), ("@stable", 404)):
+        settings = client.patch("/api/settings", json={"update_source": name}).json()
+        assert settings["update_source"] == name
         data = client.get("/api/updates").json()
-        assert (data["selected_branch"], data["update_available"]) == (name, False)
+        assert (data["selected_source"], data["update_available"]) == (name, False)
         assert client.post("/api/updates/install").status_code == code
     assert not (updates_dir / "request.json").exists()
 
-    client.patch("/api/settings", json={"update_branch": "old"})
-    # Back to the checked-out branch
-    assert client.patch("/api/settings", json={"update_branch": ""}).json()["update_branch"] is None
-    assert client.get("/api/updates").json()["selected_branch"] == "main"
+    # Empty: back to the stable channel
+    assert client.patch("/api/settings", json={"update_source": ""}).json()["update_source"] is None
+    client.patch("/api/settings", json={"update_source": "main"})
+    assert client.get("/api/updates").json()["update_available"] is True
     assert client.post("/api/updates/install").status_code == 202
-    assert json.loads((updates_dir / "request.json").read_text()) == {"action": "install", "branch": "main"}
+    assert json.loads((updates_dir / "request.json").read_text()) == {"action": "install", "ref": "refs/heads/main"}
 
-    write_state(updates_dir, status="updating", step="build", progress=42)
+    write_state(updates_dir, status="updating", step="download", progress=42)
     assert client.post("/api/updates/check").status_code == 409
     status = client.get("/api/updates/status").json()
-    assert (status["step"], status["progress"]) == ("build", 42)
+    assert (status["step"], status["progress"]) == ("download", 42)
 
 
 def test_check_request(client, updates_dir):
@@ -84,7 +109,8 @@ def test_admin_only(client, updates_dir):
 
 
 def test_pending_request_reads_as_running(client, updates_dir):
-    write_state(updates_dir, branches=[{"name": "main", "version": "9.0", "build": "1"}])
+    write_state(updates_dir, sources=[source("main")])
+    client.patch("/api/settings", json={"update_source": "main"})
     assert client.post("/api/updates/install").status_code == 202
     # The updater hasn't picked the request up yet
     assert client.get("/api/updates/status").json()["status"] == "updating"
@@ -100,17 +126,18 @@ def test_check_interval(client, updates_dir):
 
 
 def test_check_error_kept_apart_from_install_result(client, updates_dir):
-    last = {"result": "ok", "restart_required": True, "finished_at": "2026-10-24T10:00:00Z"}
+    # A result of the updater of version 2.0 has more fields
+    last = {"result": "failed", "error": "start", "restart_required": True, "finished_at": "2026-10-24T10:00:00Z"}
     write_state(updates_dir, last=last, check_error={"detail": "Could not resolve host", "failed_at": "2026-10-24T11:00:00Z"})
     data = client.get("/api/updates").json()
-    assert data["last"]["restart_required"] is True
+    assert data["last"] == {"result": "failed", "error": "start", "detail": "", "finished_at": "2026-10-24T10:00:00Z"}
     assert data["check_error"]["detail"] == "Could not resolve host"
 
 
 def test_install_needs_no_ai_jobs(client, updates_dir):
     from app.services import updates
 
-    write_state(updates_dir, branches=[{"name": "main", "version": "9.0", "build": "1"}])
+    write_state(updates_dir, sources=[source("v9.0", "tag")])
     r = client.post("/api/applications/ai", data={"text": "Cerchiamo un Backend Developer Python a Milano."})
     assert r.status_code == 201
     assert client.get("/api/updates").json()["active_jobs"] == 1
@@ -124,14 +151,3 @@ def test_install_needs_no_ai_jobs(client, updates_dir):
     assert client.post("/api/updates/install").status_code == 202
     # No job starts until the update is over
     assert updates.installing() is True
-
-
-def test_cancel_running_install(client, updates_dir):
-    write_state(updates_dir, status="updating", step="build", progress=40)
-    assert client.post("/api/updates/cancel").status_code == 204
-    assert json.loads((updates_dir / "request.json").read_text()) == {"action": "cancel"}
-    # While the services are being replaced it is too late
-    write_state(updates_dir, status="updating", step="restart", progress=90)
-    assert client.post("/api/updates/cancel").status_code == 409
-    write_state(updates_dir)
-    assert client.post("/api/updates/cancel").status_code == 409

@@ -211,27 +211,31 @@ export interface PasswordPolicy {
 /** Progress of the updater service, see updater/updater.sh */
 export interface UpdateStatus {
   status: "unavailable" | "idle" | "checking" | "updating"
-  /** restart: the services are being replaced, the update can no longer be cancelled */
-  step: "fetch" | "build" | "restart" | "cleanup" | null
+  /** restart and verify: the services are being replaced by the new version */
+  step: "backup" | "download" | "restart" | "verify" | null
   /** estimated completion of the running update, 0-100 */
   progress: number
   version: string
   build: string
 }
 
-interface BranchRelease {
+/** A release channel ("@stable", "@beta") or a branch of the repository */
+interface UpdateSource {
   name: string
+  kind: "channel" | "branch"
+  /** release tag of a channel */
+  tag: string | null
   version: string
   build: string
+  /** its images are published: only then it can be installed */
+  published: boolean
   newer: boolean
 }
 
 interface UpdateResult {
-  result: "ok" | "failed" | "canceled"
-  error: "" | "fetch" | "branch" | "checkout" | "build"
+  result: "ok" | "failed"
+  error: "" | "source" | "image" | "backup" | "download" | "start"
   detail: string
-  restart_required: boolean
-  stashed: boolean
   finished_at: string
 }
 
@@ -241,10 +245,10 @@ interface CheckError {
 }
 
 export interface Updates extends UpdateStatus {
-  /** The branch the admin picked; until then, the checked-out one */
-  selected_branch: string | null
+  /** The channel or branch the admin picked; until then "@stable" */
+  selected_source: string
   checked_at: string | null
-  branches: BranchRelease[]
+  sources: UpdateSource[]
   update_available: boolean
   /** AI jobs waiting or running (all users): an update can be installed only when there are none */
   active_jobs: number
@@ -257,8 +261,8 @@ export interface Updates extends UpdateStatus {
 export interface Settings extends PasswordPolicy {
   llm_enabled: boolean
   llm_accelerator: Accelerator | "auto"
-  /** Branch to update from; null = the one checked out */
-  update_branch: string | null
+  /** Channel ("@stable", "@beta") or branch to update from; null = "@stable" */
+  update_source: string | null
   /** Hours between update checks; 0 = only on request */
   update_check_hours: number
   session_hours: number
@@ -462,7 +466,6 @@ export const api = {
   updateStatus: () => request<UpdateStatus>("/api/updates/status"),
   checkUpdates: () => request<void>("/api/updates/check", { method: "POST" }),
   installUpdate: () => request<void>("/api/updates/install", { method: "POST" }),
-  cancelUpdate: () => request<void>("/api/updates/cancel", { method: "POST" }),
 }
 
 export const isWorking = (status: TaskStatus | null | undefined) => status === "pending" || status === "running"

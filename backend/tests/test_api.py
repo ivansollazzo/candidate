@@ -288,7 +288,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("2.0", "20261102.1325")
+    assert (health["version"], health["build"]) == ("2.0", "20261102.1427")
 
     r = client.post("/api/applications/ai", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
