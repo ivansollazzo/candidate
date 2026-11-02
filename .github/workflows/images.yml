@@ -1,8 +1,7 @@
 # Builds the images of every service for each push and publishes them on GHCR as
 # ghcr.io/<owner>/<repository>-<service>, tagged:
 #   sha-<commit>   every commit: the tag the updater installs (see updater/updater.sh)
-#   <branch>       the latest commit of each branch
-#   <tag>          release tags (v2.1, v2.1-beta.1...), plus "latest" for releases without "-" and "beta" for all
+#   <branch>       the latest commit of each branch ("stable" is what a new installation downloads)
 # Each platform is built natively on its own runner (no emulation), then a manifest list joins them under the tags.
 # For an installation to download them, the packages must be public (package settings on GitHub).
 name: Images
@@ -10,7 +9,6 @@ name: Images
 on:
   push:
     branches: ["**"]
-    tags: ["v*"]
 
 permissions:
   contents: read
@@ -96,9 +94,6 @@ jobs:
           tags: |
             type=sha,prefix=sha-,format=short
             type=ref,event=branch
-            type=ref,event=tag
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-') }}
-            type=raw,value=beta,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
           flavor: latest=false
       - working-directory: digests
         run: |

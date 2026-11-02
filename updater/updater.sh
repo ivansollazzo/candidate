@@ -1,13 +1,12 @@
 #!/bin/sh
 # Keeps Candidate up to date with the images that .github/workflows/images.yml publishes on GHCR for every
 # commit (tag sha-<commit>). Talks to the backend through files in /updates:
-#   state.json    written here: status, step and progress of an install, sources with their release,
+#   state.json    written here: status, step and progress of an install, branches with their release,
 #                 result of the last install and error of the last check
-#   request.json  written by the backend: {"action": "check"} or {"action": "install", "ref": "refs/heads/main"}
+#   request.json  written by the backend: {"action": "check"} or {"action": "install", "branch": "stable"}
 #   settings.json written by the backend: {"check_hours": 6}, hours between checks (0 = only on request)
-# The sources are the branches and the release tags (v2.1, v2.1-beta.1...) of the repository: the backend
-# turns the tags into the stable and beta channels. A source can be installed once the images of its commit
-# are published.
+# The admin follows a branch of the repository: its latest commit can be installed once the images of that
+# commit are published.
 # An install dumps the database, writes the docker-compose.yml of that commit and CANDIDATE_TAG in .env,
 # pulls the images and recreates the services, then waits for the backend to answer with the new build:
 # if it doesn't, compose file, .env and database go back and the previous version starts again.
@@ -30,7 +29,7 @@ CHECKED_FILE=/updates/checked_at
 DUMP=/updates/database-before-update.sql
 # Release and image availability of the commits already looked up
 CACHE=/updates/commits
-SOURCES=/updates/sources.tsv
+BRANCHES=/updates/branches.tsv
 
 # A repository that doesn't answer must not block the updater
 NETWORK_TIMEOUT=60
@@ -70,17 +69,17 @@ check_hours() {
   echo "${value:-6}"
 }
 
-sources_json() {
-  [ -s "$SOURCES" ] || return 0
-  while IFS='	' read -r name kind ref commit version build published; do
-    printf '{"name": "%s", "kind": "%s", "ref": "%s", "commit": "%s", "version": "%s", "build": "%s", "published": %s}\n' \
-      "$(json "$name")" "$kind" "$(json "$ref")" "$commit" "$(json "$version")" "$(json "$build")" "$published"
-  done < "$SOURCES" | awk 'NR > 1 { printf ", " } { printf "%s", $0 }'
+branches_json() {
+  [ -s "$BRANCHES" ] || return 0
+  while IFS='	' read -r name commit version build published; do
+    printf '{"name": "%s", "commit": "%s", "version": "%s", "build": "%s", "published": %s}\n' \
+      "$(json "$name")" "$commit" "$(json "$version")" "$(json "$build")" "$published"
+  done < "$BRANCHES" | awk 'NR > 1 { printf ", " } { printf "%s", $0 }'
 }
 
 write_state() {
-  printf '{"status": "%s", "step": "%s", "progress": %s, "checked_at": "%s", "sources": [%s], "last": %s, "check_error": %s}\n' \
-    "$STATUS" "$STEP" "$PROGRESS" "$CHECKED_AT" "$(sources_json)" "${LAST:-null}" "${CHECK_ERROR:-null}" > "$STATE.tmp" \
+  printf '{"status": "%s", "step": "%s", "progress": %s, "checked_at": "%s", "branches": [%s], "last": %s, "check_error": %s}\n' \
+    "$STATUS" "$STEP" "$PROGRESS" "$CHECKED_AT" "$(branches_json)" "${LAST:-null}" "${CHECK_ERROR:-null}" > "$STATE.tmp" \
     && mv "$STATE.tmp" "$STATE"
 }
 
@@ -112,27 +111,23 @@ lookup() { # commit
   printf '%s\t%s\t%s\n' "$version" "$build" "$published" | tee "$CACHE/$1"
 }
 
-# Branches and release tags of the repository with their release. Returns 1 with CHECK_DETAIL on failure
+# Branches of the repository with their release. Returns 1 with CHECK_DETAIL on failure
 check() {
-  if ! refs=$(GIT_TERMINAL_PROMPT=0 timeout "$NETWORK_TIMEOUT" git ls-remote --heads --tags "$GIT_URL" 2>&1); then
+  if ! refs=$(GIT_TERMINAL_PROMPT=0 timeout "$NETWORK_TIMEOUT" git ls-remote --heads "$GIT_URL" 2>&1); then
     CHECK_DETAIL=${refs:-"no answer from the repository within $NETWORK_TIMEOUT seconds"}
     return 1
   fi
-  # "<commit><TAB><ref>"; for annotated tags the commit is on the peeled line (refs/tags/v2.1^{})
-  refs=$(echo "$refs" | awk '{ ref = $2; sub(/\^\{\}$/, "", ref); if (!(ref in commit) || $2 != ref) commit[ref] = $1 }
-    END { for (ref in commit) print commit[ref] "\t" ref }')
-  echo "$refs" | sed -n 's|.*	refs/heads/\(.*\)|\1\tbranch\trefs/heads/\1|p; s|.*	refs/tags/\(v[0-9].*\)|\1\ttag\trefs/tags/\1|p' \
-    | sort > /tmp/wanted
-  : > "$SOURCES.new"
-  while IFS='	' read -r name kind path; do
-    commit=$(echo "$refs" | awk -F '\t' -v p="$path" '$2 == p { print $1 }')
+  # "<commit><TAB>refs/heads/<branch>"
+  echo "$refs" | sed -n 's|^\([0-9a-f]*\)	refs/heads/\(.*\)|\2\t\1|p' | sort > /tmp/heads
+  : > "$BRANCHES.new"
+  while IFS='	' read -r name commit; do
     if ! release=$(lookup "$commit"); then
       CHECK_DETAIL="couldn't read the release of $name from $RAW_URL"
       return 1
     fi
-    printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$kind" "$path" "$commit" "$release" >> "$SOURCES.new"
-  done < /tmp/wanted
-  mv "$SOURCES.new" "$SOURCES"
+    printf '%s\t%s\t%s\n' "$name" "$commit" "$release" >> "$BRANCHES.new"
+  done < /tmp/heads
+  mv "$BRANCHES.new" "$BRANCHES"
 }
 
 # Docker gives a container its DNS servers when it starts: if the host's change later (new DHCP lease,
@@ -145,7 +140,7 @@ restart_self() {
   docker restart "$SELF" >/dev/null
 }
 
-# The error of a failed check is shown until a check succeeds; the sources of the last good one stay
+# The error of a failed check is shown until a check succeeds; the branches of the last good one stay
 run_check() {
   set_step checking ""
   if check; then
@@ -200,12 +195,12 @@ $(cat /tmp/up.log)"
   finish failed start "$detail"
 }
 
-install() { # ref
-  entry=$(awk -F '\t' -v r="$1" '$3 == r' "$SOURCES" 2>/dev/null)
-  [ -n "$entry" ] || { finish failed source "$1"; return; }
-  commit=$(echo "$entry" | cut -f4)
-  build=$(echo "$entry" | cut -f6)
-  [ "$(echo "$entry" | cut -f7)" = true ] || { finish failed image "$1"; return; }
+install() { # branch
+  entry=$(awk -F '\t' -v b="$1" '$1 == b' "$BRANCHES" 2>/dev/null)
+  [ -n "$entry" ] || { finish failed branch "$1"; return; }
+  commit=$(echo "$entry" | cut -f2)
+  build=$(echo "$entry" | cut -f4)
+  [ "$(echo "$entry" | cut -f5)" = true ] || { finish failed image "$1"; return; }
   tag=sha-$(short "$commit")
   log "updating to $1 ($tag)"
 
@@ -280,7 +275,8 @@ replace_self() {
 trap 'exit 0' TERM INT
 
 mkdir -p /updates
-rm -f "$REQUEST"
+# sources.tsv: list of the previous format, with release tags
+rm -f "$REQUEST" /updates/sources.tsv
 if [ -z "$PROJECT" ] || [ -z "$HOST_DIR" ] || [ ! -f "$DIR/docker-compose.yml" ]; then
   log "not started by docker compose with the project folder in /project: updates unavailable"
   STATUS=unavailable
@@ -298,11 +294,11 @@ while :; do
   hours=$(check_hours)
   if [ -f "$REQUEST" ]; then
     action=$(sed -n 's/.*"action": *"\([a-z]*\)".*/\1/p' "$REQUEST")
-    ref=$(sed -n 's/.*"ref": *"\([^"]*\)".*/\1/p' "$REQUEST")
+    branch=$(sed -n 's/.*"branch": *"\([^"]*\)".*/\1/p' "$REQUEST")
     rm -f "$REQUEST"
     case $action in
       check) run_check ;;
-      install) install "$ref" ;;
+      install) install "$branch" ;;
     esac
     last_check=$(date +%s)
   elif [ "$hours" -gt 0 ] && [ "$(date +%s)" -ge $((last_check + $(next_check))) ]; then
