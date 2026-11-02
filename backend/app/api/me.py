@@ -30,6 +30,8 @@ def get_me(user: User = Depends(security.current_user)):
 @router.patch("", response_model=UserRead)
 def update_me(payload: MeUpdate, user: User = Depends(security.current_user), session: Session = Depends(get_session)):
     changes = payload.model_dump(exclude_unset=True, exclude_none=True)
+    if changes.pop("reset_overview", False):
+        changes["overview_layout"] = None
     for field in ("username", "email"):
         if field in changes:
             changes[field] = changes[field].lower()

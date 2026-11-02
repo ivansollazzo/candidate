@@ -13,6 +13,12 @@ from app.services import security
 router = APIRouter(prefix="/api/events", tags=["events"])
 
 
+def _check_times(event: ApplicationEvent) -> None:
+    """An end time needs a start time and comes after it."""
+    if event.ends_at is not None and (event.starts_at is None or event.ends_at <= event.starts_at):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, t("event_end_before_start"))
+
+
 def _get(session: Session, event_id: int, user: User) -> ApplicationEvent:
     event = session.get(ApplicationEvent, event_id)
     if event is None or event.application.user_id != user.id:
@@ -41,6 +47,7 @@ def add_event(payload: EventCreate, user: User = Depends(security.current_user),
               session: Session = Depends(get_session)):
     get_owned(session, payload.application_id, user)
     event = ApplicationEvent(**payload.model_dump())
+    _check_times(event)
     return save(session, event)
 
 
@@ -53,6 +60,7 @@ def update_event(event_id: int, payload: EventUpdate, user: User = Depends(secur
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, t("event_field_required"))
     for field, value in changes.items():
         setattr(event, field, value)
+    _check_times(event)
     return save(session, event)
 
 

@@ -22,8 +22,14 @@ export interface ApplicationSummary {
 export interface ApplicationListItem extends ApplicationSummary {
   /** Date of the latest agenda event, status changes excluded */
   last_event_on: string | null
+  /** Date of the latest event of any kind, status changes included */
+  last_activity_on: string | null
   /** Score of the compatibility report, when one has been generated */
   match_score: number | null
+  /** The report should be regenerated */
+  report_stale: boolean
+  /** Skills the report found missing from the profile, soft skills excluded */
+  missing_skills: string[]
 }
 
 export interface ApplicationEvent {
@@ -33,6 +39,8 @@ export interface ApplicationEvent {
   occurred_on: string
   /** "HH:MM:SS" or null */
   starts_at: string | null
+  /** "HH:MM:SS" or null; only with a start time */
+  ends_at: string | null
   title: string
   details: string | null
   completed: boolean
@@ -45,7 +53,7 @@ export interface AgendaEvent extends ApplicationEvent {
   application_company: string | null
 }
 
-export type EventFields = Pick<ApplicationEvent, "application_id" | "type" | "occurred_on" | "starts_at" | "title" | "details" | "completed">
+export type EventFields = Pick<ApplicationEvent, "application_id" | "type" | "occurred_on" | "starts_at" | "ends_at" | "title" | "details" | "completed">
 
 export interface ReportSkill {
   skill: string
@@ -278,6 +286,10 @@ export interface User {
   application_sort: ApplicationSort
   /** status shown in the applications list */
   application_filter: ApplicationFilter
+  /** new applications filled by the AI also get their compatibility report */
+  report_after_fill: boolean
+  /** widgets of the overview in order; null for the default layout */
+  overview_layout: OverviewWidget[] | null
   /** false until the initial setup is completed */
   onboarded: boolean
   has_avatar: boolean
@@ -296,7 +308,19 @@ interface AuthStatus {
   password_policy: PasswordPolicy
 }
 
-export type MeChanges = Partial<Pick<User, "username" | "email" | "language" | "theme" | "application_sort" | "application_filter" | "onboarded">>
+export type WidgetId = "counts" | "calendar" | "events" | "recent" | "profile" | "weekly" | "top_matches"
+  | "stale_reports" | "missing_skills" | "no_news"
+
+export interface OverviewWidget {
+  id: WidgetId
+  size: "half" | "full"
+}
+
+export type MeChanges = Partial<Pick<User, "username" | "email" | "language" | "theme" | "application_sort"
+  | "application_filter" | "report_after_fill" | "overview_layout" | "onboarded">> & {
+  /** back to the default overview */
+  reset_overview?: boolean
+}
 type NewUser = Pick<User, "username" | "email" | "role" | "language"> & { password: string }
 type UserChanges = Partial<Pick<User, "username" | "email" | "role">> & { password?: string }
 

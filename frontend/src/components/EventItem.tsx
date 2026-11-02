@@ -5,7 +5,7 @@ import { Link } from "react-router"
 import { EventForm } from "@/components/EventForm"
 import { Button } from "@/components/ui/button"
 import type { AgendaEvent, ApplicationEvent } from "@/lib/api"
-import { formatTime, isOverdue, relativeDay, useEventMutations } from "@/lib/events"
+import { isOverdue, timeRange, relativeDay, useEventMutations } from "@/lib/events"
 import { useT } from "@/lib/i18n"
 import { eventLabel, eventTitle } from "@/lib/status"
 import { cn, formatDate } from "@/lib/utils"
@@ -58,7 +58,7 @@ export function EventItem({ event, showApplication, compact }: {
         </p>
         <p className="flex flex-wrap gap-x-1.5 text-xs text-muted-foreground">
           <span className={cn(overdue && "font-medium text-red-600 dark:text-red-400")}>
-            {formatDate(event.occurred_on)}{event.starts_at && `, ${formatTime(event.starts_at)}`}
+            {formatDate(event.occurred_on)}{event.starts_at && `, ${timeRange(event)}`}
           </span>
           {overdue && <span className="font-medium text-red-600 dark:text-red-400">· {t("eventItem.overdue")}</span>}
           {relative && <span className="text-foreground">· {relative}</span>}

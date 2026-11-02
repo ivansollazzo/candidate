@@ -8,20 +8,10 @@ import { BackLink } from "@/components/BackLink"
 import { SaveBar } from "@/components/SaveBar"
 import { useAiStatus } from "@/lib/ai"
 import { api, type Application, type ApplicationChanges } from "@/lib/api"
+import { useCurrentUser, useSavePreference } from "@/lib/auth"
 import { useT } from "@/lib/i18n"
 import { usePageTitle } from "@/lib/title"
 import { today } from "@/lib/utils"
-
-// Whether to also generate the compatibility report, remembered on this browser
-const REPORT_KEY = "candidate.new-with-report"
-
-function readWithReport() {
-  try {
-    return localStorage.getItem(REPORT_KEY) === "true"
-  } catch {
-    return false
-  }
-}
 
 const EMPTY: Partial<Application> = {
   applied_on: today(),
@@ -40,15 +30,9 @@ export function NewApplication() {
   const queryClient = useQueryClient()
   const [draft, setDraft] = useState<Partial<Application>>(EMPTY)
   const job = useJobSource()
-  const [withReport, setWithReport] = useState(readWithReport)
-  const toggleReport = (on: boolean) => {
-    setWithReport(on)
-    try {
-      localStorage.setItem(REPORT_KEY, String(on))
-    } catch {
-      /* storage unavailable: the choice lasts for this page */
-    }
-  }
+  // Whether to also generate the compatibility report: a preference of the user
+  const withReport = useCurrentUser()?.report_after_fill ?? false
+  const savePreference = useSavePreference()
   const ai = useAiStatus()
 
   const value = <K extends keyof Application>(key: K) => draft[key] as Application[K]
@@ -84,7 +68,7 @@ export function NewApplication() {
         {job.input}
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" className="mt-0.5 size-4 cursor-pointer accent-primary" checked={withReport}
-            onChange={(e) => toggleReport(e.target.checked)} />
+            onChange={(e) => savePreference({ report_after_fill: e.target.checked })} />
           <span>
             {t("new.withReport")}
             <span className="block text-xs text-muted-foreground">{t("new.withReportHint")}</span>

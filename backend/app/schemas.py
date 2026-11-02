@@ -236,6 +236,7 @@ class EventCreate(BaseModel):
     type: EventType = EventType.NOTE
     occurred_on: date
     starts_at: time | None = None
+    ends_at: time | None = None
     title: str = Field(min_length=1)
     details: str | None = None
     completed: bool = False
@@ -245,6 +246,7 @@ class EventUpdate(BaseModel):
     type: EventType | None = None
     occurred_on: date | None = None
     starts_at: time | None = None
+    ends_at: time | None = None
     title: str | None = Field(default=None, min_length=1)
     details: str | None = None
     completed: bool | None = None
@@ -258,6 +260,7 @@ class EventRead(BaseModel):
     type: str
     occurred_on: date
     starts_at: time | None
+    ends_at: time | None
     title: str
     details: str | None
     completed: bool
@@ -305,8 +308,14 @@ class ApplicationSummary(BaseModel):
 class ApplicationListItem(ApplicationSummary):
     # Date of the latest agenda event (status changes excluded), for sorting the list
     last_event_on: date | None = None
+    # Date of the latest event of any kind, status changes included
+    last_activity_on: date | None = None
     # Score of the compatibility report, when one has been generated
     match_score: int | None = None
+    # The report should be regenerated
+    report_stale: bool = False
+    # Skills of the posting the report found missing from the profile (soft skills excluded)
+    missing_skills: list[str] = []
 
 
 class AttachmentRead(BaseModel):
@@ -456,6 +465,16 @@ Language = Literal["it", "en"]
 Theme = Literal["light", "dark", "system"]
 ApplicationSort = Literal["applied", "status", "name", "event"]
 ApplicationFilter = Literal["all"] | ApplicationStatus
+# Widgets the overview can show
+WIDGETS = ("counts", "calendar", "events", "recent", "profile", "weekly", "top_matches", "stale_reports",
+           "missing_skills", "no_news")
+
+
+class OverviewWidget(BaseModel):
+    id: Literal[WIDGETS]
+    size: Literal["half", "full"] = "half"
+
+
 # Upper bound so we never hash huge inputs
 Secret = Annotated[str, Field(max_length=256)]
 
@@ -471,6 +490,8 @@ class UserRead(BaseModel):
     theme: str
     application_sort: str
     application_filter: str
+    report_after_fill: bool
+    overview_layout: list[OverviewWidget] | None
     onboarded: bool
     has_avatar: bool
     created_at: datetime
@@ -514,7 +535,18 @@ class MeUpdate(BaseModel):
     theme: Theme | None = None
     application_sort: ApplicationSort | None = None
     application_filter: ApplicationFilter | None = None
+    report_after_fill: bool | None = None
+    # An empty list is a valid layout; reset_overview goes back to the default one
+    overview_layout: Annotated[list[OverviewWidget], Field(max_length=len(WIDGETS))] | None = None
+    reset_overview: bool | None = None
     onboarded: bool | None = None
+
+    @field_validator("overview_layout")
+    @classmethod
+    def _unique_widgets(cls, layout):
+        if layout is not None and len({w.id for w in layout}) != len(layout):
+            raise ValueError("Each widget can appear only once")
+        return layout
 
 
 class PasswordChange(BaseModel):

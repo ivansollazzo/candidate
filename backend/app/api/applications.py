@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
+from sqlalchemy import case
 from sqlmodel import Session, func, select
 
 from app.db import get_session, save
@@ -32,25 +33,32 @@ def get_owned(session: Session, application_id: int, user: User) -> Application:
 @router.get("", response_model=list[ApplicationListItem])
 def list_applications(user: User = Depends(security.current_user), session: Session = Depends(get_session)):
     # Search, status filtering and sorting happen in the frontend
+    is_status = ApplicationEvent.type == EventType.STATUS_CHANGE
     last_event = (
-        select(ApplicationEvent.application_id, func.max(ApplicationEvent.occurred_on).label("last_event_on"))
-        .where(ApplicationEvent.type != EventType.STATUS_CHANGE)
+        select(ApplicationEvent.application_id,
+               func.max(case((is_status, None), else_=ApplicationEvent.occurred_on)).label("last_event_on"),
+               func.max(ApplicationEvent.occurred_on).label("last_activity_on"))
         .group_by(ApplicationEvent.application_id)
         .subquery()
     )
     query = (
-        select(Application, last_event.c.last_event_on)
+        select(Application, last_event.c.last_event_on, last_event.c.last_activity_on)
         .outerjoin(last_event, last_event.c.application_id == Application.id)
         .where(Application.user_id == user.id)
         .order_by(Application.updated_at.desc())
     )
-    return [
-        ApplicationListItem.model_validate(app).model_copy(update={
+    items = []
+    for app, last_on, activity_on in session.exec(query).all():
+        report = app.report if app.report_status == TaskStatus.DONE and app.report else None
+        items.append(ApplicationListItem.model_validate(app).model_copy(update={
             "last_event_on": last_on,
-            "match_score": app.report.get("score") if app.report_status == TaskStatus.DONE and app.report else None,
-        })
-        for app, last_on in session.exec(query).all()
-    ]
+            "last_activity_on": activity_on,
+            "match_score": report.get("score") if report else None,
+            "report_stale": bool(report) and app.report_stale,
+            "missing_skills": [s["skill"] for s in (report or {}).get("skills", [])
+                               if s.get("status") == "missing" and s.get("kind") != "soft"],
+        }))
+    return items
 
 
 @router.post("", response_model=ApplicationRead, status_code=status.HTTP_201_CREATED)

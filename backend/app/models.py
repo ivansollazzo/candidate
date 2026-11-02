@@ -129,6 +129,10 @@ class User(SQLModel, table=True):
                                   sa_column_kwargs={"server_default": "applied"})
     # Status shown in the applications list ("all" or an ApplicationStatus)
     application_filter: str = Field(default="all", sa_type=sa.String(20), sa_column_kwargs={"server_default": "all"})
+    # New applications filled by the AI also get their compatibility report
+    report_after_fill: bool = _bool(False)
+    # Widgets of the overview, in order: [{"id": ..., "size": "half" | "full"}]; null for the default layout
+    overview_layout: list[dict] | None = Field(default=None, sa_column=sa.Column(JSONB, nullable=True))
     # False until the user completes the onboarding wizard
     onboarded: bool = _bool(False)
     avatar_path: str | None = None
@@ -252,6 +256,8 @@ class ApplicationEvent(SQLModel, table=True):
     occurred_on: date
     # Optional start time (e.g. interview at 15:00)
     starts_at: time | None = None
+    # Optional end time, only with a start time
+    ends_at: time | None = None
     title: str
     details: str | None = Field(default=None, sa_type=sa.Text)
     completed: bool = Field(default=False, sa_column_kwargs={"server_default": sa.false()})

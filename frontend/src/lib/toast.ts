@@ -2,23 +2,26 @@ import { useSyncExternalStore } from "react"
 
 export interface Toast {
   id: number
-  text: string
-  tone: "success" | "error"
+  title: string
+  /** Second line, e.g. the application concerned */
+  description?: string
+  tone: "success" | "error" | "warning"
   /** Page the toast links to */
   to?: string
 }
+
+/** How long a toast stays, unless the pointer is on it */
+export const TOAST_MS = 8000
 
 let toasts: Toast[] = []
 let nextId = 1
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((listener) => listener())
 
-/** Short notice in the corner of the screen, gone after a few seconds. */
+/** Short notice in the corner of the screen; the Toaster removes it when its time is up. */
 export function toast(item: Omit<Toast, "id">) {
-  const id = nextId++
-  toasts = [...toasts, { ...item, id }]
+  toasts = [...toasts, { ...item, id: nextId++ }]
   emit()
-  setTimeout(() => dismissToast(id), 8000)
 }
 
 export function dismissToast(id: number) {

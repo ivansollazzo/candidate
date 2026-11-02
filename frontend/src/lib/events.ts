@@ -10,6 +10,20 @@ export const SCHEDULABLE_TYPES = ["interview", "call", "email", "follow_up", "no
 /** "15:30:00" → "15:30" */
 export const formatTime = (value: string | null) => value?.slice(0, 5) ?? null
 
+/** "15:00" or "15:00–16:00"; null without a start time */
+export function timeRange(event: Pick<ApplicationEvent, "starts_at" | "ends_at">) {
+  if (!event.starts_at) return null
+  return event.ends_at ? `${formatTime(event.starts_at)}–${formatTime(event.ends_at)}` : formatTime(event.starts_at)
+}
+
+/** "HH:MM" plus some minutes, or null past midnight (an event ends on its own day) */
+export function addMinutes(time: string, minutes: number) {
+  const [h, m] = time.split(":").map(Number)
+  const total = h * 60 + m + minutes
+  if (total >= 24 * 60) return null
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`
+}
+
 export const isOverdue = (event: Pick<ApplicationEvent, "completed" | "occurred_on">) =>
   !event.completed && event.occurred_on < today()
 

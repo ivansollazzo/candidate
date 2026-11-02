@@ -167,6 +167,39 @@ def test_report_queued_after_fill(client):
     data = client.get(f"/api/applications/{app['id']}").json()
     assert data["report_status"] == "done" and data["report"]["score"] > 0
     assert [j["kind"] for j in client.get("/api/jobs").json()] == ["application", "report"]
+    item = next(a for a in client.get("/api/applications").json() if a["id"] == app["id"])
+    assert item["match_score"] == data["report"]["score"] and item["report_stale"] is False
+    assert item["last_event_on"] is None and item["last_activity_on"] is None
+    client.patch(f"/api/applications/{app['id']}", json={"status": "interview"})
+    item = next(a for a in client.get("/api/applications").json() if a["id"] == app["id"])
+    assert item["last_event_on"] is None and item["last_activity_on"] is not None
+    assert item["missing_skills"] == [s["skill"] for s in data["report"]["skills"]
+                                      if s["status"] == "missing" and s["kind"] != "soft"]
+
+
+def test_event_end_time(client):
+    app_id = client.post("/api/applications", json={"title": "Dev"}).json()["id"]
+    base = {"application_id": app_id, "type": "interview", "occurred_on": "2026-11-10", "title": "Colloquio"}
+    assert client.post("/api/events", json={**base, "ends_at": "16:00"}).status_code == 422
+    assert client.post("/api/events", json={**base, "starts_at": "15:00", "ends_at": "14:00"}).status_code == 422
+    event = client.post("/api/events", json={**base, "starts_at": "15:00", "ends_at": "16:30"}).json()
+    assert (event["starts_at"], event["ends_at"]) == ("15:00:00", "16:30:00")
+    assert client.patch(f"/api/events/{event['id']}", json={"starts_at": None}).status_code == 422
+    event = client.patch(f"/api/events/{event['id']}", json={"starts_at": None, "ends_at": None}).json()
+    assert event["ends_at"] is None
+    assert client.get("/api/events").json()[0]["ends_at"] is None
+
+
+def test_user_preferences_report_and_overview(client):
+    me = client.get("/api/me").json()
+    assert me["report_after_fill"] is False and me["overview_layout"] is None
+    assert client.patch("/api/me", json={"report_after_fill": True}).json()["report_after_fill"] is True
+    layout = [{"id": "events", "size": "full"}, {"id": "top_matches", "size": "half"}]
+    assert client.patch("/api/me", json={"overview_layout": layout}).json()["overview_layout"] == layout
+    assert client.patch("/api/me", json={"overview_layout": [{"id": "weather"}]}).status_code == 422
+    assert client.patch("/api/me", json={"overview_layout": [{"id": "events"}, {"id": "events"}]}).status_code == 422
+    assert client.patch("/api/me", json={"overview_layout": []}).json()["overview_layout"] == []
+    assert client.patch("/api/me", json={"reset_overview": True}).json()["overview_layout"] is None
 
 
 def test_ai_reads_link_and_file(client, monkeypatch):
@@ -255,7 +288,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("2.0", "20261102.1251")
+    assert (health["version"], health["build"]) == ("2.0", "20261102.1315")
 
     r = client.post("/api/applications/ai", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]

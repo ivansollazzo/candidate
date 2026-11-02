@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 2.0 (build 20261102.1251), by Ivan Sollazzo.
+Version 2.0 (build 20261102.1315), by Ivan Sollazzo.
 
 ## Features
 
@@ -21,7 +21,8 @@ Version 2.0 (build 20261102.1251), by Ivan Sollazzo.
 - **AI fill (optional)**: paste a job posting, give a link or upload a PDF, DOCX or TXT file: the application is saved
   right away and the model fills in its fields in the background. Filling an application or the profile again fills
   the empty fields and proposes the different values for the ones you already filled, applied only if you confirm.
-  A checkbox on the new application page also queues the match report once the fields are filled.
+  A checkbox on the new application page, saved per user, also generates the match report once the fields are
+  filled.
 - **Background operations**: AI fills and match reports are queued and run one at a time as soon as the model is
   free, so a slow machine works through them while you do something else, also after leaving the page or a restart.
   The operations button in the header lists them with their place in the queue: each one can be cancelled (a new
@@ -34,8 +35,11 @@ Version 2.0 (build 20261102.1251), by Ivan Sollazzo.
   any job, not only tech. Soft skills are listed apart and don't count in the score. When the skills of the profile or
   of the application change, the report suggests regenerating it. Reports exist only with AI on: turning AI off
   deletes them.
-- **Agenda**: interviews, calls, emails, follow-ups and notes for each application, with overdue and upcoming events
-  at a glance.
+- **Agenda**: interviews, calls, emails, follow-ups and notes for each application, with an optional start and end
+  time, and overdue and upcoming events at a glance.
+- **Overview**: widgets to move, resize, add and remove with the brush button, saved per user: counters by status,
+  calendar, upcoming events, recent applications, profile, applications per week, best matches, reports to
+  regenerate, skills missing most often and applications with no news for two weeks.
 - **Multi-user**: sign-in, admin and user roles, password recovery keys (no email needed), configurable password and
   lockout policy.
 - **Updates from the app**: pick a branch of the repository and install its version when it is newer than the

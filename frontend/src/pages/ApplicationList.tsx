@@ -6,8 +6,8 @@ import { Link, useSearchParams } from "react-router"
 import { ErrorText } from "@/components/ErrorText"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input, Select } from "@/components/ui/input"
-import { api, type ApplicationBulk, type ApplicationListItem, type ApplicationSort, isWorking, type Job, type MeChanges, type User } from "@/lib/api"
-import { useCurrentUser, useUpdateMe } from "@/lib/auth"
+import { api, type ApplicationBulk, type ApplicationListItem, type ApplicationSort, isWorking, type Job } from "@/lib/api"
+import { useCurrentUser, useSavePreference } from "@/lib/auth"
 import { useT } from "@/lib/i18n"
 import { findJob, jobState, useJobs } from "@/lib/jobs"
 import { STATUSES, statusInfo, statusLabel, type ApplicationStatus } from "@/lib/status"
@@ -121,13 +121,9 @@ export function ApplicationList() {
   usePageTitle(t("nav.applications"))
   const queryClient = useQueryClient()
   const [search, setSearch] = useState("")
-  // Sort order and status filter are saved on the user, shown at once and stored in the background
+  // Sort order and status filter are saved on the user
   const me = useCurrentUser()
-  const updateMe = useUpdateMe()
-  const savePreference = (changes: MeChanges) => {
-    queryClient.setQueryData<User>(["me"], (old) => old && { ...old, ...changes })
-    updateMe.mutate(changes)
-  }
+  const savePreference = useSavePreference()
   const sort = me?.application_sort ?? "applied"
   const saved = STATUSES.find((s) => s.value === me?.application_filter)?.value ?? null
   const setFilter = (status: ApplicationStatus | null) => savePreference({ application_filter: status ?? "all" })

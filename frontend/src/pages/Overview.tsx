@@ -1,49 +1,102 @@
+import {
+  closestCenter, DndContext, type DragEndEvent, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors,
+} from "@dnd-kit/core"
+import { arrayMove, rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowRight } from "lucide-react"
-import { type ReactNode, useState } from "react"
-import { Link } from "react-router"
+import { Check, GripVertical, Maximize2, Minimize2, Paintbrush, Plus, RotateCcw, X } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
 import { ErrorText } from "@/components/ErrorText"
-import { EventItem } from "@/components/EventItem"
-import { MiniCalendar } from "@/components/MiniCalendar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { api, type ApplicationSummary } from "@/lib/api"
+import { DEFAULT_LAYOUT, type OverviewData, WIDGETS } from "@/components/OverviewWidgets"
+import { Button } from "@/components/ui/button"
+import { useAiStatus } from "@/lib/ai"
+import { api, type OverviewWidget, type WidgetId } from "@/lib/api"
+import { useCurrentUser, useSavePreference } from "@/lib/auth"
 import { t, useT } from "@/lib/i18n"
-import { STATUSES, statusInfo, statusLabel } from "@/lib/status"
 import { usePageTitle } from "@/lib/title"
-import { cn, formatDate, today } from "@/lib/utils"
+import { cn, today } from "@/lib/utils"
 
-function Tile({ to, label, count, color }: { to: string; label: string; count: number; color?: string }) {
+const toolButton = "flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+
+/** A widget in the grid; while editing it can be dragged by its handle, resized and removed. */
+function WidgetSlot({ widget, data, editing, onResize, onRemove }: {
+  widget: OverviewWidget
+  data: OverviewData
+  editing: boolean
+  onResize: () => void
+  onRemove: () => void
+}) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
+    useSortable({ id: widget.id, disabled: !editing })
+  const info = WIDGETS[widget.id]
   return (
-    <Link to={to} className="rounded-xl border bg-card p-4 transition-colors hover:bg-secondary/50">
-      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {color && <span className={cn("size-2 rounded-full", color)} />}
-        {label}
-      </p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums">{count}</p>
-    </Link>
+    <div ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn("relative min-w-0", widget.size === "full" && "lg:col-span-2",
+        editing && "rounded-xl outline-2 outline-offset-4 outline-dashed outline-border",
+        isDragging && "z-20 opacity-80 shadow-2xl")}>
+      {editing && (
+        <div className="absolute bottom-full right-0 z-10 mb-2 flex items-center gap-0.5 rounded-lg border bg-background p-0.5 shadow-md">
+          <span className="max-w-40 truncate px-1.5 text-xs font-medium">{info.title()}</span>
+          <button ref={setActivatorNodeRef} type="button" className={cn(toolButton, "cursor-grab touch-none active:cursor-grabbing")}
+            aria-label={t("overview.edit.move")} title={t("overview.edit.move")} {...attributes} {...listeners}>
+            <GripVertical className="size-4" />
+          </button>
+          <button type="button" className={cn(toolButton, "max-lg:hidden")} onClick={onResize}
+            title={widget.size === "full" ? t("overview.edit.half") : t("overview.edit.full")}
+            aria-label={widget.size === "full" ? t("overview.edit.half") : t("overview.edit.full")}>
+            {widget.size === "full" ? <Minimize2 className="size-3.5" /> : <Maximize2 className="size-3.5" />}
+          </button>
+          <button type="button" className={cn(toolButton, "hover:text-red-600 dark:hover:text-red-400")} onClick={onRemove}
+            title={t("overview.edit.remove")} aria-label={t("overview.edit.remove")}>
+            <X className="size-4" />
+          </button>
+        </div>
+      )}
+      {/* Links and buttons inside the widgets don't react while editing */}
+      <div className={cn("h-full", editing && "pointer-events-none select-none")} inert={editing}>
+        {info.render({ data, size: widget.size })}
+      </div>
+    </div>
   )
 }
 
-function ApplicationLink({ app, aside }: { app: ApplicationSummary; aside: ReactNode }) {
+/** Tile that lists the widgets not on the overview yet. */
+function AddWidget({ missing, onAdd }: { missing: WidgetId[]; onAdd: (id: WidgetId) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false) }
+    const escape = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false) }
+    document.addEventListener("mousedown", close)
+    document.addEventListener("keydown", escape)
+    return () => {
+      document.removeEventListener("mousedown", close)
+      document.removeEventListener("keydown", escape)
+    }
+  }, [open])
+  if (missing.length === 0) return null
   return (
-    <li>
-      <Link to={`/applications/${app.id}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-secondary/50">
-        <span className="min-w-0 flex-1 truncate text-sm">
-          <span className="font-medium">{app.title ?? t("application.untitled")}</span>
-          {app.company && <span className="text-muted-foreground"> · {app.company}</span>}
-        </span>
-        {aside}
-      </Link>
-    </li>
-  )
-}
-
-function SeeAll({ to, label }: { to: string; label: string }) {
-  return (
-    <Link to={to} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-      {label}<ArrowRight className="size-3.5" />
-    </Link>
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
+        className="flex min-h-28 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed text-sm font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:bg-secondary/40 hover:text-foreground">
+        <Plus className="size-4" />{t("overview.edit.add")}
+      </button>
+      {open && (
+        <ul className="absolute inset-x-0 top-full z-30 mt-2 max-h-96 overflow-y-auto rounded-xl border bg-background p-1.5 shadow-xl">
+          {missing.map((id) => (
+            <li key={id}>
+              <button type="button" className="w-full rounded-lg px-3 py-2 text-left hover:bg-accent"
+                onClick={() => { onAdd(id); setOpen(false) }}>
+                <span className="block text-sm font-medium">{WIDGETS[id].title()}</span>
+                <span className="block text-xs text-muted-foreground">{WIDGETS[id].description()}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }
 
@@ -53,113 +106,76 @@ export function Overview() {
   const { data: applications = [], isLoading, error } = useQuery({ queryKey: ["applications"], queryFn: api.listApplications })
   const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: api.getProfile })
   const { data: events = [] } = useQuery({ queryKey: ["events"], queryFn: api.listEvents })
+  const ai = useAiStatus()
   const [day, setDay] = useState(today)
+  const [editing, setEditing] = useState(false)
 
-  // Events arrive sorted by date, so overdue ones come first
-  const upcoming = events.filter((e) => !e.completed).slice(0, 6)
-  const dayEvents = events.filter((e) => e.occurred_on === day)
-  const recent = [...applications].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5)
+  // The layout is a preference of the user; widgets unknown to this version are left out
+  const me = useCurrentUser()
+  const savePreference = useSavePreference()
+  const layout = (me?.overview_layout ?? DEFAULT_LAYOUT).filter((w) => w.id in WIDGETS)
+  const save = (next: OverviewWidget[]) => savePreference({ overview_layout: next })
+  const missing = (Object.keys(WIDGETS) as WidgetId[]).filter((id) => !layout.some((w) => w.id === id))
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!over || active.id === over.id) return
+    const from = layout.findIndex((w) => w.id === active.id)
+    const to = layout.findIndex((w) => w.id === over.id)
+    save(arrayMove(layout, from, to))
+  }
+
+  const data: OverviewData = { applications, events, profile, aiEnabled: ai.enabled, day, setDay }
   const firstName = profile?.full_name?.split(" ")[0]
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-semibold">{t("overview.title")}</h1>
-        <p className="text-sm text-muted-foreground">
-          {firstName ? t("overview.greeting", { name: firstName }) : t("overview.intro")}
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold">{t("overview.title")}</h1>
+          <p className="text-sm text-muted-foreground">
+            {editing ? t("overview.edit.intro") : firstName ? t("overview.greeting", { name: firstName }) : t("overview.intro")}
+          </p>
+        </div>
+        {editing ? (
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" onClick={() => savePreference({ reset_overview: true })}>
+              <RotateCcw />{t("overview.edit.reset")}
+            </Button>
+            <Button size="sm" onClick={() => setEditing(false)}><Check />{t("overview.edit.done")}</Button>
+          </div>
+        ) : (
+          <Button variant="outline" size="icon" onClick={() => setEditing(true)}
+            title={t("overview.edit.start")} aria-label={t("overview.edit.start")}>
+            <Paintbrush />
+          </Button>
+        )}
       </div>
 
       <ErrorText error={error} />
       {isLoading ? <p className="text-sm text-muted-foreground">{t("common.loading")}</p> : (
-        <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-            <Tile to="/applications" label={t("overview.total")} count={applications.length} />
-            {STATUSES.map((s) => (
-              <Tile key={s.value} to={`/applications?status=${s.value}`} label={statusLabel(s.value)} color={s.color}
-                count={applications.filter((a) => a.status === s.value).length} />
-            ))}
-          </div>
-
-          <div className="grid gap-5 lg:grid-cols-2">
-            <Card>
-              <CardHeader><CardTitle>{t("overview.calendar")}</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <MiniCalendar events={events} selected={day} onSelect={setDay} />
-                <div className="border-t pt-3">
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{formatDate(day)}</p>
-                  {dayEvents.length === 0 ? <p className="text-sm text-muted-foreground">{t("calendar.noEvents")}</p> : (
-                    <ul className="space-y-3">{dayEvents.map((e) => <EventItem key={e.id} event={e} showApplication compact />)}</ul>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("overview.events")}</CardTitle>
-                <SeeAll to="/agenda" label={t("nav.agenda")} />
-              </CardHeader>
-              <CardContent>
-                {upcoming.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {t("overview.noEvents").split("{link}").flatMap((part, i) => i === 0 ? [part]
-                      : [<Link key="link" to="/agenda" className="underline">{t("nav.agenda")}</Link>, part])}
-                  </p>
-                ) : <ul className="space-y-3">{upcoming.map((e) => <EventItem key={e.id} event={e} showApplication compact />)}</ul>}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid gap-5 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("overview.recent")}</CardTitle>
-                {applications.length > 0 && <SeeAll to="/applications" label={t("overview.seeAll")} />}
-              </CardHeader>
-              <CardContent className="px-0 pb-1">
-                {recent.length === 0 ? (
-                  <div className="px-4 text-sm text-muted-foreground">
-                    {t("overview.noApplications").split("{link}").flatMap((part, i) => i === 0 ? [part]
-                      : [<Link key="link" to="/applications" className="underline">{t("nav.applications")}</Link>, part])}
-                  </div>
-                ) : (
-                  <ul className="divide-y border-t">
-                    {recent.map((app) => (
-                      <ApplicationLink key={app.id} app={app} aside={
-                        <span className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-                          <span className={cn("size-2 rounded-full", statusInfo(app.status).color)} />
-                          {statusLabel(app.status)}
-                        </span>
-                      } />
-                    ))}
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-
-            {profile && (
-              <Card className="self-start">
-                <CardHeader>
-                  <CardTitle>{t("overview.profile")}</CardTitle>
-                  <SeeAll to="/profile" label={t("overview.goProfile")} />
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  {profile.skills.length === 0 ? t("overview.profileEmpty") : (
-                    <>
-                      {profile.headline && <p className="font-medium text-foreground">{profile.headline}</p>}
-                      <p>{t("overview.profileStats", {
-                        skills: profile.skills.length,
-                        experiences: profile.experiences.length,
-                        projects: profile.projects.length,
-                      })}</p>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={layout.map((w) => w.id)} strategy={rectSortingStrategy}>
+            <div className={cn("grid gap-5 lg:grid-cols-2", editing && "gap-y-14 pt-10")}>
+              {layout.map((widget) => (
+                <WidgetSlot key={widget.id} widget={widget} data={data} editing={editing}
+                  onResize={() => save(layout.map((w) => w.id === widget.id
+                    ? { ...w, size: w.size === "full" ? "half" : "full" } : w))}
+                  onRemove={() => save(layout.filter((w) => w.id !== widget.id))} />
+              ))}
+              {editing && <AddWidget missing={missing} onAdd={(id) => save([...layout, { id, size: WIDGETS[id].size }])} />}
+            </div>
+          </SortableContext>
+          {!editing && layout.length === 0 && (
+            <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
+              {t("overview.edit.empty")}
+            </div>
+          )}
+        </DndContext>
       )}
     </div>
   )

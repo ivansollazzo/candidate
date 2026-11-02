@@ -39,6 +39,28 @@ export function jobState(job: Job) {
   return job.proposal ? t("jobs.review", { count: Object.keys(job.proposal).length }) : t("jobs.done")
 }
 
+function toastTone(job: Job) {
+  if (job.status === "failed") return "error"
+  return job.proposal ? "warning" : "success"
+}
+
+/** What a finished job's notice says: the outcome, then what it concerns. */
+function toastText(job: Job) {
+  const failed = job.status === "failed"
+  const review = job.proposal ? t("jobs.review", { count: Object.keys(job.proposal).length }) : undefined
+  if (job.kind === "profile") {
+    return { title: failed ? t("toast.profileFailed") : t("toast.profileDone"), description: review }
+  }
+  const name = job.application_title ?? (job.new_application ? t("jobs.newApplication") : t("application.untitled"))
+  if (job.kind === "report") {
+    return { title: failed ? t("toast.reportFailed") : t("toast.reportDone"), description: name }
+  }
+  return {
+    title: failed ? t("jobs.fillFailed") : t("toast.applicationDone"),
+    description: review ? `${name} · ${review}` : name,
+  }
+}
+
 /** Refreshes what a job changed, after it is cancelled, applied or retried, or once it finishes. */
 function useRefresh() {
   const queryClient = useQueryClient()
@@ -76,11 +98,7 @@ export function useJobWatcher() {
       const old = before.get(job.id)
       if (!old || !isWorking(old.status) || isWorking(job.status)) continue
       refresh(job)
-      toast({
-        text: `${jobTitle(job)}: ${job.status === "failed" ? t("jobs.failed") : jobState(job)}`,
-        tone: job.status === "failed" ? "error" : "success",
-        to: jobLink(job),
-      })
+      toast({ ...toastText(job), tone: toastTone(job), to: jobLink(job) })
     }
   }, [data])
 }

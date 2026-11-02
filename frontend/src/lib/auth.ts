@@ -31,6 +31,17 @@ export function useUpdateMe() {
   })
 }
 
+/** Saves a preference of the user: applied at once, stored in the background. */
+export function useSavePreference() {
+  const queryClient = useQueryClient()
+  const updateMe = useUpdateMe()
+  return (changes: MeChanges) => {
+    const { reset_overview, ...fields } = changes
+    queryClient.setQueryData<User>(["me"], (old) => old && { ...old, ...fields, ...(reset_overview ? { overview_layout: null } : {}) })
+    updateMe.mutate(changes)
+  }
+}
+
 /** Switches user without keeping the previous session's data cached. */
 function useSwitchUser() {
   const queryClient = useQueryClient()

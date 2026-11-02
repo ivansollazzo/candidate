@@ -4,10 +4,18 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input, Label, Select, Textarea } from "@/components/ui/input"
 import type { ApplicationSummary, EventFields } from "@/lib/api"
-import { SCHEDULABLE_TYPES } from "@/lib/events"
+import { addMinutes, SCHEDULABLE_TYPES } from "@/lib/events"
 import { useT } from "@/lib/i18n"
 import { eventLabel } from "@/lib/status"
-import { today } from "@/lib/utils"
+import { cn, today } from "@/lib/utils"
+
+// Shortcuts that set the end time from the start time
+const DURATIONS = [
+  { minutes: 30, label: "30 min" },
+  { minutes: 60, label: "1 h" },
+  { minutes: 90, label: "1 h 30" },
+  { minutes: 120, label: "2 h" },
+]
 
 /**
  * Create/edit form for an event. With `applications` the application is picked in the form (agenda);
@@ -27,21 +35,27 @@ export function EventForm({ initial, applications, saving, error, onSubmit, onCa
     type: initial?.type ?? "interview",
     occurred_on: initial?.occurred_on ?? today(),
     starts_at: initial?.starts_at?.slice(0, 5) ?? "",
+    ends_at: initial?.ends_at?.slice(0, 5) ?? "",
     title: initial?.title ?? "",
     details: initial?.details ?? "",
     completed: initial?.completed ?? false,
   })
   const set = (changes: Partial<typeof form>) => setForm({ ...form, ...changes })
-  const valid = form.application_id > 0 && form.title.trim() !== "" && form.occurred_on !== ""
+  // The end time is optional and only makes sense after a start time ("HH:MM" strings compare in order)
+  const endInvalid = form.ends_at !== "" && (form.starts_at === "" || form.ends_at <= form.starts_at)
+  const valid = form.application_id > 0 && form.title.trim() !== "" && form.occurred_on !== "" && !endInvalid
 
   return (
     <form className="space-y-3" onSubmit={(e) => {
       e.preventDefault()
-      if (valid) onSubmit({ ...form, title: form.title.trim(), starts_at: form.starts_at || null, details: form.details || null })
+      if (valid) onSubmit({
+        ...form, title: form.title.trim(), starts_at: form.starts_at || null,
+        ends_at: (form.starts_at && form.ends_at) || null, details: form.details || null,
+      })
     }}>
-      <div className="grid gap-2 sm:grid-cols-[1fr_1fr_120px]">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_1fr_130px_130px]">
         {applications && (
-          <div className="sm:col-span-3">
+          <div className="col-span-2 sm:col-span-4">
             <Label className="mb-1 block">{t("eventForm.application")}</Label>
             <Select value={form.application_id} onChange={(e) => set({ application_id: Number(e.target.value) })}>
               <option value={0} disabled>{t("eventForm.chooseApplication")}</option>
@@ -65,9 +79,32 @@ export function EventForm({ initial, applications, saving, error, onSubmit, onCa
         </div>
         <div>
           <Label className="mb-1 block">{t("eventForm.time")}</Label>
-          <Input type="time" value={form.starts_at} onChange={(e) => set({ starts_at: e.target.value })} />
+          <Input type="time" value={form.starts_at}
+            onChange={(e) => set({ starts_at: e.target.value, ...(e.target.value ? {} : { ends_at: "" }) })} />
+        </div>
+        <div>
+          <Label className="mb-1 block">{t("eventForm.end")}</Label>
+          <Input type="time" value={form.ends_at} disabled={!form.starts_at} aria-invalid={endInvalid}
+            className={cn(endInvalid && "border-red-500 focus-visible:ring-red-500/40")}
+            onChange={(e) => set({ ends_at: e.target.value })} />
         </div>
       </div>
+      {form.starts_at && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+          <span>{t("eventForm.duration")}</span>
+          {DURATIONS.map(({ minutes, label }) => {
+            const end = addMinutes(form.starts_at, minutes)
+            return end && (
+              <button key={minutes} type="button" onClick={() => set({ ends_at: end })}
+                className={cn("rounded-full border px-2.5 py-0.5 transition-colors hover:bg-accent hover:text-foreground",
+                  form.ends_at === end && "border-primary bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground")}>
+                {label}
+              </button>
+            )
+          })}
+          {endInvalid && <span className="text-red-600 dark:text-red-400">{t("eventForm.endInvalid")}</span>}
+        </div>
+      )}
       <div>
         <Label className="mb-1 block">{t("eventForm.title")}</Label>
         <Input placeholder={t("events.titlePlaceholder")} value={form.title} onChange={(e) => set({ title: e.target.value })} />
