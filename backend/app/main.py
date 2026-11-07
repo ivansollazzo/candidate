@@ -9,11 +9,12 @@ from fastapi.responses import JSONResponse
 from sqlmodel import Session
 
 from app import __build__, __version__
-from app.api import applications, auth, backups, events, jobs, me, profile, settings, updates, users
+from app.api import applications, auth, backups, events, https, jobs, me, profile, settings, updates, users
 from app.config import get_settings
 from app.db import engine
 from app.i18n import LanguageMiddleware, t
-from app.services import app_settings
+from app.services import app_settings, security
+from app.services import https as https_service
 from app.services import backups as backup_service
 from app.services import jobs as job_queue
 from app.services.llm import check_llm, hardware_support
@@ -29,7 +30,9 @@ async def lifespan(_: FastAPI):
     # Cache of the embedding model used for skill matching before 1.3 (up to 2.2 GB): no longer needed
     shutil.rmtree(Path("data/hf-cache"), ignore_errors=True)
     job_queue.start()
+    https_service.start()
     yield
+    https_service.stop()
     job_queue.stop()
 
 
@@ -53,6 +56,16 @@ async def maintenance(request: Request, call_next):
     return await call_next(request)
 
 
+@app.middleware("http")
+async def https_flag(request: Request, call_next):
+    """Session cookies are marked Secure when the page was opened over HTTPS."""
+    token = security.secure_request.set(https.is_secure(request))
+    try:
+        return await call_next(request)
+    finally:
+        security.secure_request.reset(token)
+
+
 # Added last, so it runs first: the maintenance message is in the user's language
 app.add_middleware(LanguageMiddleware)
 
@@ -66,6 +79,8 @@ app.include_router(jobs.router)
 app.include_router(settings.router)
 app.include_router(updates.router)
 app.include_router(backups.router)
+app.include_router(https.router)
+app.include_router(https.internal)
 
 
 @app.get("/api/health")

@@ -178,10 +178,13 @@ backup_request() { # path json: POST to the backup service, waits until the oper
   timeout 3600 wget -qO- -T 3600 --header 'Content-Type: application/json' --post-data "$2" "$BACKUP_URL/$1" 2>/dev/null
 }
 
-# Build answering through the web app: the page and the API forwarded to the backend must both work
+# Build answering through the web app: the page and the API forwarded to the backend must both work. Port 8080
+# is plain HTTP also when the app is served over HTTPS (Settings › HTTPS); versions before it only have 5173
 app_build() {
-  timeout 5 wget -qO /dev/null http://frontend:5173/ 2>/dev/null || return 0
-  timeout 5 wget -qO- http://frontend:5173/api/health 2>/dev/null | sed -n 's/.*"build": *"\([^"]*\)".*/\1/p'
+  web=http://frontend:8080
+  timeout 5 wget -qO /dev/null $web/ 2>/dev/null || web=http://frontend:5173
+  timeout 5 wget -qO /dev/null $web/ 2>/dev/null || return 0
+  timeout 5 wget -qO- $web/api/health 2>/dev/null | sed -n 's/.*"build": *"\([^"]*\)".*/\1/p'
 }
 
 # The new version didn't start: previous compose file, .env, database and containers

@@ -6,6 +6,7 @@ in an HttpOnly cookie, invalidated when the password changes.
 
 import re
 import secrets
+from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -25,6 +26,9 @@ KEY_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 KEY_GROUPS, KEY_GROUP_SIZE = 6, 4
 # A session in use is renewed when its token is older than this
 RENEW_MINUTES = 10
+
+# The request came over HTTPS (X-Forwarded-Proto set by Caddy), set by a middleware in main.py
+secure_request: ContextVar[bool] = ContextVar("secure_request", default=False)
 
 password_hash = PasswordHash.recommended()
 # Used when the username doesn't exist, so response time stays the same
@@ -104,10 +108,10 @@ def start_session(response: Response, user: User, settings: AppSettings) -> None
     expires = _now() + timedelta(hours=settings.session_hours)
     token = jwt.encode({"sub": str(user.id), "sv": user.session_version, "exp": expires},
                        settings.secret_key, algorithm=ALGORITHM)
-    # HttpOnly: page JavaScript can't read it; SameSite=Strict: no cross-site requests.
-    # Not "Secure" because the app runs over http on localhost.
+    # HttpOnly: page JavaScript can't read it; SameSite=Strict: no cross-site requests; Secure (sent only
+    # over HTTPS) when the app is served over HTTPS (Settings › HTTPS), plain HTTP otherwise
     response.set_cookie(COOKIE_NAME, token, max_age=settings.session_hours * 3600, httponly=True, samesite="strict",
-                        path="/api")
+                        path="/api", secure=secure_request.get())
 
 
 def end_session(response: Response) -> None:

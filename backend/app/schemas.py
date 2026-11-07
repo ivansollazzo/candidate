@@ -288,6 +288,19 @@ class ApplicationBulk(BaseModel):
         return self
 
 
+class ApplicationReports(BaseModel):
+    """Compatibility reports to (re)generate for several applications."""
+
+    ids: Annotated[list[int], Field(min_length=1, max_length=1000)]
+
+
+class ReportsQueued(BaseModel):
+    queued: int
+    # Applications skipped: without the position's skills, or with a report already waiting or running
+    without_skills: int
+    already_queued: int
+
+
 class ApplicationSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -688,3 +701,47 @@ class BackupsRead(BaseModel):
     running: dict | None = None
     last_auto: BackupResult | None = None
     last_restore: RestoreResult | None = None
+
+
+# HTTPS (Settings › HTTPS)
+
+class HttpsCertificate(BaseModel):
+    """An uploaded certificate, without its key."""
+
+    names: list[str]
+    issuer: str
+    not_before: datetime
+    not_after: datetime
+    fingerprint: str
+    self_signed: bool
+    # Hosts of the list it is used for
+    hosts: list[str]
+
+
+class HttpsAuthority(BaseModel):
+    """Internal mode: the app's own certificate authority, to install on the devices."""
+
+    name: str
+    fingerprint: str
+    not_after: datetime
+    # Expiry of the certificate issued for the hosts, renewed automatically
+    leaf_not_after: datetime | None = None
+
+
+class HttpsRead(BaseModel):
+    mode: Literal["off", "internal", "custom"]
+    hosts: list[str]
+    certificates: list[HttpsCertificate]
+    authority: HttpsAuthority | None = None
+    # off, active, applying, error, unknown
+    state: str
+    error: str | None = None
+    failed_at: datetime | None = None
+    # The page was opened over HTTPS (seen by Caddy)
+    secure_request: bool
+    port: int
+
+
+class HttpsUpdate(BaseModel):
+    mode: Literal["off", "internal", "custom"]
+    hosts: Annotated[list[str], Field(max_length=50)] = []

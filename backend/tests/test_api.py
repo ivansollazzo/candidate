@@ -288,7 +288,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("2.0", "20261102.2004")
+    assert (health["version"], health["build"]) == ("2.0", "20261108.0042")
 
     r = client.post("/api/applications/ai", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
@@ -561,6 +561,25 @@ def test_bulk_status_and_delete(client):
 
     assert client.post("/api/applications/bulk", json={"ids": ids[:2], "action": "delete"}).status_code == 204
     assert [a["id"] for a in client.get("/api/applications").json()] == [ids[2]]
+
+
+def test_bulk_reports(client):
+    client.patch("/api/profile", json={"skills": [{"name": "Python", "level": 3}]})
+    skills = [{"name": "Python", "importance": "required"}]
+    first = client.post("/api/applications", json={"title": "A", "skills": skills}).json()["id"]
+    second = client.post("/api/applications", json={"title": "B", "skills": skills}).json()["id"]
+    bare = client.post("/api/applications", json={"title": "C"}).json()["id"]
+    assert client.post(f"/api/applications/{second}/report").status_code == 202
+    r = client.post("/api/applications/reports", json={"ids": [first, second, bare, first]})
+    assert r.status_code == 202
+    assert r.json() == {"queued": 1, "without_skills": 1, "already_queued": 1}
+    assert client.get(f"/api/applications/{first}").json()["report_status"] == "pending"
+    assert client.get(f"/api/applications/{bare}").json()["report_status"] is None
+    run_jobs()
+    assert {client.get(f"/api/applications/{i}").json()["report_status"] for i in (first, second)} == {"done"}
+    assert client.post("/api/applications/reports", json={"ids": [first, 999999]}).status_code == 404
+    client.patch("/api/settings", json={"llm_enabled": False})
+    assert client.post("/api/applications/reports", json={"ids": [first]}).status_code == 409
 
 
 def test_bulk_ignores_other_users_applications(client):

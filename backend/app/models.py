@@ -104,6 +104,16 @@ class AppSettings(SQLModel, table=True):
     # Session signing key, generated on first run
     secret_key: str | None = Field(default=None, sa_type=sa.String(128))
 
+    # HTTPS served by Caddy (services/https.py): off, internal (certificate signed by the app's own authority)
+    # or custom (certificates uploaded by the admin), for the hosts listed
+    https_mode: str = Field(default="off", sa_type=sa.String(10), sa_column_kwargs={"server_default": "off"})
+    https_hosts: list[str] = _json_list()
+    # Uploaded certificates: [{"cert": PEM with chain, "key": PEM}]
+    https_certs: list[dict] = _json_list()
+    # Internal mode: the authority ({"cert", "key"}) and the certificate it issued ({"cert", "key", "hosts"})
+    https_ca: dict | None = _json_obj_nullable()
+    https_leaf: dict | None = _json_obj_nullable()
+
     updated_at: datetime = _timestamp(onupdate=True)
 
 

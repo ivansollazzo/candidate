@@ -311,6 +311,12 @@ export type ApplicationBulk =
   | { ids: number[]; action: "delete" }
   | { ids: number[]; action: "status"; status: ApplicationStatus }
 
+export interface ReportsQueued {
+  queued: number
+  without_skills: number
+  already_queued: number
+}
+
 export type ApplicationSort = "applied" | "status" | "name" | "event"
 type ApplicationFilter = "all" | ApplicationStatus
 
@@ -394,6 +400,33 @@ const sourceForm = (source?: JobSource, fields: Record<string, string> = {}): Re
 /** Editable application fields, plus the job posting text to store */
 export type ApplicationChanges = Partial<Application> & { description?: string | null }
 
+export type HttpsMode = "off" | "internal" | "custom"
+
+export interface HttpsCertificate {
+  names: string[]
+  issuer: string
+  not_before: string
+  not_after: string
+  fingerprint: string
+  self_signed: boolean
+  /** Hosts of the list served with this certificate */
+  hosts: string[]
+}
+
+export interface Https {
+  mode: HttpsMode
+  hosts: string[]
+  certificates: HttpsCertificate[]
+  authority: { name: string; fingerprint: string; not_after: string; leaf_not_after: string | null } | null
+  /** What the web server is doing compared to the settings */
+  state: "off" | "active" | "applying" | "error" | "unknown"
+  error: string | null
+  failed_at: string | null
+  /** This page was opened over HTTPS */
+  secure_request: boolean
+  port: number
+}
+
 export class ApiError extends Error {
   constructor(message: string, readonly status: number) {
     super(message)
@@ -471,6 +504,7 @@ export const api = {
     request<Application>(`/api/applications/${id}/attachments/${attachmentId}`, { method: "DELETE" }),
   /** Same action on several applications: all of them or none */
   bulkApplications: (bulk: ApplicationBulk) => request<void>("/api/applications/bulk", json("POST", bulk)),
+  requestReports: (ids: number[]) => request<ReportsQueued>("/api/applications/reports", json("POST", { ids })),
   requestReport: (id: number) => request<Application>(`/api/applications/${id}/report`, { method: "POST" }),
 
   listEvents: () => request<AgendaEvent[]>("/api/events"),
@@ -503,11 +537,22 @@ export const api = {
   installUpdate: () => request<void>("/api/updates/install", { method: "POST" }),
 
   getBackups: () => request<Backups>("/api/backups"),
+  getHttps: () => request<Https>("/api/https"),
+  saveHttps: (settings: { mode: HttpsMode; hosts: string[] }) => request<Https>("/api/https", json("PUT", settings)),
+  uploadCertificate: ({ certificate, key }: { certificate: File; key: File }) => {
+    const form = new FormData()
+    form.append("certificate", certificate)
+    form.append("key", key)
+    return request<Https>("/api/https/certificates", { method: "POST", body: form })
+  },
+  deleteCertificate: (index: number) => request<Https>(`/api/https/certificates/${index}`, { method: "DELETE" }),
   saveBackupSettings: (settings: BackupSettings) => request<BackupSettings>("/api/backups/settings", json("PUT", settings)),
   createBackup: (note: string) => request<Backup>("/api/backups", json("POST", { note })),
   deleteBackup: (name: string) => request<void>(`/api/backups/${encodeURIComponent(name)}`, { method: "DELETE" }),
   restoreBackup: (name: string) => request<void>(`/api/backups/${encodeURIComponent(name)}/restore`, { method: "POST" }),
 }
+
+export const HTTPS_AUTHORITY_URL = "/api/https/root-ca.crt"
 
 export const backupFileUrl = (name: string) => `/api/backups/${encodeURIComponent(name)}/file`
 

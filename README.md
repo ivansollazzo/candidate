@@ -8,13 +8,13 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 2.0 (build 20261102.2004), by Ivan Sollazzo.
+Version 2.0 (build 20261108.0042), by Ivan Sollazzo.
 
 ## Features
 
 - **Applications**: list with search, status filter (applied, interview, offer, inactive, rejected, completed),
   sort order (date applied, status, name, latest event), both saved per user, multiple selection to change the
-  status of or delete several applications at once, the match score of each application when its report
+  status of, delete or recalculate the match report of several applications at once, the match score of each application when its report
   exists, and a detail page with job details, salary, requirements and status history.
 - **Attachments**: attach any files to an application (cover letter, offer, test...), up to 10 MB each. They are
   deleted from disk together with the application.
@@ -46,6 +46,8 @@ Version 2.0 (build 20261102.2004), by Ivan Sollazzo.
   click. Ready-made images are downloaded from GitHub, a full backup is made first, and if the new version doesn't
   start everything goes back as it was. An update can be installed only when no AI operation is queued or running,
   and none starts until it is over.
+- **HTTPS**: off, with a certificate issued by the app's own authority for all the names and IPs you list, or with
+  your own certificates (one per address, several names or a wildcard), set from the settings.
 - **Backups**: database, CV, photos and attachments, automatically (daily or weekly, with cleanup rules), by hand
   and before every update; restore, download or delete them from the settings.
 - **Italian and English** interface, light and dark theme.
@@ -237,6 +239,42 @@ services:
   frontend:
     ports: !override
       - "8080:5173"
+```
+
+### HTTPS
+
+HTTPS is set by an admin in Settings › HTTPS and served by Caddy, on the same port `5173`: once it is on, an
+address opened with `http://` moves to `https://`. List the names and IPs you open the app with (for example
+`candidate.local`, `192.168.1.50`, the Tailscale name of the server); only those answer over HTTPS. Modes:
+
+- **Off** (default): plain HTTP.
+- **Internal certificate**: the app creates its own certificate authority once and a certificate valid for all the
+  addresses listed, renewed automatically. Download the authority's certificate from the same page (or from
+  `/api/https/root-ca.crt`) and install it as trusted on each device that opens the app: the page explains how for
+  Mac, iPhone, Android, Windows and Firefox.
+- **Custom certificate**: upload your certificates (PEM, with the intermediate chain) and their keys: one per
+  address, or one with several names (SAN) or a wildcard (`*.example.com`). Each address uses the first certificate
+  valid for it.
+
+Settings, certificates and the internal authority are stored in the database, so they are part of the backups. The
+web server picks up a change within a few seconds; if it refuses one (an unreadable certificate, for instance) the
+last working configuration stays in use and the error is shown on the page. The updater keeps checking the app on
+an internal plain HTTP port (`8080`, not published).
+
+To use the standard port, publish 443 in `docker-compose.override.yml` (the addresses are then `https://name`
+without port):
+
+```yaml
+services:
+  frontend:
+    ports: !override
+      - "443:5173"
+```
+
+If the app can no longer be opened from any address listed, turn HTTPS off from the server:
+
+```sh
+docker compose exec backend python -m app.cli https-off
 ```
 
 ### Backend variables

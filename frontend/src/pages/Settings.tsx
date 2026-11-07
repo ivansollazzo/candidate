@@ -3,6 +3,7 @@ import { Navigate, useSearchParams } from "react-router"
 import { AccountTab } from "@/components/settings/AccountTab"
 import { AppearanceTab } from "@/components/settings/AppearanceTab"
 import { BackupsTab } from "@/components/settings/BackupsTab"
+import { HttpsTab } from "@/components/settings/HttpsTab"
 import { InfoTab } from "@/components/settings/InfoTab"
 import { SecurityTab } from "@/components/settings/SecurityTab"
 import { SystemTab } from "@/components/settings/SystemTab"
@@ -15,20 +16,21 @@ import { usePageTitle } from "@/lib/title"
 import { useUpdates } from "@/lib/updates"
 import { cn } from "@/lib/utils"
 
-type Tab = "account" | "appearance" | "system" | "security" | "users" | "updates" | "backups" | "info"
+type Tab = "account" | "appearance" | "system" | "security" | "https" | "users" | "updates" | "backups" | "info"
 
 const TABS: { id: Tab; label: MessageKey; admin?: boolean }[] = [
   { id: "account", label: "settings.tabAccount" },
   { id: "appearance", label: "settings.tabAppearance" },
   { id: "system", label: "settings.tabSystem", admin: true },
   { id: "security", label: "settings.tabSecurity", admin: true },
+  { id: "https", label: "settings.tabHttps", admin: true },
   { id: "users", label: "settings.tabUsers", admin: true },
   { id: "updates", label: "settings.tabUpdates", admin: true },
   { id: "backups", label: "settings.tabBackups", admin: true },
   { id: "info", label: "settings.tabInfo" },
 ]
 
-/** Tabbed settings; system, security, users, updates and backups tabs are admin-only. */
+/** Tabbed settings; system, security, HTTPS, users, updates and backups tabs are admin-only. */
 export function SettingsPage() {
   const t = useT()
   usePageTitle(t("settings.title"))
@@ -63,6 +65,7 @@ export function SettingsPage() {
         {tab === "appearance" && <AppearanceTab />}
         {tab === "system" && <SystemTab />}
         {tab === "security" && settings && <SecurityTab settings={settings} />}
+        {tab === "https" && <HttpsTab />}
         {tab === "users" && <UsersTab me={me} />}
         {tab === "updates" && <UpdatesTab />}
         {tab === "backups" && <BackupsTab />}

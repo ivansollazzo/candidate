@@ -58,6 +58,11 @@ def enqueue(session: Session, job: Job) -> Job:
     return job
 
 
+def wake() -> None:
+    """Jobs were added to the session and committed by the caller: start on them."""
+    _wake.set()
+
+
 def find_active(session: Session, kind: str, user_id: int, application_id: int | None = None) -> Job | None:
     query = select(Job).where(Job.kind == kind, Job.user_id == user_id, col(Job.status).in_(ACTIVE))
     if application_id is not None:

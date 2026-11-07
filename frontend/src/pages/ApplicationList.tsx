@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Banknote, CircleAlert, Clock, Loader2, MapPin, Plus, Search, Trash2 } from "lucide-react"
+import { Banknote, CircleAlert, Clock, Loader2, MapPin, Plus, RefreshCw, Search, Trash2 } from "lucide-react"
 import { useEffect, useState, type InputHTMLAttributes } from "react"
 import { Link, useSearchParams } from "react-router"
 
@@ -7,11 +7,13 @@ import { ErrorText } from "@/components/ErrorText"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input, Select } from "@/components/ui/input"
 import { api, type ApplicationBulk, type ApplicationListItem, type ApplicationSort, isWorking, type Job } from "@/lib/api"
+import { useAiStatus } from "@/lib/ai"
 import { useCurrentUser, useSavePreference } from "@/lib/auth"
 import { useT } from "@/lib/i18n"
 import { findJob, jobState, useJobs } from "@/lib/jobs"
 import { STATUSES, statusInfo, statusLabel, type ApplicationStatus } from "@/lib/status"
 import { usePageTitle } from "@/lib/title"
+import { toast } from "@/lib/toast"
 import { cn, formatDate, formatSalary, scoreColor } from "@/lib/utils"
 
 const SORTS: ApplicationSort[] = ["applied", "status", "name", "event"]
@@ -174,6 +176,28 @@ export function ApplicationList() {
     },
   })
 
+  // Compatibility reports of the selected applications, queued one after the other for the local model
+  const ai = useAiStatus()
+  const reports = useMutation({
+    mutationFn: api.requestReports,
+    onSuccess: (result) => {
+      setSelected(new Set())
+      const skipped = [
+        result.without_skills ? t("list.reportsWithoutSkills", { count: result.without_skills }) : "",
+        result.already_queued ? t("list.reportsAlreadyQueued", { count: result.already_queued }) : "",
+      ].filter(Boolean).join(" ")
+      toast({
+        title: result.queued ? t("list.reportsQueued", { count: result.queued }) : t("list.reportsNoneQueued"),
+        description: skipped || undefined,
+        tone: result.queued ? "success" : "warning",
+      })
+    },
+    onSettled: () => {
+      for (const key of ["applications", "application", "jobs"]) queryClient.invalidateQueries({ queryKey: [key] })
+    },
+  })
+  const busy = bulk.isPending || reports.isPending
+
   const term = search.toLowerCase()
   useEffect(() => setSelected(new Set()), [filter, term])
   const matching = data.filter((a) =>
@@ -223,7 +247,7 @@ export function ApplicationList() {
         ))}
       </div>
 
-      <ErrorText error={error ?? bulk.error} />
+      <ErrorText error={error ?? bulk.error ?? reports.error} />
       {isLoading && <p className="text-sm text-muted-foreground">{t("common.loading")}</p>}
 
       {!isLoading && visible.length === 0 ? (
@@ -243,16 +267,22 @@ export function ApplicationList() {
             </label>
             {chosen.length > 0 && (
               <div className="ml-auto flex flex-wrap items-center gap-2">
-                <Select className="h-8 w-48" value="" aria-label={t("list.bulkStatus")} disabled={bulk.isPending}
+                <Select className="h-8 w-48" value="" aria-label={t("list.bulkStatus")} disabled={busy}
                   onChange={(e) => runBulk({ ids: chosen, action: "status", status: e.target.value as ApplicationStatus })}>
                   <option value="" disabled>{t("list.bulkStatus")}</option>
                   {STATUSES.map((s) => <option key={s.value} value={s.value}>{statusLabel(s.value)}</option>)}
                 </Select>
-                <Button variant="outline" size="sm" disabled={bulk.isPending} onClick={onBulkDelete}
+                {ai.enabled && (
+                  <Button variant="outline" size="sm" disabled={busy} onClick={() => reports.mutate(chosen)}
+                    title={ai.ready ? undefined : ai.reason ?? undefined}>
+                    {reports.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />} {t("list.bulkReports")}
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" disabled={busy} onClick={onBulkDelete}
                   className="text-red-600 hover:text-red-700 dark:text-red-400">
                   <Trash2 /> {t("common.delete")}
                 </Button>
-                <Button variant="ghost" size="sm" disabled={bulk.isPending} onClick={() => setSelected(new Set())}>
+                <Button variant="ghost" size="sm" disabled={busy} onClick={() => setSelected(new Set())}>
                   {t("list.clearSelection")}
                 </Button>
               </div>

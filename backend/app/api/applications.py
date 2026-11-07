@@ -9,9 +9,11 @@ from app.models import Application, ApplicationAttachment, ApplicationEvent, Eve
 from app.schemas import (
     ApplicationBulk,
     ApplicationListItem,
+    ApplicationReports,
     ApplicationRead,
     ApplicationUpdate,
     JobRead,
+    ReportsQueued,
 )
 from app.services import jobs, security
 from app.services.app_settings import require_llm
@@ -135,6 +137,31 @@ def bulk_update(
         change_status(session, app, payload.status)
         session.add(app)
     session.commit()
+
+
+@router.post("/reports", response_model=ReportsQueued, status_code=status.HTTP_202_ACCEPTED)
+def request_reports(
+    payload: ApplicationReports, user: User = Depends(security.current_user),
+    session: Session = Depends(get_session),
+):
+    """Queue the compatibility report of several applications, one job each, in the order given. Applications
+    without skills (nothing to compare) and those whose report is already queued are skipped."""
+    require_llm(session)
+    apps = [get_owned(session, application_id, user) for application_id in dict.fromkeys(payload.ids)]
+    result = ReportsQueued(queued=0, without_skills=0, already_queued=0)
+    for app in apps:
+        if not app.skills:
+            result.without_skills += 1
+        elif jobs.find_active(session, JobKind.REPORT, user.id, app.id):
+            result.already_queued += 1
+        else:
+            app.report_status = TaskStatus.PENDING
+            session.add(app)
+            session.add(Job(user_id=user.id, kind=JobKind.REPORT, application_id=app.id))
+            result.queued += 1
+    session.commit()
+    jobs.wake()
+    return result
 
 
 @router.get("/{application_id}", response_model=ApplicationRead)

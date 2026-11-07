@@ -10,8 +10,8 @@ const TECHNOLOGIES = [
   "React, TypeScript, Vite, Tailwind CSS, TanStack Query, Lucide",
   "Ollama, Qwen 3 4B",
   "pdfplumber, python-docx, trafilatura",
-  "pwdlib (Argon2), PyJWT, Pillow",
-  "Docker Compose",
+  "pwdlib (Argon2), PyJWT, cryptography, Pillow",
+  "Caddy, Docker Compose",
 ]
 
 function Row({ label, children }: { label: string; children: ReactNode }) {
