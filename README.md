@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 2.0 (build 20261108.1235), by Ivan Sollazzo.
+Version 2.0 (build 20261108.1310), by Ivan Sollazzo.
 
 ## Features
 
@@ -356,11 +356,17 @@ npm install
 npm run dev
 ```
 
-Backend tests need an empty `candidate_test` database; the model is mocked:
+Backend tests need an empty `candidate_test` database and a user allowed to create databases (the migration test builds a temporary `candidate_test_migrations`); the model is mocked:
 
 ```bash
 createdb -h localhost -U candidate candidate_test
-cd backend && pytest
+cd backend && pip install -r requirements-dev.txt && pytest
+```
+
+`tests/test_contracts.py` guards the structure: the OpenAPI schema must match `tests/openapi.json` (after an intended API change, regenerate it with `UPDATE_OPENAPI=1 pytest tests/test_contracts.py`), the migrations must build exactly the schema of the models, and imports must follow the rules in `backend/.importlinter`. The frontend import rules are in `frontend/.dependency-cruiser.cjs`:
+
+```bash
+cd frontend && npm run check:imports
 ```
 
 ### Project structure

@@ -1,0 +1,64 @@
+# Import rules checked by tests/test_contracts.py (import-linter).
+# They describe the current layout; each migration phase tightens them.
+[importlinter]
+root_package = app
+
+[importlinter:contract:base]
+name = Configuration, database and messages depend on nothing else
+type = forbidden
+source_modules =
+    app.config
+    app.db
+    app.i18n
+forbidden_modules =
+    app.api
+    app.services
+    app.models
+    app.schemas
+    app.main
+    app.cli
+
+[importlinter:contract:data]
+name = Models and schemas do not depend on logic or HTTP
+type = forbidden
+source_modules =
+    app.models
+    app.schemas
+forbidden_modules =
+    app.api
+    app.services
+    app.main
+    app.cli
+
+[importlinter:contract:services]
+name = Services do not depend on HTTP
+type = forbidden
+source_modules =
+    app.services
+forbidden_modules =
+    app.api
+    app.main
+ignore_imports =
+    # read_upload moves to shared/storage in phase 1
+    app.services.attachments -> app.api.uploads
+    app.services.sources -> app.api.uploads
+
+[importlinter:contract:routers]
+name = Routers do not import each other
+type = independence
+modules =
+    app.api.applications
+    app.api.auth
+    app.api.backups
+    app.api.events
+    app.api.https
+    app.api.jobs
+    app.api.me
+    app.api.profile
+    app.api.settings
+    app.api.updates
+    app.api.users
+ignore_imports =
+    # get_owned and avatar_response move to their features' services in phase 4
+    app.api.events -> app.api.applications
+    app.api.users -> app.api.me

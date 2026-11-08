@@ -1,0 +1,6074 @@
+{
+ "components": {
+  "schemas": {
+   "AgendaEvent": {
+    "description": "Event with its application data, for the agenda and overview.",
+    "properties": {
+     "application_company": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Application Company"
+     },
+     "application_id": {
+      "title": "Application Id",
+      "type": "integer"
+     },
+     "application_title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Application Title"
+     },
+     "completed": {
+      "title": "Completed",
+      "type": "boolean"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "details": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Details"
+     },
+     "ends_at": {
+      "anyOf": [
+       {
+        "format": "time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ends At"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "occurred_on": {
+      "format": "date",
+      "title": "Occurred On",
+      "type": "string"
+     },
+     "starts_at": {
+      "anyOf": [
+       {
+        "format": "time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Starts At"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     },
+     "type": {
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "application_id",
+     "type",
+     "occurred_on",
+     "starts_at",
+     "ends_at",
+     "title",
+     "details",
+     "completed",
+     "created_at",
+     "application_title",
+     "application_company"
+    ],
+    "title": "AgendaEvent",
+    "type": "object"
+   },
+   "ApplicationListItem": {
+    "properties": {
+     "applied_on": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Applied On"
+     },
+     "company": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Company"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "last_event_on": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Last Event On"
+     },
+     "location": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location"
+     },
+     "match_score": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Match Score"
+     },
+     "missing_skills": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Missing Skills",
+      "type": "array"
+     },
+     "report_stale": {
+      "default": false,
+      "title": "Report Stale",
+      "type": "boolean"
+     },
+     "salary": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Salary"
+     },
+     "salary_basis": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Salary Basis"
+     },
+     "salary_period": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Salary Period"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     },
+     "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+     },
+     "work_mode": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Work Mode"
+     }
+    },
+    "required": [
+     "id",
+     "title",
+     "company",
+     "location",
+     "work_mode",
+     "salary",
+     "salary_period",
+     "salary_basis",
+     "status",
+     "applied_on",
+     "created_at",
+     "updated_at"
+    ],
+    "title": "ApplicationListItem",
+    "type": "object"
+   },
+   "ApplicationRead": {
+    "properties": {
+     "applied_on": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Applied On"
+     },
+     "attachments": {
+      "items": {
+       "$ref": "#/components/schemas/AttachmentRead"
+      },
+      "title": "Attachments",
+      "type": "array"
+     },
+     "benefits": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Benefits",
+      "type": "array"
+     },
+     "company": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Company"
+     },
+     "contact_email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Contact Email"
+     },
+     "contact_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Contact Name"
+     },
+     "contract_type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Contract Type"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "education_required": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Education Required"
+     },
+     "events": {
+      "items": {
+       "$ref": "#/components/schemas/EventRead"
+      },
+      "title": "Events",
+      "type": "array"
+     },
+     "experience_years_min": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Experience Years Min"
+     },
+     "has_description": {
+      "description": "True se è salvato il testo dell'annuncio, per compilare con l'LLM",
+      "title": "Has Description",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "languages": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Languages",
+      "type": "array"
+     },
+     "location": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location"
+     },
+     "nice_to_have": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Nice To Have",
+      "type": "array"
+     },
+     "notes": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Notes"
+     },
+     "report": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Report"
+     },
+     "report_stale": {
+      "title": "Report Stale",
+      "type": "boolean"
+     },
+     "report_status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Report Status"
+     },
+     "requirements": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Requirements",
+      "type": "array"
+     },
+     "responsibilities": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Responsibilities",
+      "type": "array"
+     },
+     "salary": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Salary"
+     },
+     "salary_basis": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Salary Basis"
+     },
+     "salary_period": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Salary Period"
+     },
+     "seniority": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seniority"
+     },
+     "skills": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Skills",
+      "type": "array"
+     },
+     "source_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Source Url"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     },
+     "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+     },
+     "work_mode": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Work Mode"
+     }
+    },
+    "required": [
+     "id",
+     "title",
+     "company",
+     "location",
+     "work_mode",
+     "salary",
+     "salary_period",
+     "salary_basis",
+     "status",
+     "applied_on",
+     "created_at",
+     "updated_at",
+     "contract_type",
+     "seniority",
+     "responsibilities",
+     "requirements",
+     "nice_to_have",
+     "benefits",
+     "skills",
+     "languages",
+     "education_required",
+     "experience_years_min",
+     "source_url",
+     "contact_name",
+     "contact_email",
+     "notes",
+     "has_description",
+     "report",
+     "report_status",
+     "report_stale",
+     "events",
+     "attachments"
+    ],
+    "title": "ApplicationRead",
+    "type": "object"
+   },
+   "ApplicationReports": {
+    "description": "Profile match reports to (re)generate for several applications.",
+    "properties": {
+     "ids": {
+      "items": {
+       "type": "integer"
+      },
+      "maxItems": 1000,
+      "minItems": 1,
+      "title": "Ids",
+      "type": "array"
+     }
+    },
+    "required": [
+     "ids"
+    ],
+    "title": "ApplicationReports",
+    "type": "object"
+   },
+   "ApplicationStatus": {
+    "enum": [
+     "applied",
+     "interview",
+     "offer",
+     "inactive",
+     "rejected",
+     "completed"
+    ],
+    "title": "ApplicationStatus",
+    "type": "string"
+   },
+   "ApplicationUpdate": {
+    "properties": {
+     "applied_on": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Applied On"
+     },
+     "benefits": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Benefits"
+     },
+     "company": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Company"
+     },
+     "contact_email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Contact Email"
+     },
+     "contact_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Contact Name"
+     },
+     "contract_type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Contract Type"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "education_required": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Education Required"
+     },
+     "experience_years_min": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Experience Years Min"
+     },
+     "languages": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Languages"
+     },
+     "location": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location"
+     },
+     "nice_to_have": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nice To Have"
+     },
+     "notes": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Notes"
+     },
+     "requirements": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Requirements"
+     },
+     "responsibilities": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Responsibilities"
+     },
+     "salary": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Salary"
+     },
+     "salary_basis": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Salary Basis"
+     },
+     "salary_period": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Salary Period"
+     },
+     "seniority": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Seniority"
+     },
+     "skills": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/ExtractedSkill"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Skills"
+     },
+     "source_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Source Url"
+     },
+     "status": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/ApplicationStatus"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     },
+     "work_mode": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Work Mode"
+     }
+    },
+    "title": "ApplicationUpdate",
+    "type": "object"
+   },
+   "ApplicationsUpdate": {
+    "description": "Several applications moved to one status at once.",
+    "properties": {
+     "ids": {
+      "items": {
+       "type": "integer"
+      },
+      "maxItems": 1000,
+      "minItems": 1,
+      "title": "Ids",
+      "type": "array"
+     },
+     "status": {
+      "$ref": "#/components/schemas/ApplicationStatus"
+     }
+    },
+    "required": [
+     "ids",
+     "status"
+    ],
+    "title": "ApplicationsUpdate",
+    "type": "object"
+   },
+   "AttachmentRead": {
+    "properties": {
+     "content_type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Content Type"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "filename": {
+      "title": "Filename",
+      "type": "string"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "size": {
+      "title": "Size",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "id",
+     "filename",
+     "content_type",
+     "size",
+     "created_at"
+    ],
+    "title": "AttachmentRead",
+    "type": "object"
+   },
+   "AuthStatus": {
+    "properties": {
+     "password_policy": {
+      "$ref": "#/components/schemas/PasswordPolicy"
+     },
+     "setup_required": {
+      "title": "Setup Required",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "setup_required",
+     "password_policy"
+    ],
+    "title": "AuthStatus",
+    "type": "object"
+   },
+   "Backup": {
+    "properties": {
+     "broken": {
+      "default": false,
+      "title": "Broken",
+      "type": "boolean"
+     },
+     "build": {
+      "default": "",
+      "title": "Build",
+      "type": "string"
+     },
+     "created_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Created At"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "note": {
+      "default": "",
+      "title": "Note",
+      "type": "string"
+     },
+     "revision": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Revision"
+     },
+     "size": {
+      "title": "Size",
+      "type": "integer"
+     },
+     "version": {
+      "default": "",
+      "title": "Version",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "kind",
+     "size"
+    ],
+    "title": "Backup",
+    "type": "object"
+   },
+   "BackupCreate": {
+    "properties": {
+     "note": {
+      "default": "",
+      "maxLength": 200,
+      "title": "Note",
+      "type": "string"
+     }
+    },
+    "title": "BackupCreate",
+    "type": "object"
+   },
+   "BackupResult": {
+    "properties": {
+     "at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "At"
+     },
+     "detail": {
+      "default": "",
+      "title": "Detail",
+      "type": "string"
+     },
+     "result": {
+      "title": "Result",
+      "type": "string"
+     }
+    },
+    "required": [
+     "result"
+    ],
+    "title": "BackupResult",
+    "type": "object"
+   },
+   "BackupSettings": {
+    "properties": {
+     "frequency": {
+      "default": "daily",
+      "enum": [
+       "off",
+       "daily",
+       "weekly"
+      ],
+      "title": "Frequency",
+      "type": "string"
+     },
+     "hour": {
+      "default": 3,
+      "maximum": 23.0,
+      "minimum": 0.0,
+      "title": "Hour",
+      "type": "integer"
+     },
+     "keep": {
+      "default": 7,
+      "maximum": 365.0,
+      "minimum": 1.0,
+      "title": "Keep",
+      "type": "integer"
+     },
+     "max_age_days": {
+      "default": 0,
+      "maximum": 3650.0,
+      "minimum": 0.0,
+      "title": "Max Age Days",
+      "type": "integer"
+     },
+     "timezone": {
+      "default": "UTC",
+      "maxLength": 64,
+      "title": "Timezone",
+      "type": "string"
+     },
+     "weekday": {
+      "default": 0,
+      "maximum": 6.0,
+      "minimum": 0.0,
+      "title": "Weekday",
+      "type": "integer"
+     }
+    },
+    "title": "BackupSettings",
+    "type": "object"
+   },
+   "BackupsRead": {
+    "properties": {
+     "backups": {
+      "items": {
+       "$ref": "#/components/schemas/Backup"
+      },
+      "title": "Backups",
+      "type": "array"
+     },
+     "last_auto": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/BackupResult"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "last_restore": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/RestoreResult"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "running": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Running"
+     },
+     "settings": {
+      "$ref": "#/components/schemas/BackupSettings"
+     }
+    },
+    "required": [
+     "settings",
+     "backups"
+    ],
+    "title": "BackupsRead",
+    "type": "object"
+   },
+   "Body_add_attachments_api_applications__application_id__attachments_post": {
+    "properties": {
+     "files": {
+      "items": {
+       "contentMediaType": "application/octet-stream",
+       "type": "string"
+      },
+      "title": "Files",
+      "type": "array"
+     }
+    },
+    "required": [
+     "files"
+    ],
+    "title": "Body_add_attachments_api_applications__application_id__attachments_post",
+    "type": "object"
+   },
+   "Body_create_with_ai_api_applications_imports_post": {
+    "properties": {
+     "file": {
+      "anyOf": [
+       {
+        "contentMediaType": "application/octet-stream",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "File"
+     },
+     "report": {
+      "default": false,
+      "title": "Report",
+      "type": "boolean"
+     },
+     "text": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Text"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     }
+    },
+    "title": "Body_create_with_ai_api_applications_imports_post",
+    "type": "object"
+   },
+   "Body_fill_with_ai_api_applications__application_id__fills_post": {
+    "properties": {
+     "file": {
+      "anyOf": [
+       {
+        "contentMediaType": "application/octet-stream",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "File"
+     },
+     "text": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Text"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     }
+    },
+    "title": "Body_fill_with_ai_api_applications__application_id__fills_post",
+    "type": "object"
+   },
+   "Body_upload_avatar_api_me_avatar_put": {
+    "properties": {
+     "file": {
+      "contentMediaType": "application/octet-stream",
+      "title": "File",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file"
+    ],
+    "title": "Body_upload_avatar_api_me_avatar_put",
+    "type": "object"
+   },
+   "Body_upload_certificate_api_https_certificates_post": {
+    "properties": {
+     "certificate": {
+      "contentMediaType": "application/octet-stream",
+      "title": "Certificate",
+      "type": "string"
+     },
+     "key": {
+      "contentMediaType": "application/octet-stream",
+      "title": "Key",
+      "type": "string"
+     }
+    },
+    "required": [
+     "certificate",
+     "key"
+    ],
+    "title": "Body_upload_certificate_api_https_certificates_post",
+    "type": "object"
+   },
+   "Body_upload_cv_api_profile_cv_put": {
+    "properties": {
+     "file": {
+      "contentMediaType": "application/octet-stream",
+      "title": "File",
+      "type": "string"
+     }
+    },
+    "required": [
+     "file"
+    ],
+    "title": "Body_upload_cv_api_profile_cv_put",
+    "type": "object"
+   },
+   "CVCertification": {
+    "properties": {
+     "credential_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Credential Id"
+     },
+     "expires_on": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Expires On"
+     },
+     "issued_on": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "YYYY-MM oppure YYYY",
+      "title": "Issued On"
+     },
+     "issuer": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Ente che ha rilasciato la certificazione",
+      "title": "Issuer"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Url"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "title": "CVCertification",
+    "type": "object"
+   },
+   "CVEducation": {
+    "properties": {
+     "degree": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Titolo, es. Laurea magistrale, Master's Degree, Diploma",
+      "title": "Degree"
+     },
+     "details": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Specializzazione, esami, aree o corsi rilevanti",
+      "title": "Details"
+     },
+     "end": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "YYYY-MM oppure YYYY; null se in corso",
+      "title": "End"
+     },
+     "field_of_study": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Field Of Study"
+     },
+     "grade": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Voto finale, es. 110/110 cum laude",
+      "title": "Grade"
+     },
+     "institution": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Institution"
+     },
+     "location": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "YYYY-MM oppure YYYY",
+      "title": "Start"
+     },
+     "thesis": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Thesis"
+     }
+    },
+    "title": "CVEducation",
+    "type": "object"
+   },
+   "CVExperience": {
+    "properties": {
+     "company": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Company"
+     },
+     "current": {
+      "default": false,
+      "title": "Current",
+      "type": "boolean"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "employment_type": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "es. tempo pieno, part-time, stage, freelance",
+      "title": "Employment Type"
+     },
+     "end": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Data di fine, formato YYYY-MM oppure YYYY; null se in corso",
+      "title": "End"
+     },
+     "location": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location"
+     },
+     "role": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Role"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Data di inizio, formato YYYY-MM oppure YYYY",
+      "title": "Start"
+     },
+     "technologies": {
+      "default": [],
+      "description": "Tecnologie, strumenti e metodologie usati",
+      "items": {
+       "type": "string"
+      },
+      "title": "Technologies",
+      "type": "array"
+     }
+    },
+    "title": "CVExperience",
+    "type": "object"
+   },
+   "CVLanguage": {
+    "properties": {
+     "language": {
+      "title": "Language",
+      "type": "string"
+     },
+     "level": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Madrelingua oppure livello CEFR (A1-C2) se indicato",
+      "title": "Level"
+     }
+    },
+    "required": [
+     "language"
+    ],
+    "title": "CVLanguage",
+    "type": "object"
+   },
+   "CVLink": {
+    "properties": {
+     "label": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "es. LinkedIn, GitHub, Portfolio",
+      "title": "Label"
+     },
+     "url": {
+      "title": "Url",
+      "type": "string"
+     }
+    },
+    "required": [
+     "url"
+    ],
+    "title": "CVLink",
+    "type": "object"
+   },
+   "CVProject": {
+    "properties": {
+     "context": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "personale, accademico, professionale o altro",
+      "title": "Context"
+     },
+     "description": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Description"
+     },
+     "end": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "End"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "start": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Start"
+     },
+     "team": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "es. individuale, team di 4 persone",
+      "title": "Team"
+     },
+     "technologies": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "title": "Technologies",
+      "type": "array"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "title": "CVProject",
+    "type": "object"
+   },
+   "CheckError": {
+    "properties": {
+     "detail": {
+      "default": "",
+      "title": "Detail",
+      "type": "string"
+     },
+     "failed_at": {
+      "title": "Failed At",
+      "type": "string"
+     }
+    },
+    "required": [
+     "failed_at"
+    ],
+    "title": "CheckError",
+    "type": "object"
+   },
+   "EventCreate": {
+    "properties": {
+     "application_id": {
+      "title": "Application Id",
+      "type": "integer"
+     },
+     "completed": {
+      "default": false,
+      "title": "Completed",
+      "type": "boolean"
+     },
+     "details": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Details"
+     },
+     "ends_at": {
+      "anyOf": [
+       {
+        "format": "time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ends At"
+     },
+     "occurred_on": {
+      "format": "date",
+      "title": "Occurred On",
+      "type": "string"
+     },
+     "starts_at": {
+      "anyOf": [
+       {
+        "format": "time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Starts At"
+     },
+     "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+     },
+     "type": {
+      "$ref": "#/components/schemas/EventType",
+      "default": "note"
+     }
+    },
+    "required": [
+     "application_id",
+     "occurred_on",
+     "title"
+    ],
+    "title": "EventCreate",
+    "type": "object"
+   },
+   "EventRead": {
+    "properties": {
+     "application_id": {
+      "title": "Application Id",
+      "type": "integer"
+     },
+     "completed": {
+      "title": "Completed",
+      "type": "boolean"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "details": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Details"
+     },
+     "ends_at": {
+      "anyOf": [
+       {
+        "format": "time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ends At"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "occurred_on": {
+      "format": "date",
+      "title": "Occurred On",
+      "type": "string"
+     },
+     "starts_at": {
+      "anyOf": [
+       {
+        "format": "time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Starts At"
+     },
+     "title": {
+      "title": "Title",
+      "type": "string"
+     },
+     "type": {
+      "title": "Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "application_id",
+     "type",
+     "occurred_on",
+     "starts_at",
+     "ends_at",
+     "title",
+     "details",
+     "completed",
+     "created_at"
+    ],
+    "title": "EventRead",
+    "type": "object"
+   },
+   "EventType": {
+    "enum": [
+     "status_change",
+     "interview",
+     "call",
+     "email",
+     "follow_up",
+     "note"
+    ],
+    "title": "EventType",
+    "type": "string"
+   },
+   "EventUpdate": {
+    "properties": {
+     "completed": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Completed"
+     },
+     "details": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Details"
+     },
+     "ends_at": {
+      "anyOf": [
+       {
+        "format": "time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ends At"
+     },
+     "occurred_on": {
+      "anyOf": [
+       {
+        "format": "date",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Occurred On"
+     },
+     "starts_at": {
+      "anyOf": [
+       {
+        "format": "time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Starts At"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "minLength": 1,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Title"
+     },
+     "type": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/EventType"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "title": "EventUpdate",
+    "type": "object"
+   },
+   "ExtractedSkill": {
+    "properties": {
+     "importance": {
+      "description": "'required' se obbligatoria, 'nice_to_have' se preferenziale",
+      "title": "Importance",
+      "type": "string"
+     },
+     "name": {
+      "description": "Nome breve della competenza, es. 'Python', 'Docker', 'Project management'",
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "importance"
+    ],
+    "title": "ExtractedSkill",
+    "type": "object"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "title": "Detail",
+      "type": "array"
+     }
+    },
+    "title": "HTTPValidationError",
+    "type": "object"
+   },
+   "HttpsAuthority": {
+    "description": "Internal mode: the app's own certificate authority, to install on the devices.",
+    "properties": {
+     "fingerprint": {
+      "title": "Fingerprint",
+      "type": "string"
+     },
+     "leaf_not_after": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Leaf Not After"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "not_after": {
+      "format": "date-time",
+      "title": "Not After",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "fingerprint",
+     "not_after"
+    ],
+    "title": "HttpsAuthority",
+    "type": "object"
+   },
+   "HttpsCertificate": {
+    "description": "An uploaded certificate, without its key.",
+    "properties": {
+     "fingerprint": {
+      "title": "Fingerprint",
+      "type": "string"
+     },
+     "hosts": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Hosts",
+      "type": "array"
+     },
+     "id": {
+      "title": "Id",
+      "type": "string"
+     },
+     "issuer": {
+      "title": "Issuer",
+      "type": "string"
+     },
+     "names": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Names",
+      "type": "array"
+     },
+     "not_after": {
+      "format": "date-time",
+      "title": "Not After",
+      "type": "string"
+     },
+     "not_before": {
+      "format": "date-time",
+      "title": "Not Before",
+      "type": "string"
+     },
+     "self_signed": {
+      "title": "Self Signed",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "id",
+     "names",
+     "issuer",
+     "not_before",
+     "not_after",
+     "fingerprint",
+     "self_signed",
+     "hosts"
+    ],
+    "title": "HttpsCertificate",
+    "type": "object"
+   },
+   "HttpsRead": {
+    "properties": {
+     "authority": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/HttpsAuthority"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "certificates": {
+      "items": {
+       "$ref": "#/components/schemas/HttpsCertificate"
+      },
+      "title": "Certificates",
+      "type": "array"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "failed_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Failed At"
+     },
+     "hosts": {
+      "items": {
+       "type": "string"
+      },
+      "title": "Hosts",
+      "type": "array"
+     },
+     "mode": {
+      "enum": [
+       "off",
+       "internal",
+       "custom"
+      ],
+      "title": "Mode",
+      "type": "string"
+     },
+     "port": {
+      "title": "Port",
+      "type": "integer"
+     },
+     "secure_request": {
+      "title": "Secure Request",
+      "type": "boolean"
+     },
+     "state": {
+      "title": "State",
+      "type": "string"
+     }
+    },
+    "required": [
+     "mode",
+     "hosts",
+     "certificates",
+     "state",
+     "secure_request",
+     "port"
+    ],
+    "title": "HttpsRead",
+    "type": "object"
+   },
+   "HttpsUpdate": {
+    "properties": {
+     "hosts": {
+      "default": [],
+      "items": {
+       "type": "string"
+      },
+      "maxItems": 50,
+      "title": "Hosts",
+      "type": "array"
+     },
+     "mode": {
+      "enum": [
+       "off",
+       "internal",
+       "custom"
+      ],
+      "title": "Mode",
+      "type": "string"
+     }
+    },
+    "required": [
+     "mode"
+    ],
+    "title": "HttpsUpdate",
+    "type": "object"
+   },
+   "JobRead": {
+    "properties": {
+     "application_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Application Id"
+     },
+     "application_title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Application Title"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Error"
+     },
+     "finished_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Finished At"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "kind": {
+      "title": "Kind",
+      "type": "string"
+     },
+     "new_application": {
+      "title": "New Application",
+      "type": "boolean"
+     },
+     "position": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Position"
+     },
+     "proposal": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Proposal"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "then_report": {
+      "title": "Then Report",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "id",
+     "kind",
+     "status",
+     "application_id",
+     "new_application",
+     "then_report",
+     "proposal",
+     "error",
+     "created_at",
+     "finished_at"
+    ],
+    "title": "JobRead",
+    "type": "object"
+   },
+   "LoginRequest": {
+    "properties": {
+     "password": {
+      "maxLength": 256,
+      "title": "Password",
+      "type": "string"
+     },
+     "username": {
+      "maxLength": 50,
+      "title": "Username",
+      "type": "string"
+     }
+    },
+    "required": [
+     "username",
+     "password"
+    ],
+    "title": "LoginRequest",
+    "type": "object"
+   },
+   "MeUpdate": {
+    "properties": {
+     "application_filter": {
+      "anyOf": [
+       {
+        "const": "all",
+        "type": "string"
+       },
+       {
+        "$ref": "#/components/schemas/ApplicationStatus"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Application Filter"
+     },
+     "application_sort": {
+      "anyOf": [
+       {
+        "enum": [
+         "applied",
+         "status",
+         "name",
+         "event"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Application Sort"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "maxLength": 255,
+        "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "language": {
+      "anyOf": [
+       {
+        "enum": [
+         "it",
+         "en"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Language"
+     },
+     "onboarded": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Onboarded"
+     },
+     "overview_layout": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/OverviewWidget"
+        },
+        "maxItems": 9,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Overview Layout"
+     },
+     "report_after_fill": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Report After Fill"
+     },
+     "reset_overview": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Reset Overview"
+     },
+     "theme": {
+      "anyOf": [
+       {
+        "enum": [
+         "light",
+         "dark",
+         "system"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Theme"
+     },
+     "username": {
+      "anyOf": [
+       {
+        "maxLength": 50,
+        "minLength": 3,
+        "pattern": "^[A-Za-z0-9._-]+$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Username"
+     }
+    },
+    "title": "MeUpdate",
+    "type": "object"
+   },
+   "OverviewWidget": {
+    "properties": {
+     "id": {
+      "enum": [
+       "counts",
+       "calendar",
+       "events",
+       "recent",
+       "profile",
+       "weekly",
+       "top_matches",
+       "stale_reports",
+       "missing_skills"
+      ],
+      "title": "Id",
+      "type": "string"
+     },
+     "size": {
+      "default": "half",
+      "enum": [
+       "half",
+       "full"
+      ],
+      "title": "Size",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "title": "OverviewWidget",
+    "type": "object"
+   },
+   "PasswordChange": {
+    "properties": {
+     "current_password": {
+      "maxLength": 256,
+      "title": "Current Password",
+      "type": "string"
+     },
+     "new_password": {
+      "maxLength": 256,
+      "title": "New Password",
+      "type": "string"
+     }
+    },
+    "required": [
+     "current_password",
+     "new_password"
+    ],
+    "title": "PasswordChange",
+    "type": "object"
+   },
+   "PasswordConfirm": {
+    "properties": {
+     "password": {
+      "maxLength": 256,
+      "title": "Password",
+      "type": "string"
+     }
+    },
+    "required": [
+     "password"
+    ],
+    "title": "PasswordConfirm",
+    "type": "object"
+   },
+   "PasswordPolicy": {
+    "properties": {
+     "password_min_length": {
+      "title": "Password Min Length",
+      "type": "integer"
+     },
+     "password_require_digit": {
+      "title": "Password Require Digit",
+      "type": "boolean"
+     },
+     "password_require_symbol": {
+      "title": "Password Require Symbol",
+      "type": "boolean"
+     },
+     "password_require_uppercase": {
+      "title": "Password Require Uppercase",
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "password_min_length",
+     "password_require_uppercase",
+     "password_require_digit",
+     "password_require_symbol"
+    ],
+    "title": "PasswordPolicy",
+    "type": "object"
+   },
+   "ProfileRead": {
+    "properties": {
+     "certifications": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Certifications",
+      "type": "array"
+     },
+     "cv_filename": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Cv Filename"
+     },
+     "education": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Education",
+      "type": "array"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "experiences": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Experiences",
+      "type": "array"
+     },
+     "full_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Full Name"
+     },
+     "headline": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Headline"
+     },
+     "id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Id"
+     },
+     "languages": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Languages",
+      "type": "array"
+     },
+     "links": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Links",
+      "type": "array"
+     },
+     "location": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location"
+     },
+     "phone": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Phone"
+     },
+     "projects": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Projects",
+      "type": "array"
+     },
+     "skills": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "title": "Skills",
+      "type": "array"
+     },
+     "summary": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Summary"
+     },
+     "updated_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Updated At"
+     },
+     "years_of_experience": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Years Of Experience"
+     }
+    },
+    "required": [
+     "id",
+     "full_name",
+     "email",
+     "phone",
+     "location",
+     "headline",
+     "summary",
+     "years_of_experience",
+     "links",
+     "skills",
+     "experiences",
+     "education",
+     "projects",
+     "certifications",
+     "languages",
+     "cv_filename",
+     "updated_at"
+    ],
+    "title": "ProfileRead",
+    "type": "object"
+   },
+   "ProfileSkill": {
+    "description": "Skill stored in the profile; level may be missing until the user sets it.",
+    "properties": {
+     "category": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Categoria, es. linguaggi, framework, database, cloud, soft skill",
+      "title": "Category"
+     },
+     "evidence": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Dove è stata usata secondo il CV (lavoro, progetto, corso)",
+      "title": "Evidence"
+     },
+     "level": {
+      "anyOf": [
+       {
+        "maximum": 4.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Level"
+     },
+     "name": {
+      "description": "Nome breve e canonico della competenza, es. 'Python', 'Docker'",
+      "title": "Name",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "title": "ProfileSkill",
+    "type": "object"
+   },
+   "ProfileUpdate": {
+    "properties": {
+     "certifications": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/CVCertification"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Certifications"
+     },
+     "education": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/CVEducation"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Education"
+     },
+     "email": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "experiences": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/CVExperience"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Experiences"
+     },
+     "full_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Full Name"
+     },
+     "headline": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Headline"
+     },
+     "languages": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/CVLanguage"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Languages"
+     },
+     "links": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/CVLink"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Links"
+     },
+     "location": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Location"
+     },
+     "phone": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Phone"
+     },
+     "projects": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/CVProject"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Projects"
+     },
+     "skills": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/ProfileSkill"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Skills"
+     },
+     "summary": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Summary"
+     },
+     "years_of_experience": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Years Of Experience"
+     }
+    },
+    "title": "ProfileUpdate",
+    "type": "object"
+   },
+   "ReportsQueued": {
+    "properties": {
+     "already_queued": {
+      "title": "Already Queued",
+      "type": "integer"
+     },
+     "queued": {
+      "title": "Queued",
+      "type": "integer"
+     },
+     "without_skills": {
+      "title": "Without Skills",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "queued",
+     "without_skills",
+     "already_queued"
+    ],
+    "title": "ReportsQueued",
+    "type": "object"
+   },
+   "ResetRequest": {
+    "properties": {
+     "new_password": {
+      "maxLength": 256,
+      "title": "New Password",
+      "type": "string"
+     },
+     "recovery_key": {
+      "maxLength": 256,
+      "title": "Recovery Key",
+      "type": "string"
+     },
+     "username": {
+      "maxLength": 50,
+      "title": "Username",
+      "type": "string"
+     }
+    },
+    "required": [
+     "username",
+     "recovery_key",
+     "new_password"
+    ],
+    "title": "ResetRequest",
+    "type": "object"
+   },
+   "RestoreResult": {
+    "properties": {
+     "detail": {
+      "default": "",
+      "title": "Detail",
+      "type": "string"
+     },
+     "finished_at": {
+      "title": "Finished At",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "result": {
+      "title": "Result",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "result",
+     "finished_at"
+    ],
+    "title": "RestoreResult",
+    "type": "object"
+   },
+   "SettingsRead": {
+    "description": "System settings; user preferences (language, theme) live on UserRead.",
+    "properties": {
+     "llm_accelerator": {
+      "title": "Llm Accelerator",
+      "type": "string"
+     },
+     "llm_enabled": {
+      "title": "Llm Enabled",
+      "type": "boolean"
+     },
+     "lockout_minutes": {
+      "title": "Lockout Minutes",
+      "type": "integer"
+     },
+     "max_login_attempts": {
+      "title": "Max Login Attempts",
+      "type": "integer"
+     },
+     "password_min_length": {
+      "title": "Password Min Length",
+      "type": "integer"
+     },
+     "password_require_digit": {
+      "title": "Password Require Digit",
+      "type": "boolean"
+     },
+     "password_require_symbol": {
+      "title": "Password Require Symbol",
+      "type": "boolean"
+     },
+     "password_require_uppercase": {
+      "title": "Password Require Uppercase",
+      "type": "boolean"
+     },
+     "session_hours": {
+      "title": "Session Hours",
+      "type": "integer"
+     },
+     "update_branch": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Update Branch"
+     },
+     "update_check_hours": {
+      "title": "Update Check Hours",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "llm_enabled",
+     "llm_accelerator",
+     "update_branch",
+     "update_check_hours",
+     "password_min_length",
+     "password_require_uppercase",
+     "password_require_digit",
+     "password_require_symbol",
+     "session_hours",
+     "max_login_attempts",
+     "lockout_minutes"
+    ],
+    "title": "SettingsRead",
+    "type": "object"
+   },
+   "SettingsUpdate": {
+    "properties": {
+     "llm_accelerator": {
+      "anyOf": [
+       {
+        "enum": [
+         "auto",
+         "cuda",
+         "rocm",
+         "vulkan",
+         "cpu"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Llm Accelerator"
+     },
+     "llm_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Llm Enabled"
+     },
+     "lockout_minutes": {
+      "anyOf": [
+       {
+        "maximum": 1440.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lockout Minutes"
+     },
+     "max_login_attempts": {
+      "anyOf": [
+       {
+        "maximum": 100.0,
+        "minimum": 0.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Max Login Attempts"
+     },
+     "password_min_length": {
+      "anyOf": [
+       {
+        "maximum": 128.0,
+        "minimum": 8.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Password Min Length"
+     },
+     "password_require_digit": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Password Require Digit"
+     },
+     "password_require_symbol": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Password Require Symbol"
+     },
+     "password_require_uppercase": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Password Require Uppercase"
+     },
+     "session_hours": {
+      "anyOf": [
+       {
+        "maximum": 720.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Session Hours"
+     },
+     "update_branch": {
+      "anyOf": [
+       {
+        "maxLength": 200,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Update Branch"
+     },
+     "update_check_hours": {
+      "anyOf": [
+       {
+        "enum": [
+         0,
+         1,
+         6,
+         12,
+         24,
+         168
+        ],
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Update Check Hours"
+     }
+    },
+    "title": "SettingsUpdate",
+    "type": "object"
+   },
+   "SetupRequest": {
+    "properties": {
+     "email": {
+      "maxLength": 255,
+      "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+      "title": "Email",
+      "type": "string"
+     },
+     "language": {
+      "default": "it",
+      "enum": [
+       "it",
+       "en"
+      ],
+      "title": "Language",
+      "type": "string"
+     },
+     "password": {
+      "maxLength": 256,
+      "title": "Password",
+      "type": "string"
+     },
+     "username": {
+      "maxLength": 50,
+      "minLength": 3,
+      "pattern": "^[A-Za-z0-9._-]+$",
+      "title": "Username",
+      "type": "string"
+     }
+    },
+    "required": [
+     "username",
+     "email",
+     "password"
+    ],
+    "title": "SetupRequest",
+    "type": "object"
+   },
+   "UpdateBranch": {
+    "properties": {
+     "build": {
+      "title": "Build",
+      "type": "string"
+     },
+     "commit": {
+      "default": "",
+      "title": "Commit",
+      "type": "string"
+     },
+     "name": {
+      "title": "Name",
+      "type": "string"
+     },
+     "newer": {
+      "title": "Newer",
+      "type": "boolean"
+     },
+     "published": {
+      "title": "Published",
+      "type": "boolean"
+     },
+     "version": {
+      "title": "Version",
+      "type": "string"
+     }
+    },
+    "required": [
+     "name",
+     "version",
+     "build",
+     "published",
+     "newer"
+    ],
+    "title": "UpdateBranch",
+    "type": "object"
+   },
+   "UpdateResult": {
+    "properties": {
+     "detail": {
+      "default": "",
+      "title": "Detail",
+      "type": "string"
+     },
+     "error": {
+      "default": "",
+      "title": "Error",
+      "type": "string"
+     },
+     "finished_at": {
+      "title": "Finished At",
+      "type": "string"
+     },
+     "result": {
+      "title": "Result",
+      "type": "string"
+     }
+    },
+    "required": [
+     "result",
+     "finished_at"
+    ],
+    "title": "UpdateResult",
+    "type": "object"
+   },
+   "UpdateStatus": {
+    "properties": {
+     "build": {
+      "title": "Build",
+      "type": "string"
+     },
+     "progress": {
+      "default": 0,
+      "title": "Progress",
+      "type": "integer"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "step": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Step"
+     },
+     "version": {
+      "title": "Version",
+      "type": "string"
+     }
+    },
+    "required": [
+     "status",
+     "version",
+     "build"
+    ],
+    "title": "UpdateStatus",
+    "type": "object"
+   },
+   "UpdatesRead": {
+    "properties": {
+     "active_jobs": {
+      "default": 0,
+      "title": "Active Jobs",
+      "type": "integer"
+     },
+     "branches": {
+      "items": {
+       "$ref": "#/components/schemas/UpdateBranch"
+      },
+      "title": "Branches",
+      "type": "array"
+     },
+     "build": {
+      "title": "Build",
+      "type": "string"
+     },
+     "check_error": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/CheckError"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "checked_at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Checked At"
+     },
+     "last": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/UpdateResult"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "progress": {
+      "default": 0,
+      "title": "Progress",
+      "type": "integer"
+     },
+     "selected_branch": {
+      "title": "Selected Branch",
+      "type": "string"
+     },
+     "status": {
+      "title": "Status",
+      "type": "string"
+     },
+     "step": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Step"
+     },
+     "update_available": {
+      "title": "Update Available",
+      "type": "boolean"
+     },
+     "version": {
+      "title": "Version",
+      "type": "string"
+     }
+    },
+    "required": [
+     "status",
+     "version",
+     "build",
+     "selected_branch",
+     "branches",
+     "update_available"
+    ],
+    "title": "UpdatesRead",
+    "type": "object"
+   },
+   "UserCreate": {
+    "properties": {
+     "email": {
+      "maxLength": 255,
+      "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+      "title": "Email",
+      "type": "string"
+     },
+     "language": {
+      "default": "it",
+      "enum": [
+       "it",
+       "en"
+      ],
+      "title": "Language",
+      "type": "string"
+     },
+     "password": {
+      "maxLength": 256,
+      "title": "Password",
+      "type": "string"
+     },
+     "role": {
+      "default": "user",
+      "enum": [
+       "admin",
+       "user"
+      ],
+      "title": "Role",
+      "type": "string"
+     },
+     "username": {
+      "maxLength": 50,
+      "minLength": 3,
+      "pattern": "^[A-Za-z0-9._-]+$",
+      "title": "Username",
+      "type": "string"
+     }
+    },
+    "required": [
+     "username",
+     "email",
+     "password"
+    ],
+    "title": "UserCreate",
+    "type": "object"
+   },
+   "UserRead": {
+    "properties": {
+     "application_filter": {
+      "title": "Application Filter",
+      "type": "string"
+     },
+     "application_sort": {
+      "title": "Application Sort",
+      "type": "string"
+     },
+     "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+     },
+     "email": {
+      "title": "Email",
+      "type": "string"
+     },
+     "has_avatar": {
+      "title": "Has Avatar",
+      "type": "boolean"
+     },
+     "id": {
+      "title": "Id",
+      "type": "integer"
+     },
+     "language": {
+      "title": "Language",
+      "type": "string"
+     },
+     "onboarded": {
+      "title": "Onboarded",
+      "type": "boolean"
+     },
+     "overview_layout": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/OverviewWidget"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Overview Layout"
+     },
+     "report_after_fill": {
+      "title": "Report After Fill",
+      "type": "boolean"
+     },
+     "role": {
+      "title": "Role",
+      "type": "string"
+     },
+     "theme": {
+      "title": "Theme",
+      "type": "string"
+     },
+     "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+     },
+     "username": {
+      "title": "Username",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "username",
+     "email",
+     "role",
+     "language",
+     "theme",
+     "application_sort",
+     "application_filter",
+     "report_after_fill",
+     "overview_layout",
+     "onboarded",
+     "has_avatar",
+     "created_at",
+     "updated_at"
+    ],
+    "title": "UserRead",
+    "type": "object"
+   },
+   "UserUpdate": {
+    "properties": {
+     "email": {
+      "anyOf": [
+       {
+        "maxLength": 255,
+        "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Email"
+     },
+     "password": {
+      "anyOf": [
+       {
+        "maxLength": 256,
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Password"
+     },
+     "role": {
+      "anyOf": [
+       {
+        "enum": [
+         "admin",
+         "user"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Role"
+     },
+     "username": {
+      "anyOf": [
+       {
+        "maxLength": 50,
+        "minLength": 3,
+        "pattern": "^[A-Za-z0-9._-]+$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Username"
+     }
+    },
+    "title": "UserUpdate",
+    "type": "object"
+   },
+   "UserWithKey": {
+    "description": "Newly created or recovered user, with the recovery key to show only once.",
+    "properties": {
+     "recovery_key": {
+      "title": "Recovery Key",
+      "type": "string"
+     },
+     "user": {
+      "$ref": "#/components/schemas/UserRead"
+     }
+    },
+    "required": [
+     "user",
+     "recovery_key"
+    ],
+    "title": "UserWithKey",
+    "type": "object"
+   },
+   "ValidationError": {
+    "properties": {
+     "ctx": {
+      "title": "Context",
+      "type": "object"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "title": "Location",
+      "type": "array"
+     },
+     "msg": {
+      "title": "Message",
+      "type": "string"
+     },
+     "type": {
+      "title": "Error Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError",
+    "type": "object"
+   }
+  }
+ },
+ "info": {
+  "description": "Gestione delle candidature lavorative",
+  "title": "Candidate",
+  "version": "2.0"
+ },
+ "openapi": "3.1.0",
+ "paths": {
+  "/api/applications": {
+   "delete": {
+    "description": "Delete several applications (?ids=1&ids=2); all of them or none.",
+    "operationId": "delete_many_api_applications_delete",
+    "parameters": [
+     {
+      "in": "query",
+      "name": "ids",
+      "required": true,
+      "schema": {
+       "items": {
+        "type": "integer"
+       },
+       "maxItems": 1000,
+       "minItems": 1,
+       "title": "Ids",
+       "type": "array"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Delete Many",
+    "tags": [
+     "applications"
+    ]
+   },
+   "get": {
+    "operationId": "list_applications_api_applications_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ApplicationListItem"
+         },
+         "title": "Response List Applications Api Applications Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Applications",
+    "tags": [
+     "applications"
+    ]
+   },
+   "patch": {
+    "description": "Move several applications to one status; all of them or none (unknown ids fail the whole request).",
+    "operationId": "update_applications_api_applications_patch",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ApplicationsUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update Applications",
+    "tags": [
+     "applications"
+    ]
+   },
+   "post": {
+    "description": "Create an application with fields filled by hand.",
+    "operationId": "create_application_api_applications_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ApplicationUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApplicationRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create Application",
+    "tags": [
+     "applications"
+    ]
+   }
+  },
+  "/api/applications/imports": {
+   "post": {
+    "description": "Save a new application with its job posting (text, link or file) right away; the local model fills\nin its fields in the background, then (with report) generates its profile match report.\nCancelling the job before it is done deletes the application.",
+    "operationId": "create_with_ai_api_applications_imports_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_create_with_ai_api_applications_imports_post"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApplicationRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create With Ai",
+    "tags": [
+     "applications"
+    ]
+   }
+  },
+  "/api/applications/reports": {
+   "post": {
+    "description": "Queue the profile match report of several applications, one job each, in the order given. Applications\nwithout skills (nothing to compare) and those whose report is already queued are skipped.",
+    "operationId": "request_reports_api_applications_reports_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ApplicationReports"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ReportsQueued"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Request Reports",
+    "tags": [
+     "applications"
+    ]
+   }
+  },
+  "/api/applications/{application_id}": {
+   "delete": {
+    "operationId": "delete_application_api_applications__application_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "application_id",
+      "required": true,
+      "schema": {
+       "title": "Application Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Delete Application",
+    "tags": [
+     "applications"
+    ]
+   },
+   "get": {
+    "operationId": "get_application_api_applications__application_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "application_id",
+      "required": true,
+      "schema": {
+       "title": "Application Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApplicationRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Application",
+    "tags": [
+     "applications"
+    ]
+   },
+   "patch": {
+    "operationId": "update_application_api_applications__application_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "application_id",
+      "required": true,
+      "schema": {
+       "title": "Application Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ApplicationUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApplicationRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update Application",
+    "tags": [
+     "applications"
+    ]
+   }
+  },
+  "/api/applications/{application_id}/attachments": {
+   "post": {
+    "operationId": "add_attachments_api_applications__application_id__attachments_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "application_id",
+      "required": true,
+      "schema": {
+       "title": "Application Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_add_attachments_api_applications__application_id__attachments_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApplicationRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Add Attachments",
+    "tags": [
+     "applications"
+    ]
+   }
+  },
+  "/api/applications/{application_id}/attachments/{attachment_id}": {
+   "delete": {
+    "operationId": "delete_attachment_api_applications__application_id__attachments__attachment_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "application_id",
+      "required": true,
+      "schema": {
+       "title": "Application Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "attachment_id",
+      "required": true,
+      "schema": {
+       "title": "Attachment Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApplicationRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Delete Attachment",
+    "tags": [
+     "applications"
+    ]
+   },
+   "get": {
+    "operationId": "download_attachment_api_applications__application_id__attachments__attachment_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "application_id",
+      "required": true,
+      "schema": {
+       "title": "Application Id",
+       "type": "integer"
+      }
+     },
+     {
+      "in": "path",
+      "name": "attachment_id",
+      "required": true,
+      "schema": {
+       "title": "Attachment Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Download Attachment",
+    "tags": [
+     "applications"
+    ]
+   }
+  },
+  "/api/applications/{application_id}/fills": {
+   "post": {
+    "description": "Fill the application again from a new job posting, or from the saved one. Empty fields are filled\nwhen the job is done; values for filled fields are proposed (accepted with POST /api/jobs/{id}/accept).",
+    "operationId": "fill_with_ai_api_applications__application_id__fills_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "application_id",
+      "required": true,
+      "schema": {
+       "title": "Application Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_fill_with_ai_api_applications__application_id__fills_post"
+       }
+      }
+     }
+    },
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Fill With Ai",
+    "tags": [
+     "applications"
+    ]
+   }
+  },
+  "/api/applications/{application_id}/report": {
+   "post": {
+    "description": "Queue the generation (or regeneration) of the profile match report by the local model.",
+    "operationId": "request_report_api_applications__application_id__report_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "application_id",
+      "required": true,
+      "schema": {
+       "title": "Application Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ApplicationRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Request Report",
+    "tags": [
+     "applications"
+    ]
+   }
+  },
+  "/api/backups": {
+   "get": {
+    "description": "Backups, newest first, with the schedule and the cleanup rules.",
+    "operationId": "get_backups_api_backups_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BackupsRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Backups",
+    "tags": [
+     "backups"
+    ]
+   },
+   "post": {
+    "description": "A manual backup; answers once it is written.",
+    "operationId": "create_backup_api_backups_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BackupCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create Backup",
+    "tags": [
+     "backups"
+    ]
+   }
+  },
+  "/api/backups/settings": {
+   "put": {
+    "operationId": "update_backup_settings_api_backups_settings_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BackupSettings"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/BackupSettings"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update Backup Settings",
+    "tags": [
+     "backups"
+    ]
+   }
+  },
+  "/api/backups/{name}": {
+   "delete": {
+    "operationId": "delete_backup_api_backups__name__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "name",
+      "required": true,
+      "schema": {
+       "title": "Name",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Delete Backup",
+    "tags": [
+     "backups"
+    ]
+   }
+  },
+  "/api/backups/{name}/file": {
+   "get": {
+    "description": "The archive, streamed from the backup service.",
+    "operationId": "download_backup_api_backups__name__file_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "name",
+      "required": true,
+      "schema": {
+       "title": "Name",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Download Backup",
+    "tags": [
+     "backups"
+    ]
+   }
+  },
+  "/api/backups/{name}/restorations": {
+   "post": {
+    "description": "Put database and files back as in the backup. The current state is saved first; meanwhile the app is\nin maintenance.",
+    "operationId": "restore_backup_api_backups__name__restorations_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "name",
+      "required": true,
+      "schema": {
+       "title": "Name",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Restore Backup",
+    "tags": [
+     "backups"
+    ]
+   }
+  },
+  "/api/events": {
+   "get": {
+    "description": "All events except status changes, which belong to the application history.",
+    "operationId": "list_events_api_events_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/AgendaEvent"
+         },
+         "title": "Response List Events Api Events Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Events",
+    "tags": [
+     "events"
+    ]
+   },
+   "post": {
+    "operationId": "add_event_api_events_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EventCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EventRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Add Event",
+    "tags": [
+     "events"
+    ]
+   }
+  },
+  "/api/events/{event_id}": {
+   "delete": {
+    "operationId": "delete_event_api_events__event_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "event_id",
+      "required": true,
+      "schema": {
+       "title": "Event Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Delete Event",
+    "tags": [
+     "events"
+    ]
+   },
+   "get": {
+    "operationId": "get_event_api_events__event_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "event_id",
+      "required": true,
+      "schema": {
+       "title": "Event Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EventRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Event",
+    "tags": [
+     "events"
+    ]
+   },
+   "patch": {
+    "operationId": "update_event_api_events__event_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "event_id",
+      "required": true,
+      "schema": {
+       "title": "Event Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EventUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/EventRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update Event",
+    "tags": [
+     "events"
+    ]
+   }
+  },
+  "/api/health": {
+   "get": {
+    "operationId": "health_api_health_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Health"
+   }
+  },
+  "/api/https": {
+   "get": {
+    "operationId": "get_https_api_https_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HttpsRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Https",
+    "tags": [
+     "https"
+    ]
+   },
+   "put": {
+    "description": "Mode, and the hosts of internal mode (custom mode serves the names of its certificates). Caddy picks up\nthe new configuration within a few seconds. Turning HTTPS on or off ends every session.",
+    "operationId": "update_https_api_https_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/HttpsUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HttpsRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update Https",
+    "tags": [
+     "https"
+    ]
+   }
+  },
+  "/api/https/authority/certificate": {
+   "get": {
+    "description": "Certificate of the internal authority, to install on the devices that open the app. Public: it holds no\nsecret, and a device may need it before anyone can sign in from it.",
+    "operationId": "download_authority_api_https_authority_certificate_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Download Authority",
+    "tags": [
+     "https"
+    ]
+   }
+  },
+  "/api/https/certificates": {
+   "post": {
+    "description": "A certificate (PEM, with its intermediate certificates) and its private key, for custom mode. A\ncertificate for the same names replaces the old one.",
+    "operationId": "upload_certificate_api_https_certificates_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_certificate_api_https_certificates_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HttpsRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Upload Certificate",
+    "tags": [
+     "https"
+    ]
+   }
+  },
+  "/api/https/certificates/{certificate_id}": {
+   "delete": {
+    "operationId": "delete_certificate_api_https_certificates__certificate_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "certificate_id",
+      "required": true,
+      "schema": {
+       "title": "Certificate Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HttpsRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Delete Certificate",
+    "tags": [
+     "https"
+    ]
+   }
+  },
+  "/api/jobs": {
+   "get": {
+    "description": "The user's jobs, waiting, running and finished (until dismissed), in order of creation.",
+    "operationId": "list_jobs_api_jobs_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/JobRead"
+         },
+         "title": "Response List Jobs Api Jobs Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Jobs",
+    "tags": [
+     "jobs"
+    ]
+   }
+  },
+  "/api/jobs/{job_id}": {
+   "delete": {
+    "description": "Cancel a waiting or running job (an application it is creating is deleted), or dismiss a finished one.",
+    "operationId": "cancel_job_api_jobs__job_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "job_id",
+      "required": true,
+      "schema": {
+       "title": "Job Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Cancel Job",
+    "tags": [
+     "jobs"
+    ]
+   }
+  },
+  "/api/jobs/{job_id}/accept": {
+   "post": {
+    "description": "Apply the values the job proposed for fields that were already filled; the job is then dismissed.",
+    "operationId": "accept_job_api_jobs__job_id__accept_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "job_id",
+      "required": true,
+      "schema": {
+       "title": "Job Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Accept Job",
+    "tags": [
+     "jobs"
+    ]
+   }
+  },
+  "/api/jobs/{job_id}/retry": {
+   "post": {
+    "description": "Queue a failed job again.",
+    "operationId": "retry_job_api_jobs__job_id__retry_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "job_id",
+      "required": true,
+      "schema": {
+       "title": "Job Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Retry Job",
+    "tags": [
+     "jobs"
+    ]
+   }
+  },
+  "/api/me": {
+   "get": {
+    "operationId": "get_me_api_me_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Me",
+    "tags": [
+     "me"
+    ]
+   },
+   "patch": {
+    "operationId": "update_me_api_me_patch",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/MeUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update Me",
+    "tags": [
+     "me"
+    ]
+   }
+  },
+  "/api/me/avatar": {
+   "delete": {
+    "operationId": "delete_avatar_api_me_avatar_delete",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Delete Avatar",
+    "tags": [
+     "me"
+    ]
+   },
+   "get": {
+    "operationId": "get_avatar_api_me_avatar_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Avatar",
+    "tags": [
+     "me"
+    ]
+   },
+   "put": {
+    "operationId": "upload_avatar_api_me_avatar_put",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_avatar_api_me_avatar_put"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Upload Avatar",
+    "tags": [
+     "me"
+    ]
+   }
+  },
+  "/api/me/password": {
+   "put": {
+    "operationId": "change_password_api_me_password_put",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PasswordChange"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Change Password",
+    "tags": [
+     "me"
+    ]
+   }
+  },
+  "/api/me/recovery-key": {
+   "post": {
+    "description": "Generate a new downloadable recovery key; the old one stops working.",
+    "operationId": "new_recovery_key_api_me_recovery_key_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/PasswordConfirm"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "New Recovery Key",
+    "tags": [
+     "me"
+    ]
+   }
+  },
+  "/api/password-resets": {
+   "post": {
+    "description": "Set a new password via recovery key; the used key is replaced with a new one.",
+    "operationId": "reset_password_api_password_resets_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ResetRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserWithKey"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Reset Password",
+    "tags": [
+     "auth"
+    ]
+   }
+  },
+  "/api/profile": {
+   "get": {
+    "description": "Read only: a user who never saved the profile gets an empty one (id null), created by the first write.",
+    "operationId": "get_profile_api_profile_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProfileRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Profile",
+    "tags": [
+     "profile"
+    ]
+   },
+   "patch": {
+    "operationId": "update_profile_api_profile_patch",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ProfileUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProfileRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update Profile",
+    "tags": [
+     "profile"
+    ]
+   }
+  },
+  "/api/profile/cv": {
+   "get": {
+    "operationId": "download_cv_api_profile_cv_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Download Cv",
+    "tags": [
+     "profile"
+    ]
+   },
+   "put": {
+    "description": "Store the CV and its text; profile fields are filled by hand or via POST /api/profile/fills.",
+    "operationId": "upload_cv_api_profile_cv_put",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_upload_cv_api_profile_cv_put"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProfileRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Upload Cv",
+    "tags": [
+     "profile"
+    ]
+   }
+  },
+  "/api/profile/fills": {
+   "post": {
+    "description": "Fill the profile from the uploaded CV in the background. Empty fields are filled when the job is\ndone; values for filled fields are proposed (accepted with POST /api/jobs/{id}/accept).",
+    "operationId": "fill_from_cv_api_profile_fills_post",
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JobRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Fill From Cv",
+    "tags": [
+     "profile"
+    ]
+   }
+  },
+  "/api/session": {
+   "delete": {
+    "operationId": "logout_api_session_delete",
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Logout",
+    "tags": [
+     "auth"
+    ]
+   },
+   "post": {
+    "operationId": "login_api_session_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LoginRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Login",
+    "tags": [
+     "auth"
+    ]
+   }
+  },
+  "/api/settings": {
+   "get": {
+    "operationId": "get_settings_api_settings_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SettingsRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Settings",
+    "tags": [
+     "settings"
+    ]
+   },
+   "patch": {
+    "operationId": "update_settings_api_settings_patch",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SettingsUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SettingsRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update Settings",
+    "tags": [
+     "settings"
+    ]
+   }
+  },
+  "/api/setup": {
+   "get": {
+    "description": "Public: whether the admin still needs to be created, plus the password rules.",
+    "operationId": "auth_status_api_setup_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AuthStatus"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Auth Status",
+    "tags": [
+     "auth"
+    ]
+   },
+   "post": {
+    "description": "Create the first user as admin. Only allowed while no users exist.",
+    "operationId": "setup_api_setup_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SetupRequest"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserWithKey"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Setup",
+    "tags": [
+     "auth"
+    ]
+   }
+  },
+  "/api/updates": {
+   "get": {
+    "operationId": "get_updates_api_updates_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UpdatesRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Updates",
+    "tags": [
+     "updates"
+    ]
+   }
+  },
+  "/api/updates/checks": {
+   "post": {
+    "operationId": "check_api_updates_checks_post",
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Check",
+    "tags": [
+     "updates"
+    ]
+   }
+  },
+  "/api/updates/installations": {
+   "post": {
+    "description": "Install the newer release of the selected branch, once no AI job of any user is waiting or running.",
+    "operationId": "install_api_updates_installations_post",
+    "responses": {
+     "202": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Install",
+    "tags": [
+     "updates"
+    ]
+   }
+  },
+  "/api/updates/status": {
+   "get": {
+    "description": "Progress only, polled by every user to show the update screen.",
+    "operationId": "get_status_api_updates_status_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UpdateStatus"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "Get Status",
+    "tags": [
+     "updates"
+    ]
+   }
+  },
+  "/api/users": {
+   "get": {
+    "operationId": "list_users_api_users_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/UserRead"
+         },
+         "title": "Response List Users Api Users Get",
+         "type": "array"
+        }
+       }
+      },
+      "description": "Successful Response"
+     }
+    },
+    "summary": "List Users",
+    "tags": [
+     "users"
+    ]
+   },
+   "post": {
+    "description": "The recovery key is returned only once; the admin hands it to the new user.",
+    "operationId": "create_user_api_users_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UserCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserWithKey"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Create User",
+    "tags": [
+     "users"
+    ]
+   }
+  },
+  "/api/users/{user_id}": {
+   "delete": {
+    "description": "Delete the user along with applications, events, profile and files.",
+    "operationId": "delete_user_api_users__user_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "user_id",
+      "required": true,
+      "schema": {
+       "title": "User Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Delete User",
+    "tags": [
+     "users"
+    ]
+   },
+   "get": {
+    "operationId": "get_user_api_users__user_id__get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "user_id",
+      "required": true,
+      "schema": {
+       "title": "User Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get User",
+    "tags": [
+     "users"
+    ]
+   },
+   "patch": {
+    "operationId": "update_user_api_users__user_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "user_id",
+      "required": true,
+      "schema": {
+       "title": "User Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UserUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UserRead"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Update User",
+    "tags": [
+     "users"
+    ]
+   }
+  },
+  "/api/users/{user_id}/avatar": {
+   "get": {
+    "operationId": "get_avatar_api_users__user_id__avatar_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "user_id",
+      "required": true,
+      "schema": {
+       "title": "User Id",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      },
+      "description": "Validation Error"
+     }
+    },
+    "summary": "Get Avatar",
+    "tags": [
+     "users"
+    ]
+   }
+  }
+ }
+}
