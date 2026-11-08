@@ -29,9 +29,14 @@ class AppSettings(SQLModel, table=True):
     password_require_symbol: bool = bool_field(False)
     # Sessions expire after this many hours without using the app
     session_hours: int = int_field(168)
-    # 0 = no lockout after failed attempts
+    # Account lock after failed sign-ins or recovery keys (off by default)
+    account_lockout_enabled: bool = bool_field(False)
     max_login_attempts: int = int_field(5)
     lockout_minutes: int = int_field(15)
+    # Per-IP limit on failed sign-ins and recovery keys, whatever the account (off by default)
+    ip_limit_enabled: bool = bool_field(False)
+    ip_max_attempts: int = int_field(20)
+    ip_block_minutes: int = int_field(15)
     # Session signing key, generated on first run
     secret_key: str | None = Field(default=None, sa_type=sa.String(128))
 

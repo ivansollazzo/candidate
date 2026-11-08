@@ -3141,6 +3141,22 @@
    "SettingsRead": {
     "description": "System settings; user preferences (language, theme) live on UserRead.",
     "properties": {
+     "account_lockout_enabled": {
+      "title": "Account Lockout Enabled",
+      "type": "boolean"
+     },
+     "ip_block_minutes": {
+      "title": "Ip Block Minutes",
+      "type": "integer"
+     },
+     "ip_limit_enabled": {
+      "title": "Ip Limit Enabled",
+      "type": "boolean"
+     },
+     "ip_max_attempts": {
+      "title": "Ip Max Attempts",
+      "type": "integer"
+     },
      "llm_accelerator": {
       "title": "Llm Accelerator",
       "type": "string"
@@ -3203,14 +3219,66 @@
      "password_require_digit",
      "password_require_symbol",
      "session_hours",
+     "account_lockout_enabled",
      "max_login_attempts",
-     "lockout_minutes"
+     "lockout_minutes",
+     "ip_limit_enabled",
+     "ip_max_attempts",
+     "ip_block_minutes"
     ],
     "title": "SettingsRead",
     "type": "object"
    },
    "SettingsUpdate": {
     "properties": {
+     "account_lockout_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Account Lockout Enabled"
+     },
+     "ip_block_minutes": {
+      "anyOf": [
+       {
+        "maximum": 1440.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ip Block Minutes"
+     },
+     "ip_limit_enabled": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ip Limit Enabled"
+     },
+     "ip_max_attempts": {
+      "anyOf": [
+       {
+        "maximum": 1000.0,
+        "minimum": 1.0,
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ip Max Attempts"
+     },
      "llm_accelerator": {
       "anyOf": [
        {
@@ -3257,7 +3325,7 @@
       "anyOf": [
        {
         "maximum": 100.0,
-        "minimum": 0.0,
+        "minimum": 1.0,
         "type": "integer"
        },
        {

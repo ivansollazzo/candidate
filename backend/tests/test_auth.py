@@ -41,7 +41,7 @@ def test_setup_only_once(anon):
 
 
 def test_login_logout_and_lockout(client):
-    client.patch("/api/settings", json={"max_login_attempts": 3, "lockout_minutes": 5})
+    client.patch("/api/settings", json={"account_lockout_enabled": True, "max_login_attempts": 3, "lockout_minutes": 5})
     client.delete("/api/session")
     assert client.get("/api/me").status_code == 401
 
@@ -57,6 +57,28 @@ def test_login_logout_and_lockout(client):
 
     # Unknown username: same error as a wrong password
     assert client.post("/api/session", json={"username": "nessuno", "password": "x"}).status_code == 401
+
+
+def test_attempt_limits_off_by_default(client):
+    client.delete("/api/session")
+    for _ in range(30):
+        assert client.post("/api/session", json={"username": "admin", "password": "sbagliata"}).status_code == 401
+    assert client.post("/api/session", json={"username": "admin", "password": "Password123"}).status_code == 200
+
+
+def test_ip_limit(client):
+    client.patch("/api/settings", json={"ip_limit_enabled": True, "ip_max_attempts": 3, "ip_block_minutes": 10})
+    client.delete("/api/session")
+    # Different accounts and recovery keys count for the same address
+    client.post("/api/session", json={"username": "admin", "password": "sbagliata"})
+    client.post("/api/session", json={"username": "nessuno", "password": "x"})
+    client.post("/api/password-resets",
+                json={"username": "admin", "recovery_key": "AAAA-BBBB-CCCC-DDDD-EEEE-FFFF", "new_password": "NuovaPass99"})
+    r = client.post("/api/session", json={"username": "admin", "password": "Password123"})
+    assert r.status_code == 429 and "10 min" in r.json()["detail"] and int(r.headers["retry-after"]) > 500
+    # Another address is not affected
+    other = TestClient(app, client=("10.0.0.9", 50000))
+    assert other.post("/api/session", json={"username": "admin", "password": "Password123"}).status_code == 200
 
 
 def test_password_change_closes_other_sessions(client):

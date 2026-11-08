@@ -17,8 +17,12 @@ class SettingsRead(BaseModel):
     password_require_digit: bool
     password_require_symbol: bool
     session_hours: int
+    account_lockout_enabled: bool
     max_login_attempts: int
     lockout_minutes: int
+    ip_limit_enabled: bool
+    ip_max_attempts: int
+    ip_block_minutes: int
 
 
 class SettingsUpdate(BaseModel):
@@ -32,5 +36,9 @@ class SettingsUpdate(BaseModel):
     password_require_digit: bool | None = None
     password_require_symbol: bool | None = None
     session_hours: int | None = Field(default=None, ge=1, le=720)
-    max_login_attempts: int | None = Field(default=None, ge=0, le=100)
+    account_lockout_enabled: bool | None = None
+    max_login_attempts: int | None = Field(default=None, ge=1, le=100)
     lockout_minutes: int | None = Field(default=None, ge=1, le=1440)
+    ip_limit_enabled: bool | None = None
+    ip_max_attempts: int | None = Field(default=None, ge=1, le=1000)
+    ip_block_minutes: int | None = Field(default=None, ge=1, le=1440)

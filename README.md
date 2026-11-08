@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 2.0 (build 20261108.1346), by Ivan Sollazzo.
+Version 2.0 (build 20261108.1530), by Ivan Sollazzo.
 
 ## Features
 
@@ -40,8 +40,8 @@ Version 2.0 (build 20261108.1346), by Ivan Sollazzo.
 - **Overview**: widgets to move, resize, add and remove with the brush button, saved per user: counters by status,
   calendar, upcoming events, recent applications, profile, applications per week, best matches, profile matches to
   recalculate and skills missing most often.
-- **Multi-user**: sign-in, admin and user roles, password recovery keys (no email needed), configurable password and
-  lockout policy.
+- **Multi-user**: sign-in, admin and user roles, password recovery keys (no email needed), configurable password
+  policy, optional limits on failed attempts per account and per IP address (both off by default).
 - **Updates from the app**: follow a branch (stable, beta or any other) and install a newer version with one
   click. Ready-made images are downloaded from GitHub, a full backup is made first, and if the new version doesn't
   start everything goes back as it was. An update can be installed only when no AI operation is queued or running,
@@ -179,7 +179,7 @@ signing in.
 ## Configuration
 
 Most settings are changed from the app: language and theme (per user), AI features on or off, hardware acceleration,
-password and lockout policy, and users (admin only).
+password policy and failed-attempt limits, and users (admin only).
 
 ### Docker Compose variables
 
@@ -377,7 +377,7 @@ frontend/    React + TypeScript app: src/shared, one folder per feature in src/f
 llm/         Service that detects the hardware and manages the Ollama container
 updater/     Service that installs new versions from the images on GitHub Container Registry
 backup/      Service that makes, cleans up and restores the backups
-.github/     Workflow that builds and publishes the images
+.github/     Workflow that runs the tests (on PostgreSQL, with the migrations), then builds and publishes the images
 ```
 
 ## Built with
@@ -387,3 +387,9 @@ Qwen 3 4B · pdfplumber, python-docx, trafilatura · pwdlib (Argon2),
 PyJWT, Pillow · Docker Compose.
 
 Thanks to the open source projects Candidate is built on.
+
+## License
+
+Copyright © 2026 Ivan Sollazzo. Candidate is free software released under the
+[GNU Affero General Public License v3.0](LICENSE): you can use, study, modify and share it; whoever offers a modified
+version to users over a network must make its source code available to them under the same license.

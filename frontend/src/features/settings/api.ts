@@ -35,9 +35,12 @@ export interface Settings extends PasswordPolicy {
   /** Hours between update checks; 0 = only on request */
   update_check_hours: number
   session_hours: number
-  /** 0 = no lockout */
+  account_lockout_enabled: boolean
   max_login_attempts: number
   lockout_minutes: number
+  ip_limit_enabled: boolean
+  ip_max_attempts: number
+  ip_block_minutes: number
 }
 
 export const settingsApi = {

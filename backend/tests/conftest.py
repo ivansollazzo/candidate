@@ -6,6 +6,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel
 
+from app.features.auth import rate_limit
 from app.features.settings import service as settings_service
 from app.main import app
 from app.shared.database import engine
@@ -17,6 +18,7 @@ def clean_db():
     SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         settings_service.ensure(session)
+    rate_limit.reset()
     yield
 
 

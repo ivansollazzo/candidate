@@ -53,7 +53,7 @@ def rotate_recovery_key(user: User) -> str:
     return key
 
 
-# Lockout after failed attempts
+# Account lock after failed attempts (Settings › Security)
 
 def now() -> datetime:
     return datetime.now(UTC)
@@ -66,8 +66,10 @@ def ensure_not_locked(user: User) -> None:
 
 
 def register_failure(user: User, settings: AppSettings) -> None:
+    if not settings.account_lockout_enabled:
+        return
     user.failed_logins += 1
-    if settings.max_login_attempts and user.failed_logins >= settings.max_login_attempts:
+    if user.failed_logins >= settings.max_login_attempts:
         user.locked_until = now() + timedelta(minutes=settings.lockout_minutes)
         user.failed_logins = 0
 

@@ -11,17 +11,36 @@ import { Field } from "@/shared/ui/input"
 import { Switch } from "@/shared/ui/switch"
 
 const POLICY_KEYS = ["password_min_length", "password_require_uppercase", "password_require_digit",
-  "password_require_symbol", "session_hours", "max_login_attempts", "lockout_minutes"] as const
+  "password_require_symbol", "session_hours", "account_lockout_enabled", "max_login_attempts", "lockout_minutes",
+  "ip_limit_enabled", "ip_max_attempts", "ip_block_minutes"] as const
 type Policy = Pick<Settings, (typeof POLICY_KEYS)[number]>
 
 const pick = (settings: Settings) => Object.fromEntries(POLICY_KEYS.map((k) => [k, settings[k]])) as Policy
 
-const NUMBERS: { key: keyof Policy; label: MessageKey; hint: MessageKey; min: number; max: number }[] = [
+type NumberField = { key: keyof Policy; label: MessageKey; hint: MessageKey; min: number; max: number }
+
+const ACCESS: NumberField[] = [
   { key: "password_min_length", label: "security.minLength", hint: "security.minLengthHint", min: 8, max: 128 },
   { key: "session_hours", label: "security.sessionHours", hint: "security.sessionHoursHint", min: 1, max: 720 },
-  { key: "max_login_attempts", label: "security.attempts", hint: "security.attemptsHint", min: 0, max: 100 },
-  { key: "lockout_minutes", label: "security.lockout", hint: "security.lockoutHint", min: 1, max: 1440 },
 ]
+
+/** Failed-attempt limits: a switch, and its numbers shown while it is on */
+const LIMITS: { key: keyof Policy; label: MessageKey; hint: MessageKey; numbers: NumberField[] }[] = [
+  {
+    key: "account_lockout_enabled", label: "security.accountLock", hint: "security.accountLockHint", numbers: [
+      { key: "max_login_attempts", label: "security.attempts", hint: "security.attemptsHint", min: 1, max: 100 },
+      { key: "lockout_minutes", label: "security.lockout", hint: "security.lockoutHint", min: 1, max: 1440 },
+    ],
+  },
+  {
+    key: "ip_limit_enabled", label: "security.ipLimit", hint: "security.ipLimitHint", numbers: [
+      { key: "ip_max_attempts", label: "security.ipAttempts", hint: "security.ipAttemptsHint", min: 1, max: 1000 },
+      { key: "ip_block_minutes", label: "security.ipBlock", hint: "security.ipBlockHint", min: 1, max: 1440 },
+    ],
+  },
+]
+
+const NUMBERS = [...ACCESS, ...LIMITS.flatMap((limit) => limit.numbers)]
 
 const RULES: { key: keyof Policy; label: MessageKey }[] = [
   { key: "password_require_uppercase", label: "security.uppercase" },
@@ -40,6 +59,13 @@ export function SecurityTab({ settings }: { settings: Settings }) {
     return Number.isInteger(value) && value >= min && value <= max
   })
   const set = (changes: Partial<Policy>) => setPolicy({ ...policy, ...changes })
+  const numberField = ({ key, label, hint, min, max }: NumberField) => (
+    <div key={key}>
+      <Field label={t(label)} type="number" min={min} max={max} required value={policy[key] as number}
+        onChange={(e) => set({ [key]: e.target.valueAsNumber })} />
+      <p className="mt-1 text-xs text-muted-foreground">{t(hint)}</p>
+    </div>
+  )
   const submit = (e: FormEvent) => {
     e.preventDefault()
     update.mutate(policy)
@@ -64,12 +90,21 @@ export function SecurityTab({ settings }: { settings: Settings }) {
       </Card>
       <Card>
         <CardHeader><CardTitle>{t("security.access")}</CardTitle></CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          {NUMBERS.map(({ key, label, hint, min, max }) => (
-            <div key={key}>
-              <Field label={t(label)} type="number" min={min} max={max} required value={policy[key] as number}
-                onChange={(e) => set({ [key]: e.target.valueAsNumber })} />
-              <p className="mt-1 text-xs text-muted-foreground">{t(hint)}</p>
+        <CardContent className="grid gap-4 sm:grid-cols-2">{ACCESS.map(numberField)}</CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle>{t("security.attemptLimits")}</CardTitle></CardHeader>
+        <CardContent className="space-y-5">
+          {LIMITS.map(({ key, label, hint, numbers }) => (
+            <div key={key} className="space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">{t(label)}</p>
+                  <p className="text-xs text-muted-foreground">{t(hint)}</p>
+                </div>
+                <Switch label={t(label)} checked={policy[key] as boolean} onChange={(value) => set({ [key]: value })} />
+              </div>
+              {policy[key] && <div className="grid gap-4 sm:grid-cols-2">{numbers.map(numberField)}</div>}
             </div>
           ))}
         </CardContent>

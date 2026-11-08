@@ -1,10 +1,11 @@
 """First-run setup (admin creation), the session (sign in, sign out), password resets via recovery key, and the
 current user's password and recovery key."""
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlmodel import Session
 
 from app.core.i18n import t
+from app.features.auth import rate_limit
 from app.features.auth import service as security
 from app.features.auth.dependencies import current_user
 from app.features.auth.models import User, UserRole
@@ -51,8 +52,9 @@ def setup(payload: SetupRequest, response: Response, session: Session = Depends(
 
 
 @router.post("/session", response_model=UserRead)
-def login(payload: LoginRequest, response: Response, session: Session = Depends(get_session)):
+def login(payload: LoginRequest, request: Request, response: Response, session: Session = Depends(get_session)):
     settings = settings_service.load(session)
+    rate_limit.ensure_allowed(request, settings)
     user = security.find_user(session, payload.username)
     if user is not None:
         security.ensure_not_locked(user)
@@ -60,6 +62,7 @@ def login(payload: LoginRequest, response: Response, session: Session = Depends(
         if user is not None:
             security.register_failure(user, settings)
             save(session, user)
+        rate_limit.register_failure(request, settings)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, t("invalid_credentials"))
     security.register_success(user)
     save(session, user)
@@ -73,9 +76,11 @@ def logout(response: Response):
 
 
 @router.post("/password-resets", response_model=UserWithKey)
-def reset_password(payload: ResetRequest, response: Response, session: Session = Depends(get_session)):
+def reset_password(payload: ResetRequest, request: Request, response: Response,
+                   session: Session = Depends(get_session)):
     """Set a new password via recovery key; the used key is replaced with a new one."""
     settings = settings_service.load(session)
+    rate_limit.ensure_allowed(request, settings)
     user = security.find_user(session, payload.username)
     if user is not None:
         security.ensure_not_locked(user)
@@ -84,6 +89,7 @@ def reset_password(payload: ResetRequest, response: Response, session: Session =
         if user is not None:
             security.register_failure(user, settings)
             save(session, user)
+        rate_limit.register_failure(request, settings)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, t("invalid_recovery_key"))
     security.check_password(payload.new_password, settings)
     user.password_hash = hash_secret(payload.new_password)
