@@ -29,8 +29,6 @@ interface WidgetProps {
 }
 
 // An application with no news for this many days shows up in "No news"
-const NO_NEWS_DAYS = 14
-const ACTIVE_STATUSES = new Set(["applied", "interview"])
 const WEEKS = 8
 
 function Tile({ to, label, count, color }: { to: string; label: string; count: number; color?: string }) {
@@ -103,8 +101,6 @@ function ApplicationRows({ items }: { items: { app: ApplicationListItem; aside: 
 function AiOff() {
   return <Empty flush>{t("ai.disabled")}</Empty>
 }
-
-const daysBetween = (from: string, to: string) => Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000)
 
 // Widgets
 
@@ -296,28 +292,6 @@ function MissingSkills({ data }: WidgetProps) {
   )
 }
 
-function NoNews({ data }: WidgetProps) {
-  const now = today()
-  const quiet = data.applications
-    .filter((a) => ACTIVE_STATUSES.has(a.status))
-    .map((app) => {
-      const dates = [app.last_activity_on, app.applied_on, app.created_at.slice(0, 10)].filter(Boolean) as string[]
-      return { app, days: daysBetween(dates.sort().at(-1)!, now) }
-    })
-    .filter(({ days }) => days >= NO_NEWS_DAYS)
-    .sort((a, b) => b.days - a.days)
-  return (
-    <WidgetCard title={t("overview.noNews")} flush>
-      {quiet.length === 0 ? <Empty flush>{t("overview.noNewsEmpty", { days: NO_NEWS_DAYS })}</Empty> : (
-        <ApplicationRows items={quiet.slice(0, 6).map(({ app, days }) => ({
-          app,
-          aside: <span className="shrink-0 text-xs text-muted-foreground">{t("overview.daysAgo", { days })}</span>,
-        }))} />
-      )}
-    </WidgetCard>
-  )
-}
-
 export const WIDGETS: Record<WidgetId, { title: () => string; description: () => string; size: Size;
   render: (props: WidgetProps) => ReactNode }> = {
   counts: { title: () => t("overview.w.counts"), description: () => t("overview.w.countsHint"), size: "full", render: Counts },
@@ -329,7 +303,6 @@ export const WIDGETS: Record<WidgetId, { title: () => string; description: () =>
   top_matches: { title: () => t("overview.topMatches"), description: () => t("overview.w.topMatchesHint"), size: "half", render: TopMatches },
   stale_reports: { title: () => t("overview.staleReports"), description: () => t("overview.w.staleReportsHint"), size: "half", render: StaleReports },
   missing_skills: { title: () => t("overview.missingSkills"), description: () => t("overview.w.missingSkillsHint"), size: "half", render: MissingSkills },
-  no_news: { title: () => t("overview.noNews"), description: () => t("overview.w.noNewsHint", { days: NO_NEWS_DAYS }), size: "half", render: NoNews },
 }
 
 export const DEFAULT_LAYOUT: OverviewWidget[] = [

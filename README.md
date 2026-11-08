@@ -8,38 +8,38 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 2.0 (build 20261108.0042), by Ivan Sollazzo.
+Version 2.0 (build 20261108.0754), by Ivan Sollazzo.
 
 ## Features
 
 - **Applications**: list with search, status filter (applied, interview, offer, inactive, rejected, completed),
   sort order (date applied, status, name, latest event), both saved per user, multiple selection to change the
-  status of, delete or recalculate the match report of several applications at once, the match score of each application when its report
-  exists, and a detail page with job details, salary, requirements and status history.
+  status of, delete or recalculate the profile match of several applications at once, the match score of each application when its
+  profile match exists, and a detail page with job details, salary, requirements and status history.
 - **Attachments**: attach any files to an application (cover letter, offer, test...), up to 10 MB each. They are
   deleted from disk together with the application.
 - **AI fill (optional)**: paste a job posting, give a link or upload a PDF, DOCX or TXT file: the application is saved
   right away and the model fills in its fields in the background. Filling an application or the profile again fills
   the empty fields and proposes the different values for the ones you already filled, applied only if you confirm.
-  A checkbox on the new application page, saved per user, also generates the match report once the fields are
+  A checkbox on the new application page, saved per user, also calculates the profile match once the fields are
   filled.
-- **Background operations**: AI fills and match reports are queued and run one at a time as soon as the model is
+- **Background operations**: AI fills and profile matches are queued and run one at a time as soon as the model is
   free, so a slow machine works through them while you do something else, also after leaving the page or a restart.
   The operations button in the header lists them with their place in the queue: each one can be cancelled (a new
   application not filled in yet is deleted, a report goes back to the previous one, the model stops right away), and
   a notice appears when one is done.
 - **Profile**: personal details, experience, education, projects, certifications and skills, filled in by hand or
   from your CV. Technologies used in projects and experience are added to your skills automatically.
-- **Match report (AI)**: on request, the local model compares an application's skills with your profile and returns
+- **Profile match (AI)**: on request, the local model compares an application's skills with your profile and returns
   a score, matching, partial and missing skills with a short reason each, and advice on where to improve. It works for
   any job, not only tech. Soft skills are listed apart and don't count in the score. When the skills of the profile or
-  of the application change, the report suggests regenerating it. Reports exist only with AI on: turning AI off
-  deletes them.
+  of the application change, the profile match suggests recalculating it. Profile matches exist only with AI on: turning
+  AI off deletes them.
 - **Agenda**: interviews, calls, emails, follow-ups and notes for each application, with an optional start and end
   time, and overdue and upcoming events at a glance.
 - **Overview**: widgets to move, resize, add and remove with the brush button, saved per user: counters by status,
-  calendar, upcoming events, recent applications, profile, applications per week, best matches, reports to
-  regenerate, skills missing most often and applications with no news for two weeks.
+  calendar, upcoming events, recent applications, profile, applications per week, best matches, profile matches to
+  recalculate and skills missing most often.
 - **Multi-user**: sign-in, admin and user roles, password recovery keys (no email needed), configurable password and
   lockout policy.
 - **Updates from the app**: follow a branch (stable, beta or any other) and install a newer version with one
@@ -47,7 +47,8 @@ Version 2.0 (build 20261108.0042), by Ivan Sollazzo.
   start everything goes back as it was. An update can be installed only when no AI operation is queued or running,
   and none starts until it is over.
 - **HTTPS**: off, with a certificate issued by the app's own authority for all the names and IPs you list, or with
-  your own certificates (one per address, several names or a wildcard), set from the settings.
+  your own certificates (one per address, several names or a wildcard), set from Settings › Security. Turning it
+  on or off signs everyone out, with a notice, so no session of the old protocol is left behind.
 - **Backups**: database, CV, photos and attachments, automatically (daily or weekly, with cleanup rules), by hand
   and before every update; restore, download or delete them from the settings.
 - **Italian and English** interface, light and dark theme.
@@ -77,7 +78,7 @@ On first start:
    somewhere safe: it is the only way to reset the password.
 2. You choose whether to enable the AI features, then fill in your profile and, if you like, your first application.
 
-The first start downloads the language model (about 2.5 GB). Settings › System shows when the model is ready.
+The first start downloads the language model (about 2.5 GB). Settings › AI features shows when the model is ready.
 
 ### Stopping and removing
 
@@ -243,18 +244,21 @@ services:
 
 ### HTTPS
 
-HTTPS is set by an admin in Settings › HTTPS and served by Caddy, on the same port `5173`: once it is on, an
-address opened with `http://` moves to `https://`. List the names and IPs you open the app with (for example
-`candidate.local`, `192.168.1.50`, the Tailscale name of the server); only those answer over HTTPS. Modes:
+HTTPS is set by an admin in Settings › Security and served by Caddy, on the same port `5173`: once it is on, an
+address opened with `http://` moves to `https://`. Only the addresses of the selected mode answer over HTTPS.
+Turning HTTPS on or off ends every session: the page warns about it, moves to the new address and asks to sign in
+again (a session of one protocol is never valid on the other). Modes:
 
 - **Off** (default): plain HTTP.
-- **Internal certificate**: the app creates its own certificate authority once and a certificate valid for all the
-  addresses listed, renewed automatically. Download the authority's certificate from the same page (or from
-  `/api/https/root-ca.crt`) and install it as trusted on each device that opens the app: the page explains how for
+- **Internal certificate**: list the names and IPs you open the app with (for example `candidate.local`,
+  `192.168.1.50`, the Tailscale name of the server). The app creates its own certificate authority once and a
+  certificate valid for all of them, renewed automatically. Download the authority's certificate from the same page (or from
+  `/api/https/authority/certificate`) and install it as trusted on each device that opens the app: the page explains how for
   Mac, iPhone, Android, Windows and Firefox.
-- **Custom certificate**: upload your certificates (PEM, with the intermediate chain) and their keys: one per
-  address, or one with several names (SAN) or a wildcard (`*.example.com`). Each address uses the first certificate
-  valid for it.
+- **Custom certificates**: upload your certificates (PEM, with the intermediate chain) and their keys: one per
+  address, or one with several names (SAN) or a wildcard (`*.example.com`). The app answers on the names of the
+  certificates; a certificate with the same names replaces the old one, and for a name two certificates hold the
+  newest one is used.
 
 Settings, certificates and the internal authority are stored in the database, so they are part of the backups. The
 web server picks up a change within a few seconds; if it refuses one (an unreadable certificate, for instance) the
@@ -276,6 +280,20 @@ If the app can no longer be opened from any address listed, turn HTTPS off from 
 ```sh
 docker compose exec backend python -m app.cli https-off
 ```
+
+### When the app can't be used
+
+These commands run on the server, without the browser (if the backend doesn't start, use
+`docker compose run --rm backend python -m app.cli ...` instead of `exec`):
+
+```sh
+docker compose exec backend python -m app.cli https-off           # back to plain HTTP, everyone signs in again
+docker compose exec backend python -m app.cli backups             # list the backups, newest first
+docker compose exec backend python -m app.cli restore <name>      # database and files as in that backup
+docker compose restart backend                                    # after a restore
+```
+
+A restore saves the current state first as a backup of kind `restore`, so it can be undone by restoring that one.
 
 ### Backend variables
 
@@ -306,15 +324,15 @@ The `llm` service detects the available hardware and starts Ollama with the best
 | Intel or AMD GPU without ROCm, integrated GPUs included | Vulkan | Drivers with Vulkan support (Linux) |
 | Anything else | CPU | none |
 
-Hardware acceleration is not currently supported on Mac, where the model runs on the CPU. Settings › System shows
+Hardware acceleration is not currently supported on Mac, where the model runs on the CPU. Settings › AI features shows
 which options work on your machine and lets you pick one instead of the automatic choice; if it fails, Ollama falls
 back to the CPU.
 
 With the 4B model, each extraction step takes roughly 30 to 60 seconds on a modern 8-core CPU, so a job posting or a
 CV can take a few minutes. A GPU is much faster. The work runs in the background, so you can keep using the app.
 
-If you don't need the AI features, turn them off in Settings › System: the model is stopped and its memory freed, and
-everything else keeps working. Match reports need the model, so turning AI off deletes them.
+If you don't need the AI features, turn them off in Settings › AI features: the model is stopped and its memory freed, and
+everything else keeps working. Profile matches need the model, so turning AI off deletes them.
 
 ## Development
 

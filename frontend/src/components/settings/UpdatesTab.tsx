@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label, Select } from "@/components/ui/input"
 import type { Updates } from "@/lib/api"
-import { dateLocale, useT } from "@/lib/i18n"
+import { formatDateTime, useT } from "@/lib/i18n"
 import { useSettings, useUpdateSettings } from "@/lib/settings"
 import { useCheckUpdates, useInstallUpdate, useUpdates } from "@/lib/updates"
 
@@ -13,9 +13,6 @@ import { useCheckUpdates, useInstallUpdate, useUpdates } from "@/lib/updates"
 const CHECK_INTERVALS = [1, 6, 12, 24, 168, 0] as const
 
 const release = (item: { version: string; build: string }) => `${item.version} · build ${item.build}`
-
-const formatTime = (value: string | null) =>
-  value ? new Date(value).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" }) : "—"
 
 export function Failure({ message, detail }: { message: string; detail: string }) {
   const t = useT()
@@ -131,11 +128,11 @@ export function UpdatesTab() {
               ))}
             </Select>
             <p className="mt-1 text-xs text-muted-foreground">
-              {t("updates.checkedAt", { time: formatTime(data.checked_at) })}
+              {t("updates.checkedAt", { time: formatDateTime(data.checked_at) })}
             </p>
           </div>
           {data.check_error && (
-            <Failure message={t("updates.error.check", { time: formatTime(data.check_error.failed_at) })}
+            <Failure message={t("updates.error.check", { time: formatDateTime(data.check_error.failed_at) })}
               detail={data.check_error.detail} />
           )}
         </CardContent>

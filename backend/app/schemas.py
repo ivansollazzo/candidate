@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.models import ApplicationStatus, EventType
 
-
 # Structured outputs requested from the LLM
 
 class ExtractedSkill(BaseModel):
@@ -204,7 +203,7 @@ class ReportExtraction(BaseModel):
 # API
 
 class ApplicationUpdate(SalaryFields):
-    # Job posting text, read again when the AI fills the application (see /api/applications/{id}/fill)
+    # Job posting text, read again when the AI fills the application (see POST /api/applications/{id}/fills)
     description: str | None = None
     title: str | None = None
     company: str | None = None
@@ -274,22 +273,15 @@ class AgendaEvent(EventRead):
     application_company: str | None
 
 
-class ApplicationBulk(BaseModel):
-    """Same action on several applications at once: delete them or move them to one status."""
+class ApplicationsUpdate(BaseModel):
+    """Several applications moved to one status at once."""
 
     ids: Annotated[list[int], Field(min_length=1, max_length=1000)]
-    action: Literal["delete", "status"]
-    status: ApplicationStatus | None = None
-
-    @model_validator(mode="after")
-    def _status_for_status_action(self):
-        if self.action == "status" and self.status is None:
-            raise ValueError("status is required for the status action")
-        return self
+    status: ApplicationStatus
 
 
 class ApplicationReports(BaseModel):
-    """Compatibility reports to (re)generate for several applications."""
+    """Profile match reports to (re)generate for several applications."""
 
     ids: Annotated[list[int], Field(min_length=1, max_length=1000)]
 
@@ -321,8 +313,6 @@ class ApplicationSummary(BaseModel):
 class ApplicationListItem(ApplicationSummary):
     # Date of the latest agenda event (status changes excluded), for sorting the list
     last_event_on: date | None = None
-    # Date of the latest event of any kind, status changes included
-    last_activity_on: date | None = None
     # Score of the compatibility report, when one has been generated
     match_score: int | None = None
     # The report should be regenerated
@@ -480,7 +470,7 @@ ApplicationSort = Literal["applied", "status", "name", "event"]
 ApplicationFilter = Literal["all"] | ApplicationStatus
 # Widgets the overview can show
 WIDGETS = ("counts", "calendar", "events", "recent", "profile", "weekly", "top_matches", "stale_reports",
-           "missing_skills", "no_news")
+           "missing_skills")
 
 
 class OverviewWidget(BaseModel):
@@ -584,6 +574,19 @@ class UserUpdate(BaseModel):
     email: Email | None = None
     role: Role | None = None
     password: Secret | None = None
+
+
+class JobUpdate(BaseModel):
+    """Exactly one of: run a failed job again, or accept the values it proposed."""
+
+    status: Literal["pending"] | None = None
+    proposal: Literal["accepted"] | None = None
+
+    @model_validator(mode="after")
+    def _one_change(self):
+        if (self.status is None) == (self.proposal is None):
+            raise ValueError("status or proposal")
+        return self
 
 
 class JobRead(BaseModel):
@@ -703,18 +706,19 @@ class BackupsRead(BaseModel):
     last_restore: RestoreResult | None = None
 
 
-# HTTPS (Settings › HTTPS)
+# HTTPS (Settings › Security)
 
 class HttpsCertificate(BaseModel):
     """An uploaded certificate, without its key."""
 
+    id: str
     names: list[str]
     issuer: str
     not_before: datetime
     not_after: datetime
     fingerprint: str
     self_signed: bool
-    # Hosts of the list it is used for
+    # Names it is served for (a name two certificates hold goes to the newest)
     hosts: list[str]
 
 
@@ -730,6 +734,7 @@ class HttpsAuthority(BaseModel):
 
 class HttpsRead(BaseModel):
     mode: Literal["off", "internal", "custom"]
+    # Hosts of internal mode
     hosts: list[str]
     certificates: list[HttpsCertificate]
     authority: HttpsAuthority | None = None

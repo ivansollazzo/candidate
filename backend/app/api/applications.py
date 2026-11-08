@@ -1,16 +1,36 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from typing import Annotated
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from fastapi.responses import FileResponse
 from sqlalchemy import case
 from sqlmodel import Session, func, select
 
 from app.db import get_session, save
 from app.i18n import t
-from app.models import Application, ApplicationAttachment, ApplicationEvent, EventType, Job, JobKind, TaskStatus, User
+from app.models import (
+    Application,
+    ApplicationAttachment,
+    ApplicationEvent,
+    EventType,
+    Job,
+    JobKind,
+    TaskStatus,
+    User,
+)
 from app.schemas import (
-    ApplicationBulk,
     ApplicationListItem,
-    ApplicationReports,
     ApplicationRead,
+    ApplicationReports,
+    ApplicationsUpdate,
     ApplicationUpdate,
     JobRead,
     ReportsQueued,
@@ -38,23 +58,21 @@ def list_applications(user: User = Depends(security.current_user), session: Sess
     is_status = ApplicationEvent.type == EventType.STATUS_CHANGE
     last_event = (
         select(ApplicationEvent.application_id,
-               func.max(case((is_status, None), else_=ApplicationEvent.occurred_on)).label("last_event_on"),
-               func.max(ApplicationEvent.occurred_on).label("last_activity_on"))
+               func.max(case((is_status, None), else_=ApplicationEvent.occurred_on)).label("last_event_on"))
         .group_by(ApplicationEvent.application_id)
         .subquery()
     )
     query = (
-        select(Application, last_event.c.last_event_on, last_event.c.last_activity_on)
+        select(Application, last_event.c.last_event_on)
         .outerjoin(last_event, last_event.c.application_id == Application.id)
         .where(Application.user_id == user.id)
         .order_by(Application.updated_at.desc())
     )
     items = []
-    for app, last_on, activity_on in session.exec(query).all():
+    for app, last_on in session.exec(query).all():
         report = app.report if app.report_status == TaskStatus.DONE and app.report else None
         items.append(ApplicationListItem.model_validate(app).model_copy(update={
             "last_event_on": last_on,
-            "last_activity_on": activity_on,
             "match_score": report.get("score") if report else None,
             "report_stale": bool(report) and app.report_stale,
             "missing_skills": [s["skill"] for s in (report or {}).get("skills", [])
@@ -73,7 +91,7 @@ def create_application(
     return save(session, app)
 
 
-@router.post("/ai", response_model=ApplicationRead, status_code=status.HTTP_201_CREATED)
+@router.post("/imports", response_model=ApplicationRead, status_code=status.HTTP_201_CREATED)
 async def create_with_ai(
     text: str | None = Form(None),
     url: str | None = Form(None),
@@ -83,7 +101,7 @@ async def create_with_ai(
     session: Session = Depends(get_session),
 ):
     """Save a new application with its job posting (text, link or file) right away; the local model fills
-    in its fields in the background, then (with report) generates its compatibility report.
+    in its fields in the background, then (with report) generates its profile match report.
     Cancelling the job before it is done deletes the application."""
     require_llm(session)
     source = await read_job_posting(text, url, file)
@@ -97,7 +115,7 @@ async def create_with_ai(
     return app
 
 
-@router.post("/{application_id}/fill", response_model=JobRead, status_code=status.HTTP_202_ACCEPTED)
+@router.post("/{application_id}/fills", response_model=JobRead, status_code=status.HTTP_202_ACCEPTED)
 async def fill_with_ai(
     application_id: int,
     text: str | None = Form(None),
@@ -107,7 +125,7 @@ async def fill_with_ai(
     session: Session = Depends(get_session),
 ):
     """Fill the application again from a new job posting, or from the saved one. Empty fields are filled
-    when the job is done; values for filled fields are proposed (see /api/jobs/{id}/apply)."""
+    when the job is done; values for filled fields are proposed (accepted with PATCH /api/jobs/{id})."""
     require_llm(session)
     app = get_owned(session, application_id, user)
     if jobs.find_active(session, JobKind.APPLICATION, user.id, app.id):
@@ -123,20 +141,25 @@ async def fill_with_ai(
                                      source_text=source, source_url=link))
 
 
-@router.post("/bulk", status_code=status.HTTP_204_NO_CONTENT)
-def bulk_update(
-    payload: ApplicationBulk, user: User = Depends(security.current_user),
+@router.patch("", status_code=status.HTTP_204_NO_CONTENT)
+def update_applications(
+    payload: ApplicationsUpdate, user: User = Depends(security.current_user),
     session: Session = Depends(get_session),
 ):
-    """Apply one action to several applications; all of them or none (unknown ids fail the whole request)."""
-    apps = [get_owned(session, application_id, user) for application_id in dict.fromkeys(payload.ids)]
-    if payload.action == "delete":
-        delete_applications(session, apps)
-        return
-    for app in apps:
+    """Move several applications to one status; all of them or none (unknown ids fail the whole request)."""
+    for app in [get_owned(session, application_id, user) for application_id in dict.fromkeys(payload.ids)]:
         change_status(session, app, payload.status)
         session.add(app)
     session.commit()
+
+
+@router.delete("", status_code=status.HTTP_204_NO_CONTENT)
+def delete_many(
+    ids: Annotated[list[int], Query(min_length=1, max_length=1000)],
+    user: User = Depends(security.current_user), session: Session = Depends(get_session),
+):
+    """Delete several applications (?ids=1&ids=2); all of them or none."""
+    delete_applications(session, [get_owned(session, application_id, user) for application_id in dict.fromkeys(ids)])
 
 
 @router.post("/reports", response_model=ReportsQueued, status_code=status.HTTP_202_ACCEPTED)
@@ -144,7 +167,7 @@ def request_reports(
     payload: ApplicationReports, user: User = Depends(security.current_user),
     session: Session = Depends(get_session),
 ):
-    """Queue the compatibility report of several applications, one job each, in the order given. Applications
+    """Queue the profile match report of several applications, one job each, in the order given. Applications
     without skills (nothing to compare) and those whose report is already queued are skipped."""
     require_llm(session)
     apps = [get_owned(session, application_id, user) for application_id in dict.fromkeys(payload.ids)]
@@ -245,11 +268,11 @@ def delete_attachment(
     return app
 
 
-@router.post("/{application_id}/report", response_model=ApplicationRead, status_code=status.HTTP_202_ACCEPTED)
+@router.put("/{application_id}/report", response_model=ApplicationRead, status_code=status.HTTP_202_ACCEPTED)
 def request_report(
     application_id: int, user: User = Depends(security.current_user), session: Session = Depends(get_session),
 ):
-    """Queue the generation (or regeneration) of the compatibility report by the local model."""
+    """Queue the generation (or regeneration) of the profile match report by the local model."""
     require_llm(session)
     app = get_owned(session, application_id, user)
     if jobs.find_active(session, JobKind.REPORT, user.id, app.id):

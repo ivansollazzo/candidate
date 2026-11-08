@@ -24,12 +24,12 @@ def get_status():
     return updates.overview(None)
 
 
-@router.post("/check", status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(security.admin_user)])
+@router.post("/checks", status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(security.admin_user)])
 def check():
     updates.request("check")
 
 
-@router.post("/install", status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(security.admin_user)])
+@router.post("/installations", status_code=status.HTTP_202_ACCEPTED, dependencies=[Depends(security.admin_user)])
 def install(selected: str | None = Depends(selected_branch), session: Session = Depends(get_session)):
     """Install the newer release of the selected branch, once no AI job of any user is waiting or running."""
     if jobs.count_active(session):

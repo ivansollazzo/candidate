@@ -1,7 +1,7 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { StrictMode, useState } from "react"
 import { createRoot } from "react-dom/client"
-import { BrowserRouter, Route, Routes } from "react-router"
+import { BrowserRouter, Navigate, Route, Routes } from "react-router"
 
 import { Layout } from "@/components/Layout"
 import { RestoreScreen } from "@/components/RestoreScreen"
@@ -27,7 +27,14 @@ const onError = (error: Error) => {
 }
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      // A refused request (4xx) is the answer; a server error is tried once more; a request that didn't reach the
+      // server (the web server reloading after an HTTPS change, the backend restarting) a few times
+      retry: (count, error) => (error instanceof ApiError ? error.status >= 500 && count < 1 : count < 3),
+    },
+  },
   queryCache: new QueryCache({ onError }),
   mutationCache: new MutationCache({ onError }),
 })
@@ -59,6 +66,8 @@ function AuthGate() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
+      {/* An unknown address (an old link, /login after signing in) shows the overview, not an empty page */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }

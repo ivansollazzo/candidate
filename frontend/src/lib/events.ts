@@ -8,7 +8,7 @@ import { today } from "./utils"
 export const SCHEDULABLE_TYPES = ["interview", "call", "email", "follow_up", "note"] as const
 
 /** "15:30:00" → "15:30" */
-export const formatTime = (value: string | null) => value?.slice(0, 5) ?? null
+const formatTime = (value: string | null) => value?.slice(0, 5) ?? null
 
 /** "15:00" or "15:00–16:00"; null without a start time */
 export function timeRange(event: Pick<ApplicationEvent, "starts_at" | "ends_at">) {

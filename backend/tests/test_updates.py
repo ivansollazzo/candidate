@@ -32,7 +32,7 @@ def test_release_order():
 def test_unavailable_without_updater(client, updates_dir):
     data = client.get("/api/updates").json()
     assert (data["status"], data["version"], data["update_available"]) == ("unavailable", __version__, False)
-    assert client.post("/api/updates/check").status_code == 409
+    assert client.post("/api/updates/checks").status_code == 409
 
 
 def test_branches_and_install(client, updates_dir):
@@ -56,25 +56,25 @@ def test_branches_and_install(client, updates_dir):
         assert settings["update_branch"] == name
         data = client.get("/api/updates").json()
         assert (data["selected_branch"], data["update_available"]) == (name, False)
-        assert client.post("/api/updates/install").status_code == code
+        assert client.post("/api/updates/installations").status_code == code
     assert not (updates_dir / "request.json").exists()
 
     # Empty: back to the stable branch
     assert client.patch("/api/settings", json={"update_branch": ""}).json()["update_branch"] is None
     client.patch("/api/settings", json={"update_branch": "main"})
     assert client.get("/api/updates").json()["update_available"] is True
-    assert client.post("/api/updates/install").status_code == 202
+    assert client.post("/api/updates/installations").status_code == 202
     assert json.loads((updates_dir / "request.json").read_text()) == {"action": "install", "branch": "main"}
 
     write_state(updates_dir, status="updating", step="download", progress=42)
-    assert client.post("/api/updates/check").status_code == 409
+    assert client.post("/api/updates/checks").status_code == 409
     status = client.get("/api/updates/status").json()
     assert (status["step"], status["progress"]) == ("download", 42)
 
 
 def test_check_request(client, updates_dir):
     write_state(updates_dir)
-    assert client.post("/api/updates/check").status_code == 202
+    assert client.post("/api/updates/checks").status_code == 202
     assert json.loads((updates_dir / "request.json").read_text()) == {"action": "check"}
 
 
@@ -82,21 +82,21 @@ def test_admin_only(client, updates_dir):
     r = client.post("/api/users", json={"username": "mario", "email": "m@example.com", "password": "Password123",
                                         "role": "user"})
     assert r.status_code == 201
-    client.post("/api/auth/logout")
-    assert client.post("/api/auth/login", json={"username": "mario", "password": "Password123"}).status_code == 200
+    client.delete("/api/session")
+    assert client.post("/api/session", json={"username": "mario", "password": "Password123"}).status_code == 200
     write_state(updates_dir)
     assert client.get("/api/updates").status_code == 403
     assert client.get("/api/updates/status").status_code == 200
-    assert client.post("/api/updates/check").status_code == 403
+    assert client.post("/api/updates/checks").status_code == 403
 
 
 def test_pending_request_reads_as_running(client, updates_dir):
     write_state(updates_dir, branches=[branch("main")])
     client.patch("/api/settings", json={"update_branch": "main"})
-    assert client.post("/api/updates/install").status_code == 202
+    assert client.post("/api/updates/installations").status_code == 202
     # The updater hasn't picked the request up yet
     assert client.get("/api/updates/status").json()["status"] == "updating"
-    assert client.post("/api/updates/check").status_code == 409
+    assert client.post("/api/updates/checks").status_code == 409
 
 
 def test_check_interval(client, updates_dir):
@@ -119,16 +119,16 @@ def test_install_needs_no_ai_jobs(client, updates_dir):
     from app.services import updates
 
     write_state(updates_dir, branches=[branch("stable")])
-    r = client.post("/api/applications/ai", data={"text": "Cerchiamo un Backend Developer Python a Milano."})
+    r = client.post("/api/applications/imports", data={"text": "Cerchiamo un Backend Developer Python a Milano."})
     assert r.status_code == 201
     assert client.get("/api/updates").json()["active_jobs"] == 1
-    r = client.post("/api/updates/install")
+    r = client.post("/api/updates/installations")
     assert r.status_code == 409 and "operazioni AI" in r.json()["detail"]
     assert not (updates_dir / "request.json").exists()
 
     [job] = client.get("/api/jobs").json()
     client.delete(f"/api/jobs/{job['id']}")
     assert client.get("/api/updates").json()["active_jobs"] == 0
-    assert client.post("/api/updates/install").status_code == 202
+    assert client.post("/api/updates/installations").status_code == 202
     # No job starts until the update is over
     assert updates.installing() is True

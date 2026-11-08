@@ -1,6 +1,6 @@
 #!/bin/sh
-# Starts Caddy with the plain HTTP configuration, then keeps it in line with Settings › HTTPS: every few
-# seconds it tells the backend which configuration is in use and gets the name of the wanted one. A new one is
+# Starts Caddy with the plain HTTP configuration, then keeps it in line with Settings › Security › HTTPS: every few
+# seconds it reports to the backend which configuration is in use and asks for the name of the wanted one. A new one is
 # downloaded (Caddyfile and certificates) and loaded with a reload; if Caddy refuses it, the configuration in
 # use stays (plain HTTP after a start), the error goes to the backend and that configuration isn't tried again
 # until the settings change.
@@ -25,7 +25,9 @@ load() { # Caddyfile
 while kill -0 "$caddy" 2>/dev/null; do
   sleep "$INTERVAL" &
   wait $!
-  wanted=$(wget -qO- -T 5 --post-data "$(cat /tmp/https-error)" "$API/sync?applied=$applied&failed=$failed" 2>/dev/null) || continue
+  # State first (also after a restart of the backend, which keeps it in memory), then the wanted configuration
+  wget -qO /dev/null -T 5 --post-data "$(cat /tmp/https-error)" "$API/reports?applied=$applied&failed=$failed" 2>/dev/null
+  wanted=$(wget -qO- -T 5 "$API/config" 2>/dev/null) || continue
   case "$wanted" in
     off|[0-9a-f]*) ;;
     *) continue ;;
@@ -37,7 +39,7 @@ while kill -0 "$caddy" 2>/dev/null; do
   else
     dir=$BUNDLES/$wanted
     rm -rf "$dir" && mkdir -p "$dir"
-    if ! wget -qO- -T 10 "$API/bundle/$wanted" 2>/dev/null | tar xzf - -C "$dir" 2>/dev/null || [ ! -s "$dir/Caddyfile" ]; then
+    if ! wget -qO- -T 10 "$API/config/$wanted" 2>/dev/null | tar xzf - -C "$dir" 2>/dev/null || [ ! -s "$dir/Caddyfile" ]; then
       rm -rf "$dir"
       continue  # settings changed meanwhile, or the backend is restarting: next round
     fi

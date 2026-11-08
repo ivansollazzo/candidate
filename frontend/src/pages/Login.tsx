@@ -10,7 +10,8 @@ import { RecoveryKey } from "@/components/RecoveryKey"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/input"
 import { api, type UserWithKey } from "@/lib/api"
-import { useAuthStatus, useSignIn } from "@/lib/auth"
+import { confirmSession, takeSessionEnded, useAuthStatus, useSignIn } from "@/lib/auth"
+import { pendingMove } from "@/lib/https"
 import { getLocale, useSetGuestLocale, useT } from "@/lib/i18n"
 import { usePageTitle } from "@/lib/title"
 
@@ -29,7 +30,14 @@ function SignInForm({ onForgot }: { onForgot: () => void }) {
   const signIn = useSignIn()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
-  const login = useMutation({ mutationFn: () => api.login(username, password), onSuccess: signIn })
+  const login = useMutation({ mutationFn: () => api.login(username, password).then(confirmSession), onSuccess: signIn })
+  // Why this page appeared: HTTPS turned on or off (and where the app is moving), or a session that ended
+  const [notice] = useState(() => {
+    const move = pendingMove()
+    if (move?.arrived) return t("login.httpsArrived")
+    if (move) return move.target ? t("login.httpsMoving", { url: move.target }) : t("login.httpsChanged")
+    return takeSessionEnded() ? t("login.sessionEnded") : null
+  })
   const submit = (e: FormEvent) => {
     e.preventDefault()
     login.mutate()
@@ -40,6 +48,7 @@ function SignInForm({ onForgot }: { onForgot: () => void }) {
         <h1 className="text-2xl font-semibold">{t("login.title")}</h1>
         <p className="text-sm text-muted-foreground">{t("login.text")}</p>
       </div>
+      {notice && <p role="status" className="rounded-lg border bg-secondary/40 px-3 py-2 text-sm">{notice}</p>}
       <Field label={t("account.username")} autoComplete="username" autoFocus required value={username}
         onChange={(e) => setUsername(e.target.value)} />
       <Field label={t("password.label")} type="password" autoComplete="current-password" required value={password}

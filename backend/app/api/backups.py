@@ -4,7 +4,7 @@ from sqlmodel import Session
 
 from app.db import get_session
 from app.i18n import t
-from app.schemas import BackupCreate, BackupsRead, BackupSettings
+from app.schemas import BackupCreate, BackupSettings, BackupsRead
 from app.services import backups, jobs, security, updates
 
 router = APIRouter(prefix="/api/backups", tags=["backups"], dependencies=[Depends(security.admin_user)])
@@ -60,7 +60,7 @@ def download_backup(name: str):
     return StreamingResponse(chunks(), media_type="application/gzip", headers=headers)
 
 
-@router.post("/{name}/restore", status_code=status.HTTP_202_ACCEPTED)
+@router.post("/{name}/restorations", status_code=status.HTTP_202_ACCEPTED)
 def restore_backup(name: str, session: Session = Depends(get_session)):
     """Put database and files back as in the backup. The current state is saved first; meanwhile the app is
     in maintenance."""

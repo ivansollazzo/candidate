@@ -179,7 +179,7 @@ backup_request() { # path json: POST to the backup service, waits until the oper
 }
 
 # Build answering through the web app: the page and the API forwarded to the backend must both work. Port 8080
-# is plain HTTP also when the app is served over HTTPS (Settings › HTTPS); versions before it only have 5173
+# is plain HTTP also when the app is served over HTTPS (Settings › Security › HTTPS); versions before it only have 5173
 app_build() {
   web=http://frontend:8080
   timeout 5 wget -qO /dev/null $web/ 2>/dev/null || web=http://frontend:5173

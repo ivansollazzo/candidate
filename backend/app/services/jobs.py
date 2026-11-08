@@ -9,7 +9,7 @@ job is waiting or running.
 import logging
 import threading
 from collections.abc import Callable
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete
 from sqlmodel import Session, col, select
@@ -41,7 +41,7 @@ _thread: threading.Thread | None = None
 
 
 def now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def is_empty(value) -> bool:

@@ -1,4 +1,4 @@
-from datetime import date, datetime, time, timezone
+from datetime import UTC, date, datetime, time
 from enum import StrEnum
 from typing import Any
 
@@ -8,7 +8,7 @@ from sqlmodel import Field, Relationship, SQLModel
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class ApplicationStatus(StrEnum):

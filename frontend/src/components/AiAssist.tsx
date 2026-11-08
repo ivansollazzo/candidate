@@ -99,7 +99,7 @@ export function ProposalCard({ job }: { job: Job }) {
 }
 
 /** Where the job of a card stands: waiting or running with its X, or failed with retry. */
-export function JobProgress({ job }: { job: Job | undefined }) {
+function JobProgress({ job }: { job: Job | undefined }) {
   const t = useT()
   const { cancel, retry } = useJobActions()
   if (!job || !(isWorking(job.status) || job.status === "failed")) return null

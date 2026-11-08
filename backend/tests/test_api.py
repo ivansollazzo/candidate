@@ -89,13 +89,13 @@ def run_jobs():
 
 
 def create_with_ai(client, **kwargs) -> dict:
-    r = client.post("/api/applications/ai", **kwargs)
+    r = client.post("/api/applications/imports", **kwargs)
     assert r.status_code == 201, r.text
     return r.json()
 
 
 def request_report(client, app_id: int) -> None:
-    assert client.post(f"/api/applications/{app_id}/report").status_code == 202
+    assert client.put(f"/api/applications/{app_id}/report").status_code == 202
     run_jobs()
 
 
@@ -145,15 +145,15 @@ def test_ai_creates_application_in_background(client):
 
     # Filling again from the saved posting: empty fields are filled, different values only proposed
     client.patch(f"/api/applications/{app['id']}", json={"title": "Dev", "location": None})
-    r = client.post(f"/api/applications/{app['id']}/fill")
+    r = client.post(f"/api/applications/{app['id']}/fills")
     assert r.status_code == 202 and r.json()["new_application"] is False
-    assert client.post(f"/api/applications/{app['id']}/fill").status_code == 409
+    assert client.post(f"/api/applications/{app['id']}/fills").status_code == 409
     run_jobs()
     data = client.get(f"/api/applications/{app['id']}").json()
     assert (data["title"], data["location"]) == ("Dev", "Milano")
     [job] = client.get("/api/jobs").json()
     assert job["proposal"] == {"title": "Backend Developer"}
-    assert client.post(f"/api/jobs/{job['id']}/apply").status_code == 204
+    assert client.patch(f"/api/jobs/{job['id']}", json={"proposal": "accepted"}).status_code == 204
     assert client.get(f"/api/applications/{app['id']}").json()["title"] == "Backend Developer"
     assert client.get("/api/jobs").json() == []
 
@@ -169,10 +169,7 @@ def test_report_queued_after_fill(client):
     assert [j["kind"] for j in client.get("/api/jobs").json()] == ["application", "report"]
     item = next(a for a in client.get("/api/applications").json() if a["id"] == app["id"])
     assert item["match_score"] == data["report"]["score"] and item["report_stale"] is False
-    assert item["last_event_on"] is None and item["last_activity_on"] is None
-    client.patch(f"/api/applications/{app['id']}", json={"status": "interview"})
-    item = next(a for a in client.get("/api/applications").json() if a["id"] == app["id"])
-    assert item["last_event_on"] is None and item["last_activity_on"] is not None
+    assert item["last_event_on"] is None
     assert item["missing_skills"] == [s["skill"] for s in data["report"]["skills"]
                                       if s["status"] == "missing" and s["kind"] != "soft"]
 
@@ -212,12 +209,12 @@ def test_ai_reads_link_and_file(client, monkeypatch):
     def blocked(url):
         raise FetchError("Il sito ha bloccato lo scaricamento automatico")
     monkeypatch.setattr(sources, "fetch_job_posting", blocked)
-    r = client.post("/api/applications/ai", data={"url": "https://example.com/job/2"})
+    r = client.post("/api/applications/imports", data={"url": "https://example.com/job/2"})
     assert r.status_code == 422 and "bloccato" in r.json()["detail"]
 
-    assert client.post("/api/applications/ai", files={"file": ("a.png", b"xxx", "image/png")}).status_code == 422
-    assert client.post("/api/applications/ai", data={"text": "corto"}).status_code == 422
-    assert client.post("/api/applications/ai").status_code == 422
+    assert client.post("/api/applications/imports", files={"file": ("a.png", b"xxx", "image/png")}).status_code == 422
+    assert client.post("/api/applications/imports", data={"text": "corto"}).status_code == 422
+    assert client.post("/api/applications/imports").status_code == 422
     # Only the first one was created
     assert len(client.get("/api/applications").json()) == 1
 
@@ -236,8 +233,8 @@ def test_cancel_jobs(client):
     request_report(client, app_id)
     for job in client.get("/api/jobs").json():
         client.delete(f"/api/jobs/{job['id']}")
-    assert client.post(f"/api/applications/{app_id}/report").status_code == 202
-    assert client.post(f"/api/applications/{app_id}/report").status_code == 409
+    assert client.put(f"/api/applications/{app_id}/report").status_code == 202
+    assert client.put(f"/api/applications/{app_id}/report").status_code == 409
     assert client.get(f"/api/applications/{app_id}").json()["report_status"] == "pending"
     [job] = client.get("/api/jobs").json()
     client.delete(f"/api/jobs/{job['id']}")
@@ -260,13 +257,13 @@ def test_failed_job_keeps_new_application_and_can_be_retried(client, monkeypatch
     assert (job["status"], job["error"]) == ("failed", "Ollama non risponde")
     # The application stays, with its posting, to be filled in by hand or retried
     assert client.get(f"/api/applications/{app['id']}").json()["has_description"]
-    assert client.post(f"/api/jobs/{job['id']}/apply").status_code == 409
+    assert client.patch(f"/api/jobs/{job['id']}", json={"proposal": "accepted"}).status_code == 409
 
     monkeypatch.setattr(extraction, "generate_structured", fake_llm)
-    assert client.post(f"/api/jobs/{job['id']}/retry").json()["status"] == "pending"
+    assert client.patch(f"/api/jobs/{job['id']}", json={"status": "pending"}).json()["status"] == "pending"
     run_jobs()
     assert client.get(f"/api/applications/{app['id']}").json()["title"] == "Backend Developer"
-    assert client.post(f"/api/jobs/{job['id']}/retry").status_code == 409
+    assert client.patch(f"/api/jobs/{job['id']}", json={"status": "pending"}).status_code == 409
 
 
 def test_jobs_are_private_and_queued_for_everyone(client):
@@ -274,7 +271,7 @@ def test_jobs_are_private_and_queued_for_everyone(client):
     client.post("/api/users", json={"username": "anna", "email": "anna@example.com", "password": "Password123",
                                     "role": "user", "language": "it"})
     other = TestClient(app)
-    other.post("/api/auth/login", json={"username": "anna", "password": "Password123"})
+    other.post("/api/session", json={"username": "anna", "password": "Password123"})
     create_with_ai(other, data={"text": JOB_TEXT})
     [mine] = client.get("/api/jobs").json()
     [theirs] = other.get("/api/jobs").json()
@@ -288,14 +285,14 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("2.0", "20261108.0042")
+    assert (health["version"], health["build"]) == ("2.0", "20261108.0754")
 
-    r = client.post("/api/applications/ai", data={"text": JOB_TEXT})
+    r = client.post("/api/applications/imports", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
     app_id = client.post("/api/applications", json={"title": "Manuale"}).json()["id"]
-    assert client.post(f"/api/applications/{app_id}/report").status_code == 409
-    assert client.post(f"/api/applications/{app_id}/fill").status_code == 409
-    assert client.post("/api/profile/fill").status_code == 409
+    assert client.put(f"/api/applications/{app_id}/report").status_code == 409
+    assert client.post(f"/api/applications/{app_id}/fills").status_code == 409
+    assert client.post("/api/profile/fills").status_code == 409
 
 
 def test_turning_ai_off_drops_waiting_jobs(client):
@@ -312,21 +309,21 @@ def test_cv_upload_ai_fill_and_match(client):
     doc.add_paragraph("ivan.rossi@example.com · +39 333 123 4567 · github.com/ivanrossi · 2018 - 2023")
     buf = io.BytesIO()
     doc.save(buf)
-    r = client.post("/api/profile/cv", files={"file": ("cv.docx", buf.getvalue(), "application/octet-stream")})
+    r = client.put("/api/profile/cv", files={"file": ("cv.docx", buf.getvalue(), "application/octet-stream")})
     assert r.status_code == 200 and r.json()["cv_filename"] == "cv.docx"
     # Uploading alone fills nothing in
     assert r.json()["full_name"] is None
 
     client.patch("/api/profile", json={"full_name": "Ivan R."})
-    assert client.post("/api/profile/fill").status_code == 202
-    assert client.post("/api/profile/fill").status_code == 409
+    assert client.post("/api/profile/fills").status_code == 202
+    assert client.post("/api/profile/fills").status_code == 409
     run_jobs()
     fields = client.get("/api/profile").json()
     # A field already filled is only proposed
     assert fields["full_name"] == "Ivan R."
     [job] = client.get("/api/jobs").json()
     assert (job["kind"], job["proposal"]) == ("profile", {"full_name": "Ivan Rossi"})
-    client.post(f"/api/jobs/{job['id']}/apply")
+    client.patch(f"/api/jobs/{job['id']}", json={"proposal": "accepted"})
     fields = client.get("/api/profile").json()
     assert fields["full_name"] == "Ivan Rossi"
     assert fields["email"] == "ivan.rossi@example.com"
@@ -356,7 +353,7 @@ def test_cv_upload_ai_fill_and_match(client):
 
 
 def test_ai_cv_requires_upload(client):
-    assert client.post("/api/profile/fill").status_code == 409
+    assert client.post("/api/profile/fills").status_code == 409
 
 
 def test_skill_level_affects_match(client):
@@ -397,7 +394,7 @@ def test_report_goes_stale_and_is_cleared_without_ai(client):
     app_id = client.post("/api/applications", json={"title": "Dev", "skills": skills}).json()["id"]
     other_id = client.post("/api/applications", json={"title": "Altro"}).json()["id"]
     request_report(client, app_id)
-    stale = lambda i: client.get(f"/api/applications/{i}").json()["report_stale"]  # noqa: E731
+    stale = lambda i: client.get(f"/api/applications/{i}").json()["report_stale"]
 
     # Changes that don't touch skills leave the report as it is
     client.patch("/api/profile", json={"phone": "2"})
@@ -541,7 +538,7 @@ def test_list_reports_last_event(client):
 def test_bulk_status_and_delete(client):
     ids = [client.post("/api/applications", json={"title": f"Job {i}"}).json()["id"] for i in range(3)]
 
-    r = client.post("/api/applications/bulk", json={"ids": ids[:2], "action": "status", "status": "interview"})
+    r = client.patch("/api/applications", json={"ids": ids[:2], "status": "interview"})
     assert r.status_code == 204
     statuses = {a["id"]: a["status"] for a in client.get("/api/applications").json()}
     assert statuses == {ids[0]: "interview", ids[1]: "interview", ids[2]: "applied"}
@@ -549,17 +546,17 @@ def test_bulk_status_and_delete(client):
     assert [(e["type"], e["title"]) for e in events] == [("status_change", "applied>interview")]
 
     # Same status again: no new history entry
-    client.post("/api/applications/bulk", json={"ids": [ids[0]], "action": "status", "status": "interview"})
+    client.patch("/api/applications", json={"ids": [ids[0]], "status": "interview"})
     assert len(client.get(f"/api/applications/{ids[0]}").json()["events"]) == 1
 
-    assert client.post("/api/applications/bulk", json={"ids": ids, "action": "status"}).status_code == 422
-    assert client.post("/api/applications/bulk", json={"ids": [], "action": "delete"}).status_code == 422
+    assert client.patch("/api/applications", json={"ids": ids}).status_code == 422
+    assert client.delete("/api/applications", params={"ids": []}).status_code == 422
 
     # An unknown id fails the whole request
-    assert client.post("/api/applications/bulk", json={"ids": [ids[0], 999999], "action": "delete"}).status_code == 404
+    assert client.delete("/api/applications", params={"ids": [ids[0], 999999]}).status_code == 404
     assert len(client.get("/api/applications").json()) == 3
 
-    assert client.post("/api/applications/bulk", json={"ids": ids[:2], "action": "delete"}).status_code == 204
+    assert client.delete("/api/applications", params={"ids": ids[:2]}).status_code == 204
     assert [a["id"] for a in client.get("/api/applications").json()] == [ids[2]]
 
 
@@ -569,7 +566,7 @@ def test_bulk_reports(client):
     first = client.post("/api/applications", json={"title": "A", "skills": skills}).json()["id"]
     second = client.post("/api/applications", json={"title": "B", "skills": skills}).json()["id"]
     bare = client.post("/api/applications", json={"title": "C"}).json()["id"]
-    assert client.post(f"/api/applications/{second}/report").status_code == 202
+    assert client.put(f"/api/applications/{second}/report").status_code == 202
     r = client.post("/api/applications/reports", json={"ids": [first, second, bare, first]})
     assert r.status_code == 202
     assert r.json() == {"queued": 1, "without_skills": 1, "already_queued": 1}
@@ -587,8 +584,8 @@ def test_bulk_ignores_other_users_applications(client):
     assert client.post("/api/users", json={"username": "mario", "email": "m@example.com",
                                            "password": "Segreta1234"}).status_code == 201
     mario = TestClient(app)
-    assert mario.post("/api/auth/login", json={"username": "mario", "password": "Segreta1234"}).status_code == 200
-    assert mario.post("/api/applications/bulk", json={"ids": [other_id], "action": "delete"}).status_code == 404
+    assert mario.post("/api/session", json={"username": "mario", "password": "Segreta1234"}).status_code == 200
+    assert mario.delete("/api/applications", params={"ids": [other_id]}).status_code == 404
     assert len(client.get("/api/applications").json()) == 1
 
 
@@ -631,7 +628,7 @@ def test_attachments_rejected(client):
 
     client.post("/api/users", json={"username": "mario", "email": "m@example.com", "password": "Segreta1234"})
     mario = TestClient(app)
-    mario.post("/api/auth/login", json={"username": "mario", "password": "Segreta1234"})
+    mario.post("/api/session", json={"username": "mario", "password": "Segreta1234"})
     r = mario.post(f"/api/applications/{app_id}/attachments", files=[("files", ("a.txt", b"a", "text/plain"))])
     assert r.status_code == 404
 
@@ -641,5 +638,5 @@ def test_bulk_delete_removes_attachments(client, tmp_path):
     for app_id in ids:
         client.post(f"/api/applications/{app_id}/attachments", files=[("files", ("cv.pdf", b"cv", "application/pdf"))])
     assert len(list(tmp_path.glob("user_*/applications/*"))) == 2
-    client.post("/api/applications/bulk", json={"ids": ids, "action": "delete"})
+    client.delete("/api/applications", params={"ids": ids})
     assert list(tmp_path.glob("user_*/applications/*")) == []

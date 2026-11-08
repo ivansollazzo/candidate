@@ -2,12 +2,12 @@ import os
 
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://candidate:candidate@localhost:5432/candidate_test")
 
-import pytest  # noqa: E402
-from fastapi.testclient import TestClient  # noqa: E402
-from sqlmodel import SQLModel  # noqa: E402
+import pytest
+from fastapi.testclient import TestClient
+from sqlmodel import SQLModel
 
-from app.db import engine  # noqa: E402
-from app.main import app  # noqa: E402
+from app.db import engine
+from app.main import app
 
 
 @pytest.fixture(autouse=True)
@@ -32,5 +32,5 @@ def anon(tmp_path, monkeypatch):
 @pytest.fixture
 def client(anon):
     """Client logged in as the first admin."""
-    assert anon.post("/api/auth/setup", json=ADMIN).status_code == 201
+    assert anon.post("/api/setup", json=ADMIN).status_code == 201
     return anon

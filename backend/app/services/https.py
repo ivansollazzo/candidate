@@ -1,4 +1,4 @@
-"""HTTPS for the web app, set by the admin in Settings › HTTPS and served by Caddy (frontend service).
+"""HTTPS for the web app, set by the admin in Settings › Security › HTTPS and served by Caddy (frontend service).
 
 The settings live in the database. From them the backend builds a Caddy configuration with its certificates
 (the "bundle"); the frontend container asks for it every few seconds (frontend/https.sh), applies it with a
@@ -9,7 +9,8 @@ Modes:
 - off: plain HTTP on port 5173, as before.
 - internal: the app creates its own certificate authority once and a certificate for all the hosts listed;
   the authority's certificate is downloaded and installed on the devices that open the app.
-- custom: certificates uploaded by the admin (one per host, or one with several names or a wildcard).
+- custom: certificates uploaded by the admin; each one is served for the names it holds (one name, several names
+  or a wildcard). There is no list of hosts in this mode: the certificates are the list.
 """
 
 import hashlib
@@ -114,6 +115,7 @@ def site_address(host: str) -> str:
 
 @dataclass
 class CertInfo:
+    id: str
     names: list[str]
     issuer: str
     not_before: datetime
@@ -144,7 +146,7 @@ def _label(name: x509.Name) -> str:
 def cert_info(pem: str) -> CertInfo:
     cert = x509.load_pem_x509_certificates(pem.encode())[0]
     return CertInfo(
-        names=_names(cert), issuer=_label(cert.issuer), not_before=cert.not_valid_before_utc,
+        id=cert.fingerprint(hashes.SHA256()).hex()[:16], names=_names(cert), issuer=_label(cert.issuer), not_before=cert.not_valid_before_utc,
         not_after=cert.not_valid_after_utc, fingerprint=cert.fingerprint(hashes.SHA256()).hex(":").upper(),
         self_signed=cert.issuer == cert.subject,
     )
@@ -168,25 +170,36 @@ def check_pair(cert_pem: str, key_pem: str) -> tuple[str, str, CertInfo]:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, t("https_key_mismatch"))
     if chain[0].not_valid_after_utc <= datetime.now(UTC):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, t("https_cert_expired"))
+    if not site_names(_names(chain[0])):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, t("https_cert_no_names"))
     cert_out = "".join(c.public_bytes(serialization.Encoding.PEM).decode() for c in chain)
     key_out = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
                                 serialization.NoEncryption()).decode()
     return cert_out, key_out, cert_info(cert_out)
 
 
-def covers(names: list[str], host: str) -> bool:
-    """Whether a certificate with these names is valid for the host (a wildcard covers one label)."""
-    if host in names:
-        return True
-    if is_ip(host) or host.startswith("*."):
-        return False
-    parent = host.split(".", 1)[1] if "." in host else ""
-    return bool(parent) and f"*.{parent}" in names
+def site_names(names: list[str]) -> list[str]:
+    """The names of a certificate that can be served (a common name like "My server" can't)."""
+    usable = []
+    for name in names:
+        try:
+            host = normalize_host(name)
+        except ValueError:
+            continue
+        if host not in usable:
+            usable.append(host)
+    return usable
 
 
-def uncovered(hosts: list[str], certs: list[dict]) -> list[str]:
-    names = [cert_info(c["cert"]).names for c in certs]
-    return [h for h in hosts if not any(covers(n, h) for n in names)]
+def served_names(certs: list[dict]) -> list[list[str]]:
+    """Custom mode: the names each certificate is served for; a name held by two goes to the first one."""
+    taken: set[str] = set()
+    result = []
+    for pair in certs:
+        names = [n for n in site_names(cert_info(pair["cert"]).names) if n not in taken]
+        taken.update(names)
+        result.append(names)
+    return result
 
 
 # Internal authority
@@ -297,28 +310,31 @@ def stop() -> None:
 
 def _caddyfile(settings: AppSettings) -> tuple[str, dict[str, str]]:
     """Caddyfile with "{dir}" where the bundle is unpacked, and the certificate files it loads."""
-    hosts = settings.https_hosts
-    pairs = [settings.https_leaf] if settings.https_mode == "internal" else settings.https_certs
+    if settings.https_mode == "internal":
+        pairs, names = [settings.https_leaf], [list(settings.https_hosts)]
+    else:
+        pairs, names = settings.https_certs, served_names(settings.https_certs)
     files: dict[str, str] = {}
     sites: list[tuple[list[str], int]] = []
-    names = [cert_info(p["cert"]).names for p in pairs]
-    for index, pair in enumerate(pairs):
-        served = [h for h in hosts if covers(names[index], h) and not any(h in s for s, _ in sites)]
+    for index, (pair, served) in enumerate(zip(pairs, names, strict=True)):
         if served:
             files[f"{index}.crt"], files[f"{index}.key"] = pair["cert"], pair["key"]
             sites.append((served, index))
+    hosts = [h for served, _ in sites for h in served if not h.startswith("*.")]
+    hosts = hosts or [sites[0][0][0].replace("*", "www", 1)]
     # Without SNI (an address typed as an IP) Caddy picks the certificate of this name
     default_sni = next((h for h in hosts if is_ip(h)), hosts[0])
     lines = [
-        "# Written by Candidate from Settings › HTTPS: changes made here are lost",
+        "# Written by Candidate from Settings › Security › HTTPS: changes made here are lost",
         "{",
         "\tadmin localhost:2019",
         "\tauto_https off",
         f"\tdefault_sni {default_sni}",
         f"\tservers :{PORT} {{",
-        "\t\t# A plain HTTP request on the HTTPS port is redirected to HTTPS",
+        "\t\t# A plain HTTP request on the HTTPS port is redirected to HTTPS, temporarily: a permanent redirect",
+        "\t\t# stays in the browsers and would send them to HTTPS also after it is turned off (frontend/caddy)",
         "\t\tlistener_wrappers {",
-        "\t\t\thttp_redirect",
+        "\t\t\tcandidate_redirect",
         "\t\t\ttls",
         "\t\t}",
         "\t}",
@@ -346,9 +362,11 @@ def _caddyfile(settings: AppSettings) -> tuple[str, dict[str, str]]:
 def bundle(settings: AppSettings) -> tuple[str, bytes | None]:
     """Name of the wanted configuration ("off" for plain HTTP) and, for HTTPS, the archive with Caddyfile and
     certificates. The name is a hash of the content, so it changes whenever the configuration does."""
-    if settings.https_mode == "off" or not settings.https_hosts:
+    if settings.https_mode == "off" or (settings.https_mode == "internal" and not settings.https_hosts):
         return "off", None
     if settings.https_mode == "internal" and not settings.https_leaf:
+        return "off", None
+    if settings.https_mode == "custom" and not any(served_names(settings.https_certs)):
         return "off", None
     caddyfile, files = _caddyfile(settings)
     digest = hashlib.sha256(caddyfile.encode())

@@ -39,10 +39,10 @@ def update_profile(payload: ProfileUpdate, user: User = Depends(security.current
     return save(session, profile)
 
 
-@router.post("/fill", response_model=JobRead, status_code=status.HTTP_202_ACCEPTED)
+@router.post("/fills", response_model=JobRead, status_code=status.HTTP_202_ACCEPTED)
 def fill_from_cv(user: User = Depends(security.current_user), session: Session = Depends(get_session)):
     """Fill the profile from the uploaded CV in the background. Empty fields are filled when the job is
-    done; values for filled fields are proposed (see /api/jobs/{id}/apply)."""
+    done; values for filled fields are proposed (accepted with PATCH /api/jobs/{id})."""
     require_llm(session)
     profile = find_profile(session, user.id)
     if profile is None or not profile.cv_text:
@@ -52,10 +52,10 @@ def fill_from_cv(user: User = Depends(security.current_user), session: Session =
     return jobs.enqueue(session, Job(user_id=user.id, kind=JobKind.PROFILE))
 
 
-@router.post("/cv", response_model=ProfileRead)
+@router.put("/cv", response_model=ProfileRead)
 async def upload_cv(file: UploadFile = File(...), user: User = Depends(security.current_user),
                     session: Session = Depends(get_session)):
-    """Store the CV and its text; profile fields are filled by hand or via /api/profile/fill."""
+    """Store the CV and its text; profile fields are filled by hand or via POST /api/profile/fills."""
     data = await read_upload(file)
     filename = file.filename or "cv"
     try:

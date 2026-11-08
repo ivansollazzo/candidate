@@ -7,7 +7,7 @@ in an HttpOnly cookie, invalidated when the password changes.
 import re
 import secrets
 from contextvars import ContextVar
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from fastapi import Depends, HTTPException, Request, Response, status
@@ -19,7 +19,11 @@ from app.i18n import t
 from app.models import AppSettings, User, UserRole
 from app.services import app_settings
 
+# One cookie per protocol. A browser keeps a cookie set over HTTPS with the Secure flag and doesn't let plain
+# HTTP replace it: with the same name, after turning HTTPS off the new session cookie would be thrown away and
+# every sign-in would end at once. The __Secure- prefix makes browsers accept that one only over HTTPS.
 COOKIE_NAME = "candidate_session"
+SECURE_COOKIE_NAME = "__Secure-candidate_session"
 ALGORITHM = "HS256"
 # Alphabet without ambiguous characters (0/O, 1/I/L)
 KEY_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
@@ -81,7 +85,7 @@ def rotate_recovery_key(user: User) -> str:
 # Lockout after failed attempts
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def ensure_not_locked(user: User) -> None:
@@ -104,32 +108,55 @@ def register_success(user: User) -> None:
 
 # Session
 
+def _scheme() -> str:
+    return "https" if secure_request.get() else "http"
+
+
+def _cookie_names() -> tuple[str, str]:
+    """Cookie of this request's protocol, and the one of the other protocol."""
+    return (SECURE_COOKIE_NAME, COOKIE_NAME) if secure_request.get() else (COOKIE_NAME, SECURE_COOKIE_NAME)
+
+
 def start_session(response: Response, user: User, settings: AppSettings) -> None:
     expires = _now() + timedelta(hours=settings.session_hours)
-    token = jwt.encode({"sub": str(user.id), "sv": user.session_version, "exp": expires},
+    # The protocol is part of the token: a session opened over HTTP isn't valid over HTTPS and vice versa
+    token = jwt.encode({"sub": str(user.id), "sv": user.session_version, "exp": expires, "scheme": _scheme()},
                        settings.secret_key, algorithm=ALGORITHM)
+    name, other = _cookie_names()
     # HttpOnly: page JavaScript can't read it; SameSite=Strict: no cross-site requests; Secure (sent only
-    # over HTTPS) when the app is served over HTTPS (Settings › HTTPS), plain HTTP otherwise
-    response.set_cookie(COOKIE_NAME, token, max_age=settings.session_hours * 3600, httponly=True, samesite="strict",
+    # over HTTPS) when the app is served over HTTPS (Settings › Security › HTTPS)
+    response.set_cookie(name, token, max_age=settings.session_hours * 3600, httponly=True, samesite="strict",
                         path="/api", secure=secure_request.get())
+    # A leftover of the other protocol is removed where the browser allows it
+    response.delete_cookie(other, path="/api", secure=other == SECURE_COOKIE_NAME)
 
 
 def end_session(response: Response) -> None:
     response.delete_cookie(COOKIE_NAME, path="/api")
+    response.delete_cookie(SECURE_COOKIE_NAME, path="/api", secure=True)
+
+
+def end_all_sessions(settings: AppSettings) -> None:
+    """Every session of every user ends (e.g. when HTTPS is turned on or off): a new signing key. Not committed."""
+    settings.secret_key = secrets.token_urlsafe(64)
+
+
+def _unauthorized() -> HTTPException:
+    return HTTPException(status.HTTP_401_UNAUTHORIZED, t("not_authenticated"))
 
 
 def current_user(request: Request, response: Response, session: Session = Depends(get_session)) -> User:
-    token = request.cookies.get(COOKIE_NAME)
+    token = request.cookies.get(_cookie_names()[0])
     if not token:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, t("not_authenticated"))
+        raise _unauthorized()
     settings = app_settings.load(session)
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
         user = session.get(User, int(payload["sub"]))
     except (jwt.PyJWTError, KeyError, ValueError):
         user = None
-    if user is None or user.session_version != payload.get("sv"):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, t("not_authenticated"))
+    if user is None or user.session_version != payload.get("sv") or payload.get("scheme", "http") != _scheme():
+        raise _unauthorized()
     # Sliding session: using the app pushes the expiry forward, so it only ends after
     # session_hours of inactivity (renewed at most every RENEW_MINUTES)
     left = payload["exp"] - _now().timestamp()

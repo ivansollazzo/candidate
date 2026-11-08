@@ -1,5 +1,5 @@
 # Plain HTTP: the app on port 5173, the API forwarded to the backend (API_URL), see site.caddy.
-# HTTPS (Settings › HTTPS) replaces this configuration with the one written by the backend, see https.sh.
+# HTTPS (Settings › Security › HTTPS) replaces this configuration with the one written by the backend, see https.sh.
 {
 	# Only inside this container: https.sh reloads the configuration through it
 	admin localhost:2019

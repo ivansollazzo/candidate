@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react"
 
 import { ErrorText } from "@/components/ErrorText"
+import { HttpsSettings } from "@/components/settings/HttpsSettings"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Field } from "@/components/ui/input"
@@ -28,7 +29,7 @@ const RULES: { key: keyof Policy; label: MessageKey }[] = [
   { key: "password_require_symbol", label: "security.symbol" },
 ]
 
-/** Password, session and login-attempt policies (admin only). */
+/** Password, session and login-attempt policies, and HTTPS (admin only). */
 export function SecurityTab({ settings }: { settings: Settings }) {
   const t = useT()
   const update = useUpdateSettings()
@@ -45,6 +46,7 @@ export function SecurityTab({ settings }: { settings: Settings }) {
   }
 
   return (
+    <>
     <form onSubmit={submit} className="space-y-5">
       <Card>
         <CardHeader><CardTitle>{t("security.passwords")}</CardTitle></CardHeader>
@@ -76,5 +78,7 @@ export function SecurityTab({ settings }: { settings: Settings }) {
       {update.isSuccess && !changed && <p className="text-sm text-emerald-700 dark:text-emerald-400">{t("security.saved")}</p>}
       <Button type="submit" disabled={!changed || !valid || update.isPending}>{t("common.save")}</Button>
     </form>
+    <HttpsSettings />
+    </>
   )
 }

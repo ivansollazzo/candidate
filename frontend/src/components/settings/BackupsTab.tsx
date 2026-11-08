@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input, Label, Select } from "@/components/ui/input"
 import { type Backup, backupFileUrl, type Backups, type BackupSettings } from "@/lib/api"
 import { useBackups, useCreateBackup, useDeleteBackup, useRestoreBackup, useSaveBackupSettings } from "@/lib/backups"
-import { dateLocale, getLocale, type MessageKey, useT } from "@/lib/i18n"
+import { dateLocale, formatDateTime, getLocale, type MessageKey, useT } from "@/lib/i18n"
 import { useUpdates } from "@/lib/updates"
 import { cn } from "@/lib/utils"
 
@@ -18,9 +18,6 @@ const KINDS: Record<string, MessageKey> = {
   update: "backups.kind.update",
   restore: "backups.kind.restore",
 }
-
-const formatTime = (value: string | null) =>
-  value ? new Date(value).toLocaleString(dateLocale(), { dateStyle: "medium", timeStyle: "short" }) : "—"
 
 function formatSize(bytes: number): string {
   const format = (n: number) => n.toLocaleString(getLocale(), { maximumFractionDigits: 1 })
@@ -117,9 +114,9 @@ function ScheduleCard({ data }: { data: Backups }) {
           </div>
 
           {data.last_auto?.result === "failed" ? (
-            <Failure message={t("backups.autoFailed", { time: formatTime(data.last_auto.at) })} detail={data.last_auto.detail} />
+            <Failure message={t("backups.autoFailed", { time: formatDateTime(data.last_auto.at) })} detail={data.last_auto.detail} />
           ) : data.last_auto ? (
-            <p className="text-xs text-muted-foreground">{t("backups.autoOk", { time: formatTime(data.last_auto.at) })}</p>
+            <p className="text-xs text-muted-foreground">{t("backups.autoOk", { time: formatDateTime(data.last_auto.at) })}</p>
           ) : null}
         </form>
       </CardContent>
@@ -131,10 +128,10 @@ function BackupRow({ backup, canRestore }: { backup: Backup; canRestore: boolean
   const t = useT()
   const remove = useDeleteBackup()
   const restore = useRestoreBackup()
-  const when = formatTime(backup.created_at)
+  const when = formatDateTime(backup.created_at)
   // The backup made before a restore notes the restored one
   const restored = backup.kind === "restore" ? nameTime(backup.note) : null
-  const note = restored ? t("backups.restoredNote", { time: formatTime(restored) }) : backup.note
+  const note = restored ? t("backups.restoredNote", { time: formatDateTime(restored) }) : backup.note
   const onRestore = () => {
     if (confirm(t("backups.confirmRestore", { time: when }))) restore.mutate(backup.name)
   }
@@ -204,10 +201,10 @@ export function BackupsTab() {
   return (
     <>
       {last && (last.result === "failed"
-        ? <Failure message={t("backups.restoreFailed", { time: formatTime(last.finished_at) })} detail={last.detail} />
+        ? <Failure message={t("backups.restoreFailed", { time: formatDateTime(last.finished_at) })} detail={last.detail} />
         : (
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-200">
-            {t("backups.restoreOk", { time: formatTime(last.finished_at) })}
+            {t("backups.restoreOk", { time: formatDateTime(last.finished_at) })}
           </p>
         ))}
 

@@ -111,10 +111,10 @@ def test_unavailable_service(client, monkeypatch):
 
 def test_restore_puts_app_in_maintenance(client, service):
     # A backup of a newer database revision is refused
-    assert client.post(f"/api/backups/{NEWER['name']}/restore").status_code == 409
-    assert client.post("/api/backups/nope/restore").status_code == 404
+    assert client.post(f"/api/backups/{NEWER['name']}/restorations").status_code == 409
+    assert client.post("/api/backups/nope/restorations").status_code == 404
 
-    assert client.post(f"/api/backups/{BACKUP['name']}/restore").status_code == 202
+    assert client.post(f"/api/backups/{BACKUP['name']}/restorations").status_code == 202
     # Meanwhile only the health check answers
     assert client.get("/api/applications").status_code == 503
     assert client.get("/api/health").json()["status"] == "restoring"
@@ -125,16 +125,31 @@ def test_restore_puts_app_in_maintenance(client, service):
 
 
 def test_restore_needs_no_ai_jobs(client, service):
-    r = client.post("/api/applications/ai", data={"text": "Cerchiamo un Backend Developer Python a Milano."})
+    r = client.post("/api/applications/imports", data={"text": "Cerchiamo un Backend Developer Python a Milano."})
     assert r.status_code == 201
-    r = client.post(f"/api/backups/{BACKUP['name']}/restore")
+    r = client.post(f"/api/backups/{BACKUP['name']}/restorations")
     assert r.status_code == 409 and "operazioni AI" in r.json()["detail"]
 
 
 def test_admin_only(client, service):
     client.post("/api/users", json={"username": "mario", "email": "m@example.com", "password": "Password123",
                                     "role": "user"})
-    client.post("/api/auth/logout")
-    client.post("/api/auth/login", json={"username": "mario", "password": "Password123"})
+    client.delete("/api/session")
+    client.post("/api/session", json={"username": "mario", "password": "Password123"})
     assert client.get("/api/backups").status_code == 403
-    assert client.post(f"/api/backups/{BACKUP['name']}/restore").status_code == 403
+    assert client.post(f"/api/backups/{BACKUP['name']}/restorations").status_code == 403
+
+
+def test_cli_lists_and_restores(service, capsys):
+    """A way back that doesn't need the browser, for when the app can't be used."""
+    from app import cli
+
+    assert cli.main(["backups"]) == 0
+    out = capsys.readouterr().out
+    assert BACKUP["name"] in out and f"{NEWER['name']}  manual  2.0 1  (can't be restored here)" in out
+    assert cli.main(["restore", "nope"]) == 1
+    assert cli.main(["restore", NEWER["name"]]) == 1
+    assert cli.main(["restore", BACKUP["name"]]) == 0
+    assert ("POST", f"/backups/{BACKUP['name']}/restore", {"safety": True}) in service.requests
+    assert "docker compose restart backend" in capsys.readouterr().out
+    assert cli.main(["restore"]) == 2

@@ -3,19 +3,49 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { ApiError, api, type MeChanges, type PasswordPolicy, type User } from "./api"
 import { t } from "./i18n"
 
+// A session was open in this tab: a 401 then means it ended (expired, closed by HTTPS turned on or off, password
+// changed elsewhere), which the sign-in page says instead of showing up without a word
+let hadSession = false
+let sessionEnded = false
+
+/** True once after a session ended by itself; read by the sign-in page. */
+export function takeSessionEnded() {
+  const ended = sessionEnded
+  sessionEnded = false
+  return ended
+}
+
 /** Current user; null if there is no session or it expired. */
 export function useMe() {
   return useQuery({
     queryKey: ["me"],
     queryFn: async () => {
       try {
-        return await api.getMe()
+        const user = await api.getMe()
+        hadSession = true
+        return user
       } catch (e) {
-        if (e instanceof ApiError && e.status === 401) return null
+        if (e instanceof ApiError && e.status === 401) {
+          sessionEnded ||= hadSession
+          hadSession = false
+          return null
+        }
         throw e
       }
     },
   })
+}
+
+/** After signing in: the browser must send the new session cookie back, or every request would fail and the
+ * sign-in page come back without a reason. */
+export async function confirmSession<T>(result: T): Promise<T> {
+  try {
+    await api.getMe()
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 401) throw new ApiError(t("login.sessionNotKept"), 401)
+    throw e
+  }
+  return result
 }
 
 export const useCurrentUser = () => useMe().data ?? null
@@ -46,6 +76,7 @@ export function useSavePreference() {
 function useSwitchUser() {
   const queryClient = useQueryClient()
   return (user: User | null) => {
+    hadSession = user != null
     queryClient.setQueryData(["me"], user)
     queryClient.removeQueries({ predicate: (q) => !["me", "auth-status"].includes(q.queryKey[0] as string) })
   }

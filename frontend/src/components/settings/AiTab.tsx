@@ -15,7 +15,7 @@ const HARDWARE_TONES: Record<HardwareStatus, string> = {
 }
 
 /** AI features and hardware acceleration (admin only). */
-export function SystemTab() {
+export function AiTab() {
   const t = useT()
   const ai = useAiStatus()
   const settings = useSettings()

@@ -1,7 +1,7 @@
 """Compatibility report: the local model compares the position's skills with the profile and suggests
 where to improve; the score is computed here from its judgements."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import null, update
 from sqlmodel import Session
@@ -120,7 +120,7 @@ def build_report(app: Application, profile: Profile | None, result: ReportExtrac
         summary=result.summary,
         strengths=result.strengths,
         improvements=result.improvements,
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
     )
 
 

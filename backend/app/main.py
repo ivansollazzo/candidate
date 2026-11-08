@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import shutil
 from contextlib import asynccontextmanager
@@ -9,13 +10,25 @@ from fastapi.responses import JSONResponse
 from sqlmodel import Session
 
 from app import __build__, __version__
-from app.api import applications, auth, backups, events, https, jobs, me, profile, settings, updates, users
+from app.api import (
+    applications,
+    auth,
+    backups,
+    events,
+    https,
+    jobs,
+    me,
+    profile,
+    settings,
+    updates,
+    users,
+)
 from app.config import get_settings
 from app.db import engine
 from app.i18n import LanguageMiddleware, t
 from app.services import app_settings, security
-from app.services import https as https_service
 from app.services import backups as backup_service
+from app.services import https as https_service
 from app.services import jobs as job_queue
 from app.services.llm import check_llm, hardware_support
 
@@ -46,6 +59,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Requests served at once. A request can hold a database connection while it waits for a worker thread, and its
+# connection goes back to the pool only on a worker thread: with more requests in flight than connections, threads
+# and connections end up waiting for each other and the app stops answering. Further requests wait here instead,
+# without a connection (the pool in app.db has room for all of these).
+MAX_IN_FLIGHT = 30
+_in_flight = asyncio.Semaphore(MAX_IN_FLIGHT)
+
+
+@app.middleware("http")
+async def limit_in_flight(request: Request, call_next):
+    # The health check (updater) and the web server's HTTPS sync answer also when the app is busy
+    if request.url.path == "/api/health" or request.url.path.startswith("/api/internal/"):
+        return await call_next(request)
+    async with _in_flight:
+        return await call_next(request)
 
 
 @app.middleware("http")

@@ -11,7 +11,7 @@ USER = {"username": "Mario", "email": "mario@example.com", "password": "Segreta1
 
 def _login(username: str, password: str) -> TestClient:
     other = TestClient(app)
-    assert other.post("/api/auth/login", json={"username": username, "password": password}).status_code == 200
+    assert other.post("/api/session", json={"username": username, "password": password}).status_code == 200
     return other
 
 
@@ -22,20 +22,20 @@ def _image(fmt: str = "PNG", size=(400, 300)) -> bytes:
 
 
 def test_setup_only_once(anon):
-    status = anon.get("/api/auth/status").json()
+    status = anon.get("/api/setup").json()
     assert status["setup_required"] is True and status["password_policy"]["password_min_length"] == 10
     assert anon.get("/api/applications").status_code == 401
 
-    weak = anon.post("/api/auth/setup", json={**ADMIN, "password": "short"})
+    weak = anon.post("/api/setup", json={**ADMIN, "password": "short"})
     assert weak.status_code == 422 and "10 caratteri" in weak.json()["detail"]
 
-    created = anon.post("/api/auth/setup", json=ADMIN).json()
+    created = anon.post("/api/setup", json=ADMIN).json()
     assert created["user"]["role"] == "admin"
     assert len(created["recovery_key"]) == 29 and created["recovery_key"].count("-") == 5
     assert anon.get("/api/me").json()["username"] == "admin"
 
-    assert anon.get("/api/auth/status").json()["setup_required"] is False
-    assert anon.post("/api/auth/setup", json={**ADMIN, "username": "other", "email": "o@example.com"}).status_code == 409
+    assert anon.get("/api/setup").json()["setup_required"] is False
+    assert anon.post("/api/setup", json={**ADMIN, "username": "other", "email": "o@example.com"}).status_code == 409
 
 
 def test_setup_claims_existing_data(anon):
@@ -48,66 +48,66 @@ def test_setup_claims_existing_data(anon):
         session.add(Application(title="Prima degli utenti"))
         session.add(Profile(full_name="Ivan"))
         session.commit()
-    anon.post("/api/auth/setup", json=ADMIN)
+    anon.post("/api/setup", json=ADMIN)
     assert [a["title"] for a in anon.get("/api/applications").json()] == ["Prima degli utenti"]
     assert anon.get("/api/profile").json()["full_name"] == "Ivan"
 
 
 def test_login_logout_and_lockout(client):
     client.patch("/api/settings", json={"max_login_attempts": 3, "lockout_minutes": 5})
-    client.post("/api/auth/logout")
+    client.delete("/api/session")
     assert client.get("/api/me").status_code == 401
 
     # Usernames are case-insensitive
-    assert client.post("/api/auth/login", json={"username": "ADMIN", "password": "Password123"}).status_code == 200
-    client.post("/api/auth/logout")
+    assert client.post("/api/session", json={"username": "ADMIN", "password": "Password123"}).status_code == 200
+    client.delete("/api/session")
 
     for _ in range(3):
-        r = client.post("/api/auth/login", json={"username": "admin", "password": "sbagliata"})
+        r = client.post("/api/session", json={"username": "admin", "password": "sbagliata"})
         assert r.status_code == 401 and r.json()["detail"] == "Username o password non corretti"
-    r = client.post("/api/auth/login", json={"username": "admin", "password": "Password123"})
+    r = client.post("/api/session", json={"username": "admin", "password": "Password123"})
     assert r.status_code == 423 and "5 min" in r.json()["detail"]
 
     # Unknown username: same error as a wrong password
-    assert client.post("/api/auth/login", json={"username": "nessuno", "password": "x"}).status_code == 401
+    assert client.post("/api/session", json={"username": "nessuno", "password": "x"}).status_code == 401
 
 
 def test_password_change_closes_other_sessions(client):
     other = _login("admin", "Password123")
-    r = client.post("/api/me/password", json={"current_password": "sbagliata", "new_password": "NuovaPass99"})
+    r = client.put("/api/me/password", json={"current_password": "sbagliata", "new_password": "NuovaPass99"})
     assert r.status_code == 403
-    r = client.post("/api/me/password", json={"current_password": "Password123", "new_password": "nuovapass"})
+    r = client.put("/api/me/password", json={"current_password": "Password123", "new_password": "nuovapass"})
     assert r.status_code == 422 and "maiuscola" in r.json()["detail"]
-    assert client.post("/api/me/password",
+    assert client.put("/api/me/password",
                        json={"current_password": "Password123", "new_password": "NuovaPass99"}).status_code == 200
     assert client.get("/api/me").status_code == 200
     assert other.get("/api/me").status_code == 401
 
 
 def test_recovery_key_reset(anon):
-    key = anon.post("/api/auth/setup", json=ADMIN).json()["recovery_key"]
-    anon.post("/api/auth/logout")
+    key = anon.post("/api/setup", json=ADMIN).json()["recovery_key"]
+    anon.delete("/api/session")
 
-    r = anon.post("/api/auth/reset", json={"username": "admin", "recovery_key": "AAAA-BBBB", "new_password": "NuovaPass99"})
+    r = anon.post("/api/password-resets", json={"username": "admin", "recovery_key": "AAAA-BBBB", "new_password": "NuovaPass99"})
     assert r.status_code == 401
     # The key is also accepted without dashes and in lowercase
-    r = anon.post("/api/auth/reset",
+    r = anon.post("/api/password-resets",
                   json={"username": "admin", "recovery_key": key.replace("-", "").lower(), "new_password": "NuovaPass99"})
     assert r.status_code == 200
     new_key = r.json()["recovery_key"]
     assert new_key != key and anon.get("/api/me").status_code == 200
 
     # A used key is no longer valid
-    r = anon.post("/api/auth/reset", json={"username": "admin", "recovery_key": key, "new_password": "AltraPass99"})
+    r = anon.post("/api/password-resets", json={"username": "admin", "recovery_key": key, "new_password": "AltraPass99"})
     assert r.status_code == 401
     _login("admin", "NuovaPass99")
 
     # New key from settings, with password confirmation
     assert anon.post("/api/me/recovery-key", json={"password": "sbagliata"}).status_code == 403
     downloaded = anon.post("/api/me/recovery-key", json={"password": "NuovaPass99"}).json()["recovery_key"]
-    assert anon.post("/api/auth/reset", json={"username": "admin", "recovery_key": new_key,
+    assert anon.post("/api/password-resets", json={"username": "admin", "recovery_key": new_key,
                                               "new_password": "AltraPass99"}).status_code == 401
-    assert anon.post("/api/auth/reset", json={"username": "admin", "recovery_key": downloaded,
+    assert anon.post("/api/password-resets", json={"username": "admin", "recovery_key": downloaded,
                                               "new_password": "AltraPass99"}).status_code == 200
 
 
@@ -218,7 +218,7 @@ def test_security_policy_from_settings(client):
     assert r.status_code == 422
     assert r.json()["detail"] == "La password deve avere almeno 12 caratteri, un simbolo"
     assert client.post("/api/users", json={**USER, "password": "abcdefgh1234!"}).status_code == 201
-    policy = client.get("/api/auth/status").json()["password_policy"]
+    policy = client.get("/api/setup").json()["password_policy"]
     assert (policy["password_min_length"], policy["password_require_symbol"]) == (12, True)
 
 
@@ -228,7 +228,7 @@ def test_session_is_persistent_and_sliding(client, monkeypatch):
     from app.services import security
 
     # Persistent cookie (Max-Age), so closing the browser doesn't end the session
-    r = client.post("/api/auth/login", json={"username": ADMIN["username"], "password": ADMIN["password"]})
+    r = client.post("/api/session", json={"username": ADMIN["username"], "password": ADMIN["password"]})
     assert "Max-Age=604800" in r.headers["set-cookie"]
     # A fresh token is not renewed on every request
     assert "set-cookie" not in client.get("/api/me").headers

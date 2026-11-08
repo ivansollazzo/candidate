@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlmodel import Session, select
 
 from app.db import get_session
 from app.i18n import t
 from app.models import Application, Job, TaskStatus, User
-from app.schemas import JobRead
+from app.schemas import JobRead, JobUpdate
 from app.services import jobs, security
 from app.services.app_settings import require_llm
 
@@ -36,19 +36,18 @@ def cancel_job(job_id: int, user: User = Depends(security.current_user), session
     jobs.cancel(session, get_owned_job(session, job_id, user))
 
 
-@router.post("/{job_id}/apply", status_code=status.HTTP_204_NO_CONTENT)
-def apply_job(job_id: int, user: User = Depends(security.current_user), session: Session = Depends(get_session)):
-    """Apply the values proposed for fields that were already filled."""
+@router.patch("/{job_id}", response_model=JobRead | None)
+def update_job(job_id: int, payload: JobUpdate, user: User = Depends(security.current_user),
+               session: Session = Depends(get_session)):
+    """{"status": "pending"} runs a failed job again; {"proposal": "accepted"} applies the values it proposed for
+    fields that were already filled (the job is then dismissed: 204)."""
     job = get_owned_job(session, job_id, user)
-    if job.status != TaskStatus.DONE:
-        raise HTTPException(status.HTTP_409_CONFLICT, t("job_not_finished"))
-    jobs.apply_proposal(session, job)
-
-
-@router.post("/{job_id}/retry", response_model=JobRead)
-def retry_job(job_id: int, user: User = Depends(security.current_user), session: Session = Depends(get_session)):
+    if payload.proposal == "accepted":
+        if job.status != TaskStatus.DONE:
+            raise HTTPException(status.HTTP_409_CONFLICT, t("job_not_finished"))
+        jobs.apply_proposal(session, job)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
     require_llm(session)
-    job = get_owned_job(session, job_id, user)
     if job.status != TaskStatus.FAILED:
         raise HTTPException(status.HTTP_409_CONFLICT, t("job_not_failed"))
     return jobs.retry(session, job)

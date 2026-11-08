@@ -42,7 +42,9 @@ def apply_changes(session: Session, app: Application, changes: dict) -> None:
 
 def delete_applications(session: Session, apps: list[Application]) -> None:
     """Delete and commit; attached files go too, so they don't take up space."""
-    from app.services import jobs  # jobs fill applications: imported here to avoid a cycle
+    from app.services import (
+        jobs,  # jobs fill applications: imported here to avoid a cycle
+    )
 
     folders = [attachments_dir(app) for app in apps]
     for app in apps:

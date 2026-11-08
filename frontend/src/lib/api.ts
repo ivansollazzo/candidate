@@ -22,8 +22,6 @@ export interface ApplicationSummary {
 export interface ApplicationListItem extends ApplicationSummary {
   /** Date of the latest agenda event, status changes excluded */
   last_event_on: string | null
-  /** Date of the latest event of any kind, status changes included */
-  last_activity_on: string | null
   /** Score of the compatibility report, when one has been generated */
   match_score: number | null
   /** The report should be regenerated */
@@ -210,7 +208,7 @@ export interface PasswordPolicy {
 }
 
 /** Progress of the updater service, see updater/updater.sh */
-export interface UpdateStatus {
+interface UpdateStatus {
   status: "unavailable" | "idle" | "checking" | "updating"
   /** restart and verify: the services are being replaced by the new version */
   step: "backup" | "download" | "restart" | "verify" | null
@@ -311,7 +309,7 @@ export type ApplicationBulk =
   | { ids: number[]; action: "delete" }
   | { ids: number[]; action: "status"; status: ApplicationStatus }
 
-export interface ReportsQueued {
+interface ReportsQueued {
   queued: number
   without_skills: number
   already_queued: number
@@ -353,7 +351,7 @@ interface AuthStatus {
 }
 
 export type WidgetId = "counts" | "calendar" | "events" | "recent" | "profile" | "weekly" | "top_matches"
-  | "stale_reports" | "missing_skills" | "no_news"
+  | "stale_reports" | "missing_skills"
 
 export interface OverviewWidget {
   id: WidgetId
@@ -403,18 +401,20 @@ export type ApplicationChanges = Partial<Application> & { description?: string |
 export type HttpsMode = "off" | "internal" | "custom"
 
 export interface HttpsCertificate {
+  id: string
   names: string[]
   issuer: string
   not_before: string
   not_after: string
   fingerprint: string
   self_signed: boolean
-  /** Hosts of the list served with this certificate */
+  /** Names it is served for (a name two certificates hold goes to the newest) */
   hosts: string[]
 }
 
 export interface Https {
   mode: HttpsMode
+  /** Addresses of internal mode */
   hosts: string[]
   certificates: HttpsCertificate[]
   authority: { name: string; fingerprint: string; not_after: string; leaf_not_after: string | null } | null
@@ -472,17 +472,17 @@ const json = (method: string, body: unknown): RequestInit => ({
 export const api = {
   health: () => request<Health>("/api/health"),
 
-  authStatus: () => request<AuthStatus>("/api/auth/status"),
-  setup: (account: Omit<NewUser, "role">) => request<UserWithKey>("/api/auth/setup", json("POST", account)),
-  login: (username: string, password: string) => request<User>("/api/auth/login", json("POST", { username, password })),
-  logout: () => request<void>("/api/auth/logout", { method: "POST" }),
+  authStatus: () => request<AuthStatus>("/api/setup"),
+  setup: (account: Omit<NewUser, "role">) => request<UserWithKey>("/api/setup", json("POST", account)),
+  login: (username: string, password: string) => request<User>("/api/session", json("POST", { username, password })),
+  logout: () => request<void>("/api/session", { method: "DELETE" }),
   resetPassword: (username: string, recovery_key: string, new_password: string) =>
-    request<UserWithKey>("/api/auth/reset", json("POST", { username, recovery_key, new_password })),
+    request<UserWithKey>("/api/password-resets", json("POST", { username, recovery_key, new_password })),
 
   getMe: () => request<User>("/api/me"),
   updateMe: (changes: MeChanges) => request<User>("/api/me", json("PATCH", changes)),
   changePassword: (current_password: string, new_password: string) =>
-    request<User>("/api/me/password", json("POST", { current_password, new_password })),
+    request<User>("/api/me/password", json("PUT", { current_password, new_password })),
   newRecoveryKey: (password: string) => request<{ recovery_key: string }>("/api/me/recovery-key", json("POST", { password })),
   uploadAvatar: (file: File) => request<User>("/api/me/avatar", upload("PUT", file)),
   deleteAvatar: () => request<User>("/api/me/avatar", { method: "DELETE" }),
@@ -503,9 +503,12 @@ export const api = {
   deleteAttachment: (id: number, attachmentId: number) =>
     request<Application>(`/api/applications/${id}/attachments/${attachmentId}`, { method: "DELETE" }),
   /** Same action on several applications: all of them or none */
-  bulkApplications: (bulk: ApplicationBulk) => request<void>("/api/applications/bulk", json("POST", bulk)),
+  bulkApplications: (bulk: ApplicationBulk) =>
+    bulk.action === "delete"
+      ? request<void>(`/api/applications?${bulk.ids.map((id) => `ids=${id}`).join("&")}`, { method: "DELETE" })
+      : request<void>("/api/applications", json("PATCH", { ids: bulk.ids, status: bulk.status })),
   requestReports: (ids: number[]) => request<ReportsQueued>("/api/applications/reports", json("POST", { ids })),
-  requestReport: (id: number) => request<Application>(`/api/applications/${id}/report`, { method: "POST" }),
+  requestReport: (id: number) => request<Application>(`/api/applications/${id}/report`, { method: "PUT" }),
 
   listEvents: () => request<AgendaEvent[]>("/api/events"),
   addEvent: (event: EventFields) => request<ApplicationEvent>("/api/events", json("POST", event)),
@@ -514,27 +517,27 @@ export const api = {
 
   getProfile: () => request<Profile>("/api/profile"),
   updateProfile: (changes: Partial<Profile>) => request<Profile>("/api/profile", json("PATCH", changes)),
-  uploadCv: (file: File) => request<Profile>("/api/profile/cv", upload("POST", file)),
+  uploadCv: (file: File) => request<Profile>("/api/profile/cv", upload("PUT", file)),
 
   /** Saves the application with its posting right away; the AI fills it in the background */
   createApplicationWithAi: (source: JobSource, report: boolean) =>
-    request<Application>("/api/applications/ai", sourceForm(source, { report: String(report) })),
-  fillApplication: (id: number, source?: JobSource) => request<Job>(`/api/applications/${id}/fill`, sourceForm(source)),
-  fillProfile: () => request<Job>("/api/profile/fill", { method: "POST" }),
+    request<Application>("/api/applications/imports", sourceForm(source, { report: String(report) })),
+  fillApplication: (id: number, source?: JobSource) => request<Job>(`/api/applications/${id}/fills`, sourceForm(source)),
+  fillProfile: () => request<Job>("/api/profile/fills", { method: "POST" }),
 
   listJobs: () => request<Job[]>("/api/jobs"),
   /** Cancels a waiting or running job, or dismisses a finished one */
   cancelJob: (id: number) => request<void>(`/api/jobs/${id}`, { method: "DELETE" }),
-  applyJob: (id: number) => request<void>(`/api/jobs/${id}/apply`, { method: "POST" }),
-  retryJob: (id: number) => request<Job>(`/api/jobs/${id}/retry`, { method: "POST" }),
+  applyJob: (id: number) => request<void>(`/api/jobs/${id}`, json("PATCH", { proposal: "accepted" })),
+  retryJob: (id: number) => request<Job>(`/api/jobs/${id}`, json("PATCH", { status: "pending" })),
 
   getSettings: () => request<Settings>("/api/settings"),
   updateSettings: (changes: Partial<Settings>) => request<Settings>("/api/settings", json("PATCH", changes)),
 
   getUpdates: () => request<Updates>("/api/updates"),
   updateStatus: () => request<UpdateStatus>("/api/updates/status"),
-  checkUpdates: () => request<void>("/api/updates/check", { method: "POST" }),
-  installUpdate: () => request<void>("/api/updates/install", { method: "POST" }),
+  checkUpdates: () => request<void>("/api/updates/checks", { method: "POST" }),
+  installUpdate: () => request<void>("/api/updates/installations", { method: "POST" }),
 
   getBackups: () => request<Backups>("/api/backups"),
   getHttps: () => request<Https>("/api/https"),
@@ -545,14 +548,14 @@ export const api = {
     form.append("key", key)
     return request<Https>("/api/https/certificates", { method: "POST", body: form })
   },
-  deleteCertificate: (index: number) => request<Https>(`/api/https/certificates/${index}`, { method: "DELETE" }),
+  deleteCertificate: (id: string) => request<Https>(`/api/https/certificates/${id}`, { method: "DELETE" }),
   saveBackupSettings: (settings: BackupSettings) => request<BackupSettings>("/api/backups/settings", json("PUT", settings)),
   createBackup: (note: string) => request<Backup>("/api/backups", json("POST", { note })),
   deleteBackup: (name: string) => request<void>(`/api/backups/${encodeURIComponent(name)}`, { method: "DELETE" }),
-  restoreBackup: (name: string) => request<void>(`/api/backups/${encodeURIComponent(name)}/restore`, { method: "POST" }),
+  restoreBackup: (name: string) => request<void>(`/api/backups/${encodeURIComponent(name)}/restorations`, { method: "POST" }),
 }
 
-export const HTTPS_AUTHORITY_URL = "/api/https/root-ca.crt"
+export const HTTPS_AUTHORITY_URL = "/api/https/authority/certificate"
 
 export const backupFileUrl = (name: string) => `/api/backups/${encodeURIComponent(name)}/file`
 

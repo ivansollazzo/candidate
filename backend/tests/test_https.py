@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services import https
+from tests.conftest import ADMIN
 
 
 def make_cert(*names: str, days: int = 90) -> tuple[str, str]:
@@ -37,14 +38,35 @@ def upload(client, cert: str, key: str):
     return client.post("/api/https/certificates", files={"certificate": ("c.pem", cert), "key": ("k.pem", key)})
 
 
-def sync(anon, applied="off", failed="", error=""):
-    r = anon.post(f"/api/internal/https/sync?applied={applied}&failed={failed}", content=error)
+def login(client, https_request: bool = False):
+    client.cookies.clear()
+    headers = {"X-Forwarded-Proto": "https"} if https_request else {}
+    r = client.post("/api/session", json={"username": ADMIN["username"], "password": ADMIN["password"]},
+                    headers=headers)
+    assert r.status_code == 200, r.text
+    return r
+
+
+def put_https(client, **payload):
+    """Save, then sign in again: turning HTTPS on or off ends every session."""
+    r = client.put("/api/https", json={"hosts": [], **payload})
+    login(client)
+    return r
+
+
+def wanted(anon) -> str:
+    r = anon.get("/api/internal/https/config")
     assert r.status_code == 200
     return r.text
 
 
+def report(anon, applied="off", failed="", error=""):
+    r = anon.post(f"/api/internal/https/reports?applied={applied}&failed={failed}", content=error)
+    assert r.status_code == 204
+
+
 def bundle_files(anon, name: str) -> dict[str, str]:
-    r = anon.get(f"/api/internal/https/bundle/{name}")
+    r = anon.get(f"/api/internal/https/config/{name}")
     assert r.status_code == 200
     with tarfile.open(fileobj=io.BytesIO(r.content)) as archive:
         return {m.name: archive.extractfile(m).read().decode() for m in archive.getmembers()}
@@ -57,10 +79,6 @@ def test_normalize_hosts():
     for wrong in ("http://x.it", "x.it:443", "*.com", "a..b", "-a.it", "a b"):
         with pytest.raises(ValueError):
             https.normalize_host(wrong)
-    assert https.covers(["*.example.com"], "app.example.com")
-    assert not https.covers(["*.example.com"], "a.b.example.com")
-    assert not https.covers(["*.example.com"], "example.com")
-    assert https.covers(["192.168.1.5"], "192.168.1.5")
 
 
 def test_admin_only(client):
@@ -68,24 +86,23 @@ def test_admin_only(client):
     assert stranger.get("/api/https").status_code == 401
     data = client.get("/api/https").json()
     assert data["mode"] == "off" and data["hosts"] == [] and data["state"] == "unknown"
-    assert stranger.get("/api/https/root-ca.crt").status_code == 404
-    client.put("/api/https", json={"mode": "internal", "hosts": ["candidate.local"]})
-    assert stranger.get("/api/https/root-ca.crt").status_code == 200
+    assert stranger.get("/api/https/authority/certificate").status_code == 404
+    put_https(client, mode="internal", hosts=["candidate.local"])
+    assert stranger.get("/api/https/authority/certificate").status_code == 200
 
 
 def test_internal_mode_issues_one_certificate_for_all_hosts(client, anon):
-    r = client.put("/api/https", json={"mode": "internal", "hosts": []})
-    assert r.status_code == 422
+    assert client.put("/api/https", json={"mode": "internal", "hosts": []}).status_code == 422
     r = client.put("/api/https", json={"mode": "internal", "hosts": ["http://bad", "x:1"]})
     assert r.status_code == 422 and "http://bad" in r.json()["detail"]
-    r = client.put("/api/https", json={"mode": "internal",
-                                       "hosts": ["Candidate.local", "192.168.1.50", "candidate.local", "fd00::1"]})
+    r = put_https(client, mode="internal", hosts=["Candidate.local", "192.168.1.50", "candidate.local", "fd00::1"])
     assert r.status_code == 200, r.text
     data = r.json()
     assert data["hosts"] == ["candidate.local", "192.168.1.50", "fd00::1"]
     assert data["authority"]["name"].startswith("Candidate Local CA")
 
-    name = sync(anon)
+    name = wanted(anon)
+    report(anon)
     assert name != "off" and client.get("/api/https").json()["state"] == "applying"
     files = bundle_files(anon, name)
     caddyfile = files["Caddyfile"]
@@ -95,28 +112,30 @@ def test_internal_mode_issues_one_certificate_for_all_hosts(client, anon):
     leaf = x509.load_pem_x509_certificates(files["0.crt"].encode())
     assert sorted(https.cert_info(files["0.crt"]).names) == ["192.168.1.50", "candidate.local", "fd00::1"]
     # The chain ends with the authority that can be downloaded
-    root = anon.get("/api/https/root-ca.crt")
+    root = anon.get("/api/https/authority/certificate")
     authority = leaf[1].public_bytes(serialization.Encoding.PEM).decode()
     assert root.status_code == 200 and root.text.strip() == authority.strip()
-    assert anon.get("/api/internal/https/bundle/0000").status_code == 404
+    assert anon.get("/api/internal/https/config/0000").status_code == 404
 
-    sync(anon, applied=name)
+    report(anon, applied=name)
     assert client.get("/api/https").json()["state"] == "active"
 
-    # Same authority, new certificate when the hosts change
-    client.put("/api/https", json={"mode": "internal", "hosts": ["candidate.local"]})
-    assert anon.get("/api/https/root-ca.crt").text == root.text
-    assert https.cert_info(bundle_files(anon, sync(anon))["0.crt"]).names == ["candidate.local"]
+    # Same authority, new certificate when the hosts change; sessions stay (HTTPS stays on)
+    assert client.put("/api/https", json={"mode": "internal", "hosts": ["candidate.local"]}).status_code == 200
+    assert client.get("/api/https").status_code == 200
+    assert anon.get("/api/https/authority/certificate").text == root.text
+    assert https.cert_info(bundle_files(anon, wanted(anon))["0.crt"]).names == ["candidate.local"]
 
 
 def test_refused_configuration_is_reported(client, anon):
-    client.put("/api/https", json={"mode": "internal", "hosts": ["candidate.local"]})
-    name = sync(anon)
-    sync(anon, applied="off", failed=name, error="loading certificate: bad\n")
+    put_https(client, mode="internal", hosts=["candidate.local"])
+    name = wanted(anon)
+    report(anon, applied="off", failed=name, error="loading certificate: bad\n")
     data = client.get("/api/https").json()
     assert data["state"] == "error" and data["error"] == "loading certificate: bad"
-    client.put("/api/https", json={"mode": "off", "hosts": ["candidate.local"]})
-    assert sync(anon, applied="off", failed=name) == "off"
+    put_https(client, mode="off")
+    assert wanted(anon) == "off"
+    report(anon, applied="off", failed=name)
     data = client.get("/api/https").json()
     assert data["state"] == "off" and data["hosts"] == ["candidate.local"]
 
@@ -129,60 +148,95 @@ def test_readable_error():
     assert https.readable_error("plain text\n") == "plain text"
 
 
-def test_custom_certificates(client, anon):
-    wildcard, wildcard_key = make_cert("*.example.com", "example.com")
+def test_custom_certificates_serve_their_own_names(client, anon):
+    wildcard, wildcard_key = make_cert("*.example.com", "example.com", "My server")
     ip_cert, ip_key = make_cert("192.168.1.50")
-    hosts = ["app.example.com", "example.com", "192.168.1.50"]
-    r = client.put("/api/https", json={"mode": "custom", "hosts": hosts})
-    assert r.status_code == 422 and "app.example.com" in r.json()["detail"]
+    r = client.put("/api/https", json={"mode": "custom", "hosts": []})
+    assert r.status_code == 422  # no certificate yet
 
     assert upload(client, wildcard, ip_key).status_code == 422  # key of another certificate
     assert upload(client, "nope", wildcard_key).status_code == 422
-    expired = make_cert("old.example.com", days=-1)
-    assert upload(client, *expired).status_code == 422
+    assert upload(client, *make_cert("old.example.com", days=-1)).status_code == 422
+    assert upload(client, *make_cert("Just a label")).status_code == 422  # no usable name
     assert upload(client, wildcard, wildcard_key).status_code == 201
-    r = client.put("/api/https", json={"mode": "custom", "hosts": hosts})
-    assert r.status_code == 422 and r.json()["detail"].endswith("192.168.1.50")
-    r = upload(client, ip_cert, ip_key)
-    assert r.status_code == 201
-    assert client.put("/api/https", json={"mode": "custom", "hosts": hosts}).status_code == 200
+    assert upload(client, ip_cert, ip_key).status_code == 201
+    # Still off: uploading doesn't change the mode
+    assert wanted(anon) == "off"
+    assert put_https(client, mode="custom").status_code == 200
     certs = client.get("/api/https").json()["certificates"]
-    assert [c["hosts"] for c in certs] == [["192.168.1.50"], ["app.example.com", "example.com"]]
-    assert "key" not in str(certs)
+    assert [c["hosts"] for c in certs] == [["192.168.1.50"], ["*.example.com", "example.com"]]
+    assert "PRIVATE KEY" not in client.get("/api/https").text
 
-    caddyfile = bundle_files(anon, sync(anon))["Caddyfile"]
+    caddyfile = bundle_files(anon, wanted(anon))["Caddyfile"]
     assert "https://192.168.1.50:5173 {" in caddyfile
-    assert "https://app.example.com:5173, https://example.com:5173 {" in caddyfile
+    assert "https://*.example.com:5173, https://example.com:5173 {" in caddyfile
+    assert "default_sni 192.168.1.50" in caddyfile
 
-    # A certificate still needed can't be removed; the same names replace the old one
-    assert client.delete("/api/https/certificates/0").status_code == 409
+    # The same names replace the old certificate; the last one can't go while custom mode is on
     assert upload(client, *make_cert("192.168.1.50")).status_code == 201
-    assert len(client.get("/api/https").json()["certificates"]) == 2
-    client.put("/api/https", json={"mode": "custom", "hosts": ["example.com"]})
-    assert client.delete("/api/https/certificates/0").status_code == 200
-    assert client.delete("/api/https/certificates/5").status_code == 404
+    certs = client.get("/api/https").json()["certificates"]
+    assert len(certs) == 2
+    assert client.delete(f"/api/https/certificates/{certs[0]['id']}").status_code == 200
+    assert client.delete(f"/api/https/certificates/{certs[0]['id']}").status_code == 404
+    assert client.delete(f"/api/https/certificates/{certs[1]['id']}").status_code == 409
+    put_https(client, mode="off")
+    assert client.delete(f"/api/https/certificates/{certs[1]['id']}").status_code == 200
 
 
-def test_internal_routes_hidden_from_users(client):
-    client.put("/api/https", json={"mode": "internal", "hosts": ["candidate.local"]})
+def test_internal_routes_hidden(client):
+    put_https(client, mode="internal", hosts=["candidate.local"])
     assert "https_ca" not in client.get("/api/settings").text
-    assert "/api/internal/https/sync" not in client.get("/openapi.json").json()["paths"]
+    assert not [p for p in client.get("/openapi.json").json()["paths"] if p.startswith("/api/internal")]
 
 
-def test_session_cookie_secure_over_https(anon):
-    from tests.conftest import ADMIN
+def test_session_cookie_per_protocol(anon):
+    """A session opened over HTTPS can't be used over HTTP and the other way round, and signing in over HTTP
+    works while the browser still holds the HTTPS cookie (the bug of HTTPS turned off)."""
+    secure = {"X-Forwarded-Proto": "https"}
+    r = anon.post("/api/setup", json=ADMIN, headers=secure)
+    assert r.status_code == 201
+    cookie = r.headers["set-cookie"]
+    assert cookie.startswith("__Secure-candidate_session=") and "secure" in cookie.lower()
+    token = anon.cookies.get("__Secure-candidate_session")
+    # The test client works over http: the Secure cookie is passed by hand, as a browser does over HTTPS
+    over_https = TestClient(app, base_url="https://testserver", headers=secure)
+    over_https.cookies.set("__Secure-candidate_session", token)
+    assert over_https.get("/api/me").status_code == 200
+    # Over plain HTTP the HTTPS session isn't valid, not even under the HTTP cookie name
+    assert anon.get("/api/me").status_code == 401
+    assert anon.get("/api/me", cookies={"candidate_session": token}).status_code == 401
+    r = login(anon)
+    assert r.headers["set-cookie"].startswith("candidate_session=")
+    assert "secure" not in r.headers["set-cookie"].split(",")[0].lower()
+    anon.cookies.set("__Secure-candidate_session", token)
+    assert anon.get("/api/me").status_code == 200
+    # And over HTTPS the plain HTTP session isn't valid
+    over_https.cookies.set("candidate_session", anon.cookies.get("candidate_session"))
+    over_https.cookies.delete("__Secure-candidate_session")
+    assert over_https.get("/api/me").status_code == 401
 
-    r = anon.post("/api/auth/setup", json=ADMIN, headers={"X-Forwarded-Proto": "https"})
-    assert r.status_code == 201 and "secure" in r.headers["set-cookie"].lower()
-    r = anon.post("/api/auth/login", json={"username": "admin", "password": ADMIN["password"]})
-    assert "secure" not in r.headers["set-cookie"].lower()
+
+def test_switching_protocol_ends_sessions(client):
+    other = TestClient(app)
+    login(other)
+    assert other.get("/api/me").status_code == 200
+    client.put("/api/https", json={"mode": "internal", "hosts": ["candidate.local"]})
+    assert other.get("/api/me").status_code == 401
+    assert client.get("/api/me").status_code == 401
+    login(client)
+    # Changing only the hosts keeps them
+    login(other)
+    client.put("/api/https", json={"mode": "internal", "hosts": ["candidate.local", "10.0.0.2"]})
+    assert other.get("/api/me").status_code == 200
 
 
-def test_cli_turns_https_off(client, capsys):
+def test_cli_turns_https_off(client):
     from app import cli
 
-    client.put("/api/https", json={"mode": "internal", "hosts": ["candidate.local"]})
+    put_https(client, mode="internal", hosts=["candidate.local"])
     assert cli.main(["https-off"]) == 0
+    assert client.get("/api/me").status_code == 401
+    login(client)
     data = client.get("/api/https").json()
     assert data["mode"] == "off" and data["hosts"] == ["candidate.local"]
     assert cli.main([]) == 2

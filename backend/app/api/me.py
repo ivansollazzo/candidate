@@ -2,7 +2,15 @@
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.responses import FileResponse
 from sqlmodel import Session
 
@@ -41,7 +49,7 @@ def update_me(payload: MeUpdate, user: User = Depends(security.current_user), se
     return save(session, user)
 
 
-@router.post("/password", response_model=UserRead)
+@router.put("/password", response_model=UserRead)
 def change_password(payload: PasswordChange, response: Response, user: User = Depends(security.current_user),
                     session: Session = Depends(get_session)):
     _confirm_password(user, payload.current_password)
