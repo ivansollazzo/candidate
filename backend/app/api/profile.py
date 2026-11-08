@@ -14,7 +14,7 @@ from app.services import jobs, security
 from app.services.app_settings import require_llm
 from app.services.documents import UnsupportedDocument, extract_text
 from app.services.profiles import apply_profile_changes
-from app.services.users import add_project_skills, find_profile, user_dir
+from app.services.users import find_profile, user_dir
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 
@@ -26,9 +26,11 @@ def _get_or_create(session: Session, user: User) -> Profile:
 
 @router.get("", response_model=ProfileRead)
 def get_profile(user: User = Depends(security.current_user), session: Session = Depends(get_session)):
-    profile = _get_or_create(session, user)
-    # Checked on every read so profiles saved earlier also get project skills
-    return save(session, profile) if add_project_skills(profile) else profile
+    """Read only: a user who never saved the profile gets an empty one (id null), created by the first write."""
+    profile = find_profile(session, user.id)
+    if profile is None:
+        return ProfileRead.model_validate(Profile(user_id=user.id)).model_copy(update={"updated_at": None})
+    return profile
 
 
 @router.patch("", response_model=ProfileRead)
@@ -42,7 +44,7 @@ def update_profile(payload: ProfileUpdate, user: User = Depends(security.current
 @router.post("/fills", response_model=JobRead, status_code=status.HTTP_202_ACCEPTED)
 def fill_from_cv(user: User = Depends(security.current_user), session: Session = Depends(get_session)):
     """Fill the profile from the uploaded CV in the background. Empty fields are filled when the job is
-    done; values for filled fields are proposed (accepted with PATCH /api/jobs/{id})."""
+    done; values for filled fields are proposed (accepted with POST /api/jobs/{id}/accept)."""
     require_llm(session)
     profile = find_profile(session, user.id)
     if profile is None or not profile.cv_text:
@@ -78,7 +80,7 @@ async def upload_cv(file: UploadFile = File(...), user: User = Depends(security.
 
 @router.get("/cv")
 def download_cv(user: User = Depends(security.current_user), session: Session = Depends(get_session)):
-    profile = _get_or_create(session, user)
-    if not profile.cv_path or not Path(profile.cv_path).exists():
+    profile = find_profile(session, user.id)
+    if profile is None or not profile.cv_path or not Path(profile.cv_path).exists():
         raise HTTPException(status.HTTP_404_NOT_FOUND, t("no_cv"))
     return FileResponse(profile.cv_path, filename=profile.cv_filename)

@@ -1,7 +1,7 @@
 from datetime import date, datetime, time
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models import ApplicationStatus, EventType
 
@@ -376,7 +376,8 @@ class ProfileUpdate(BaseModel):
 class ProfileRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    # Null until the profile is saved for the first time
+    id: int | None
     full_name: str | None
     email: str | None
     phone: str | None
@@ -392,7 +393,7 @@ class ProfileRead(BaseModel):
     certifications: list[dict]
     languages: list[dict]
     cv_filename: str | None
-    updated_at: datetime
+    updated_at: datetime | None
 
 
 class ReportSkill(BaseModel):
@@ -574,19 +575,6 @@ class UserUpdate(BaseModel):
     email: Email | None = None
     role: Role | None = None
     password: Secret | None = None
-
-
-class JobUpdate(BaseModel):
-    """Exactly one of: run a failed job again, or accept the values it proposed."""
-
-    status: Literal["pending"] | None = None
-    proposal: Literal["accepted"] | None = None
-
-    @model_validator(mode="after")
-    def _one_change(self):
-        if (self.status is None) == (self.proposal is None):
-            raise ValueError("status or proposal")
-        return self
 
 
 class JobRead(BaseModel):

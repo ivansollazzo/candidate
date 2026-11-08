@@ -1,6 +1,6 @@
 """Application events: interviews, follow-ups and other appointments to schedule and mark as done."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlmodel import Session, select
 
 from app.api.applications import get_owned
@@ -42,13 +42,20 @@ def list_events(user: User = Depends(security.current_user), session: Session = 
     ]
 
 
+@router.get("/{event_id}", response_model=EventRead)
+def get_event(event_id: int, user: User = Depends(security.current_user), session: Session = Depends(get_session)):
+    return _get(session, event_id, user)
+
+
 @router.post("", response_model=EventRead, status_code=status.HTTP_201_CREATED)
-def add_event(payload: EventCreate, user: User = Depends(security.current_user),
+def add_event(payload: EventCreate, response: Response, user: User = Depends(security.current_user),
               session: Session = Depends(get_session)):
     get_owned(session, payload.application_id, user)
     event = ApplicationEvent(**payload.model_dump())
     _check_times(event)
-    return save(session, event)
+    save(session, event)
+    response.headers["Location"] = f"/api/events/{event.id}"
+    return event
 
 
 @router.patch("/{event_id}", response_model=EventRead)

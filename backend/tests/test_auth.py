@@ -29,7 +29,9 @@ def test_setup_only_once(anon):
     weak = anon.post("/api/setup", json={**ADMIN, "password": "short"})
     assert weak.status_code == 422 and "10 caratteri" in weak.json()["detail"]
 
-    created = anon.post("/api/setup", json=ADMIN).json()
+    r = anon.post("/api/setup", json=ADMIN)
+    assert r.headers["location"] == "/api/me"
+    created = r.json()
     assert created["user"]["role"] == "admin"
     assert len(created["recovery_key"]) == 29 and created["recovery_key"].count("-") == 5
     assert anon.get("/api/me").json()["username"] == "admin"

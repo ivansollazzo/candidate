@@ -1,6 +1,6 @@
 """User management, admin only: only the admin can create users."""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlmodel import Session, select
 
 from app.api.me import avatar_response
@@ -26,9 +26,14 @@ def list_users(session: Session = Depends(get_session)):
     return session.exec(select(User).order_by(User.username)).all()
 
 
+@router.get("/{user_id}", response_model=UserRead, dependencies=[Depends(security.admin_user)])
+def get_user(user_id: int, session: Session = Depends(get_session)):
+    return _get(session, user_id)
+
+
 @router.post("", response_model=UserWithKey, status_code=status.HTTP_201_CREATED,
              dependencies=[Depends(security.admin_user)])
-def create_user(payload: UserCreate, session: Session = Depends(get_session)):
+def create_user(payload: UserCreate, response: Response, session: Session = Depends(get_session)):
     """The recovery key is returned only once; the admin hands it to the new user."""
     username, email = payload.username.lower(), payload.email.lower()
     ensure_unique(session, username, email)
@@ -39,6 +44,7 @@ def create_user(payload: UserCreate, session: Session = Depends(get_session)):
     session.add(user)
     session.commit()
     session.refresh(user)
+    response.headers["Location"] = f"/api/users/{user.id}"
     return UserWithKey(user=UserRead.model_validate(user), recovery_key=key)
 
 

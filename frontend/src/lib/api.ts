@@ -158,7 +158,8 @@ export type Language = { language: string; level?: string | null }
 export type ProfileLink = { label?: string | null; url: string }
 
 export interface Profile {
-  id: number
+  /** null until the profile is saved for the first time */
+  id: number | null
   full_name: string | null
   email: string | null
   phone: string | null
@@ -174,7 +175,7 @@ export interface Profile {
   certifications: Certification[]
   languages: Language[]
   cv_filename: string | null
-  updated_at: string
+  updated_at: string | null
 }
 
 export const ACCELERATORS = ["cuda", "rocm", "vulkan", "cpu"] as const
@@ -508,7 +509,7 @@ export const api = {
       ? request<void>(`/api/applications?${bulk.ids.map((id) => `ids=${id}`).join("&")}`, { method: "DELETE" })
       : request<void>("/api/applications", json("PATCH", { ids: bulk.ids, status: bulk.status })),
   requestReports: (ids: number[]) => request<ReportsQueued>("/api/applications/reports", json("POST", { ids })),
-  requestReport: (id: number) => request<Application>(`/api/applications/${id}/report`, { method: "PUT" }),
+  requestReport: (id: number) => request<Application>(`/api/applications/${id}/report`, { method: "POST" }),
 
   listEvents: () => request<AgendaEvent[]>("/api/events"),
   addEvent: (event: EventFields) => request<ApplicationEvent>("/api/events", json("POST", event)),
@@ -528,8 +529,8 @@ export const api = {
   listJobs: () => request<Job[]>("/api/jobs"),
   /** Cancels a waiting or running job, or dismisses a finished one */
   cancelJob: (id: number) => request<void>(`/api/jobs/${id}`, { method: "DELETE" }),
-  applyJob: (id: number) => request<void>(`/api/jobs/${id}`, json("PATCH", { proposal: "accepted" })),
-  retryJob: (id: number) => request<Job>(`/api/jobs/${id}`, json("PATCH", { status: "pending" })),
+  applyJob: (id: number) => request<void>(`/api/jobs/${id}/accept`, { method: "POST" }),
+  retryJob: (id: number) => request<Job>(`/api/jobs/${id}/retry`, { method: "POST" }),
 
   getSettings: () => request<Settings>("/api/settings"),
   updateSettings: (changes: Partial<Settings>) => request<Settings>("/api/settings", json("PATCH", changes)),

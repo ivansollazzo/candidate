@@ -7,6 +7,7 @@ from fastapi import (
     Form,
     HTTPException,
     Query,
+    Response,
     UploadFile,
     status,
 )
@@ -83,16 +84,18 @@ def list_applications(user: User = Depends(security.current_user), session: Sess
 
 @router.post("", response_model=ApplicationRead, status_code=status.HTTP_201_CREATED)
 def create_application(
-    payload: ApplicationUpdate, user: User = Depends(security.current_user),
+    payload: ApplicationUpdate, response: Response, user: User = Depends(security.current_user),
     session: Session = Depends(get_session),
 ):
     """Create an application with fields filled by hand."""
-    app = Application(**payload.model_dump(exclude_unset=True), user_id=user.id)
-    return save(session, app)
+    app = save(session, Application(**payload.model_dump(exclude_unset=True), user_id=user.id))
+    response.headers["Location"] = f"/api/applications/{app.id}"
+    return app
 
 
 @router.post("/imports", response_model=ApplicationRead, status_code=status.HTTP_201_CREATED)
 async def create_with_ai(
+    response: Response,
     text: str | None = Form(None),
     url: str | None = Form(None),
     file: UploadFile | None = File(None),
@@ -112,6 +115,7 @@ async def create_with_ai(
     jobs.enqueue(session, Job(user_id=user.id, kind=JobKind.APPLICATION, application_id=app.id,
                               new_application=True, then_report=report, source_text=source))
     session.refresh(app)
+    response.headers["Location"] = f"/api/applications/{app.id}"
     return app
 
 
@@ -125,7 +129,7 @@ async def fill_with_ai(
     session: Session = Depends(get_session),
 ):
     """Fill the application again from a new job posting, or from the saved one. Empty fields are filled
-    when the job is done; values for filled fields are proposed (accepted with PATCH /api/jobs/{id})."""
+    when the job is done; values for filled fields are proposed (accepted with POST /api/jobs/{id}/accept)."""
     require_llm(session)
     app = get_owned(session, application_id, user)
     if jobs.find_active(session, JobKind.APPLICATION, user.id, app.id):
@@ -222,7 +226,8 @@ def get_attachment(app: Application, attachment_id: int) -> ApplicationAttachmen
 
 @router.post("/{application_id}/attachments", response_model=ApplicationRead, status_code=status.HTTP_201_CREATED)
 async def add_attachments(
-    application_id: int, files: list[UploadFile] = File(...), user: User = Depends(security.current_user),
+    application_id: int, response: Response, files: list[UploadFile] = File(...),
+    user: User = Depends(security.current_user),
     session: Session = Depends(get_session),
 ):
     app = get_owned(session, application_id, user)
@@ -235,6 +240,9 @@ async def add_attachments(
             attachment_path(app, attachment).unlink(missing_ok=True)
         raise
     session.refresh(app)
+    # The body is the whole application; Location names the new file when only one was added
+    if len(attachments) == 1:
+        response.headers["Location"] = f"/api/applications/{app.id}/attachments/{attachments[0].id}"
     return app
 
 
@@ -268,7 +276,7 @@ def delete_attachment(
     return app
 
 
-@router.put("/{application_id}/report", response_model=ApplicationRead, status_code=status.HTTP_202_ACCEPTED)
+@router.post("/{application_id}/report", response_model=ApplicationRead, status_code=status.HTTP_202_ACCEPTED)
 def request_report(
     application_id: int, user: User = Depends(security.current_user), session: Session = Depends(get_session),
 ):

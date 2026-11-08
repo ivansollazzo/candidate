@@ -169,7 +169,7 @@ export function ProfilePage() {
               }} />
           </label>
           {profile.cv_filename && <a href="/api/profile/cv" className="text-sm underline">{profile.cv_filename}</a>}
-          <span className="ml-auto text-xs text-muted-foreground">{t("profile.updated", { date: formatDate(profile.updated_at) ?? "" })}</span>
+          {profile.updated_at && <span className="ml-auto text-xs text-muted-foreground">{t("profile.updated", { date: formatDate(profile.updated_at) ?? "" })}</span>}
         </div>
         <ErrorText className="mt-2" error={upload.error} />
       </Section>

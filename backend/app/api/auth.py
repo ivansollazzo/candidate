@@ -54,6 +54,8 @@ def setup(payload: SetupRequest, response: Response, session: Session = Depends(
     session.commit()
     session.refresh(user)
     security.start_session(response, user, settings)
+    # The new admin is the user of this session
+    response.headers["Location"] = "/api/me"
     return UserWithKey(user=UserRead.model_validate(user), recovery_key=key)
 
 
