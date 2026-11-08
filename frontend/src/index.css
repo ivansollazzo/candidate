@@ -23,7 +23,7 @@
   --ring: oklch(0.708 0 0);
 }
 
-/* Dark theme: the "dark" class on <html> is set by lib/theme.ts (or by the script in index.html on load) */
+/* Dark theme: the "dark" class on <html> is set by features/users/theme.ts (or by the script in index.html on load) */
 .dark {
   color-scheme: dark;
   --background: oklch(0.145 0 0);

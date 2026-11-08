@@ -1,6 +1,6 @@
 import pytest
 
-from app.services.salary import parse_salary
+from app.features.applications.salary import parse_salary
 
 
 @pytest.mark.parametrize(("text", "amount", "period", "basis"), [
@@ -42,8 +42,8 @@ def test_no_false_positives(text):
 
 
 def test_reconcile_prefers_llm_and_fills_gaps_from_parser():
-    from app.schemas import JobCompensationExtraction
-    from app.services.extraction import _reconcile_salary
+    from app.features.applications.extraction import _reconcile_salary
+    from app.features.applications.schemas import JobCompensationExtraction
 
     hint = parse_salary("RAL 35-42k")
     kept = _reconcile_salary(JobCompensationExtraction(salary="36.000 - 40.000 €", salary_period="annual"), hint)
@@ -54,7 +54,7 @@ def test_reconcile_prefers_llm_and_fills_gaps_from_parser():
 
 
 def test_period_and_basis_synonyms_are_normalized():
-    from app.schemas import ApplicationUpdate
+    from app.features.applications.schemas import ApplicationUpdate
 
     update = ApplicationUpdate(salary_period="Mensile", salary_basis="netto")
     assert (update.salary_period, update.salary_basis) == ("monthly", "net")

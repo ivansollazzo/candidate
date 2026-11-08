@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 
 from app.core.config import get_settings
-from app.services import backups
+from app.features.backups import service as backups
 from app.shared import maintenance
 
 BACKUP = {"name": "candidate-20261102-030000-auto.tar.gz", "kind": "auto", "note": "", "created_at": "2026-11-02T03:00:00Z",

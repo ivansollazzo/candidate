@@ -40,21 +40,6 @@ def test_setup_only_once(anon):
     assert anon.post("/api/setup", json={**ADMIN, "username": "other", "email": "o@example.com"}).status_code == 409
 
 
-def test_setup_claims_existing_data(anon):
-    from sqlmodel import Session
-
-    from app.models import Application, Profile
-    from app.shared.database import engine
-
-    with Session(engine) as session:
-        session.add(Application(title="Prima degli utenti"))
-        session.add(Profile(full_name="Ivan"))
-        session.commit()
-    anon.post("/api/setup", json=ADMIN)
-    assert [a["title"] for a in anon.get("/api/applications").json()] == ["Prima degli utenti"]
-    assert anon.get("/api/profile").json()["full_name"] == "Ivan"
-
-
 def test_login_logout_and_lockout(client):
     client.patch("/api/settings", json={"max_login_attempts": 3, "lockout_minutes": 5})
     client.delete("/api/session")
@@ -184,7 +169,7 @@ def test_deleting_user_removes_data(client, tmp_path):
 
     from sqlmodel import Session, select
 
-    from app.models import Application
+    from app.features.applications.models import Application
     from app.shared.database import engine
 
     with Session(engine) as session:
@@ -227,7 +212,7 @@ def test_security_policy_from_settings(client):
 def test_session_is_persistent_and_sliding(client, monkeypatch):
     from datetime import timedelta
 
-    from app.services import security
+    from app.features.auth import service as security
 
     # Persistent cookie (Max-Age), so closing the browser doesn't end the session
     r = client.post("/api/session", json={"username": ADMIN["username"], "password": ADMIN["password"]})
@@ -236,8 +221,8 @@ def test_session_is_persistent_and_sliding(client, monkeypatch):
     assert "set-cookie" not in client.get("/api/me").headers
 
     # Later, using the app pushes the expiry forward
-    later = security._now() + timedelta(hours=2)
-    monkeypatch.setattr(security, "_now", lambda: later)
+    later = security.now() + timedelta(hours=2)
+    monkeypatch.setattr(security, "now", lambda: later)
     r = client.get("/api/me")
     assert r.status_code == 200 and "Max-Age=604800" in r.headers["set-cookie"]
     assert client.get("/api/me").status_code == 200

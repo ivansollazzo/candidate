@@ -10,8 +10,8 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.x509.oid import NameOID
 from fastapi.testclient import TestClient
 
+from app.features.https import service as https
 from app.main import app
-from app.services import https
 from tests.conftest import ADMIN
 
 

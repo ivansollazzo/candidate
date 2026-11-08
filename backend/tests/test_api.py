@@ -4,19 +4,23 @@ import pytest
 from docx import Document
 from fastapi.testclient import TestClient
 
-from app.main import app
-from app.schemas import (
+from app.features.applications import extraction, posting
+from app.features.applications.schemas import (
     ExtractedSkill,
-    HistoryExtraction,
     JobCompensationExtraction,
     JobCoreExtraction,
     JobRequirementsExtraction,
+)
+from app.features.background_jobs import worker
+from app.features.profile import extraction as cv_extraction
+from app.features.profile.schemas import (
+    HistoryExtraction,
     PersonalExtraction,
-    ReportExtraction,
-    SkillAssessment,
     SkillsExtraction,
 )
-from app.services import extraction, jobs, report, sources
+from app.features.reports import service as report
+from app.features.reports.schemas import ReportExtraction, SkillAssessment
+from app.main import app
 from app.shared.llm import LLMError
 
 JOB_TEXT = "Cerchiamo un Backend Developer Python a Milano, RAL 35-42k. Requisiti: Python, Postgres, Docker. Gradito Kubernetes."
@@ -80,12 +84,13 @@ def fake_report_llm(system, user, schema):
 @pytest.fixture(autouse=True)
 def mocks(monkeypatch):
     monkeypatch.setattr(extraction, "generate_structured", fake_llm)
+    monkeypatch.setattr(cv_extraction, "generate_structured", fake_llm)
     monkeypatch.setattr(report, "generate_structured", fake_report_llm)
 
 
 def run_jobs():
     """The worker thread doesn't run in tests: process the queue now."""
-    jobs.run_all()
+    worker.run_all()
 
 
 def create_with_ai(client, **kwargs) -> dict:
@@ -200,15 +205,15 @@ def test_user_preferences_report_and_overview(client):
 
 
 def test_ai_reads_link_and_file(client, monkeypatch):
-    from app.services.webpage import FetchError
+    from app.features.applications.posting import FetchError
 
-    monkeypatch.setattr(sources, "fetch_job_posting", lambda url: JOB_TEXT)
+    monkeypatch.setattr(posting, "fetch_job_posting", lambda url: JOB_TEXT)
     app = create_with_ai(client, data={"url": "https://example.com/job/1"})
     assert app["source_url"] == "https://example.com/job/1"
 
     def blocked(url):
         raise FetchError("Il sito ha bloccato lo scaricamento automatico")
-    monkeypatch.setattr(sources, "fetch_job_posting", blocked)
+    monkeypatch.setattr(posting, "fetch_job_posting", blocked)
     r = client.post("/api/applications/imports", data={"url": "https://example.com/job/2"})
     assert r.status_code == 422 and "bloccato" in r.json()["detail"]
 
@@ -285,7 +290,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("2.0", "20261108.1322")
+    assert (health["version"], health["build"]) == ("2.0", "20261108.1346")
 
     r = client.post("/api/applications/imports", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
@@ -505,7 +510,7 @@ def test_profile_read_changes_nothing(client):
     """Reading the profile creates nothing and adds no skills: only writes do (older profiles: migration 0025)."""
     from sqlmodel import Session, select
 
-    from app.models import Profile
+    from app.features.profile.models import Profile
     from app.shared.database import engine
 
     empty = client.get("/api/profile").json()

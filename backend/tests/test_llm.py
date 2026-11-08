@@ -6,7 +6,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import pytest
 
 from app.core.config import get_settings
-from app.schemas import JobCoreExtraction
+from app.features.applications.schemas import JobCoreExtraction
 from app.shared import llm
 
 

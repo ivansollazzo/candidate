@@ -1,23 +1,23 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query"
-import { StrictMode, useState } from "react"
+import { type ReactNode, StrictMode, useState } from "react"
 import { createRoot } from "react-dom/client"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router"
 
-import { Layout } from "@/components/Layout"
-import { RestoreScreen } from "@/components/RestoreScreen"
-import { ApiError } from "@/lib/api"
-import { useAuthStatus, useCurrentUser } from "@/lib/auth"
-import { I18nProvider } from "@/lib/i18n"
-import { ThemeSync } from "@/lib/theme"
-import { Agenda } from "@/pages/Agenda"
-import { ApplicationDetail } from "@/pages/ApplicationDetail"
-import { ApplicationList } from "@/pages/ApplicationList"
-import { Login } from "@/pages/Login"
-import { NewApplication } from "@/pages/NewApplication"
-import { Overview } from "@/pages/Overview"
-import { ProfilePage } from "@/pages/Profile"
-import { SettingsPage } from "@/pages/Settings"
-import { Welcome } from "@/pages/Welcome"
+import { Layout } from "@/app/Layout"
+import { Overview } from "@/app/Overview"
+import { SettingsPage } from "@/app/SettingsPage"
+import { Agenda } from "@/features/applications/Agenda"
+import { ApplicationDetail } from "@/features/applications/ApplicationDetail"
+import { ApplicationList } from "@/features/applications/ApplicationList"
+import { NewApplication } from "@/features/applications/NewApplication"
+import { Login } from "@/features/auth/Login"
+import { Welcome } from "@/features/auth/Welcome"
+import { useAuthStatus, useCurrentUser, useMe } from "@/features/auth/hooks"
+import { RestoreScreen } from "@/features/backups/RestoreScreen"
+import { ProfilePage } from "@/features/profile/ProfilePage"
+import { ThemeSync } from "@/features/users/theme"
+import { ApiError } from "@/shared/lib/http"
+import { I18nProvider } from "@/shared/lib/i18n"
 
 import "./index.css"
 
@@ -38,6 +38,12 @@ const queryClient = new QueryClient({
   queryCache: new QueryCache({ onError }),
   mutationCache: new MutationCache({ onError }),
 })
+
+/** The interface language follows the signed-in user. */
+function UserLocale({ children }: { children: ReactNode }) {
+  const { data: me, isPending } = useMe()
+  return <I18nProvider userLocale={me?.language} loading={isPending}>{children}</I18nProvider>
+}
 
 /** First-run setup, login or the app, depending on session state. */
 function AuthGate() {
@@ -76,12 +82,12 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <ThemeSync />
-      <I18nProvider>
+      <UserLocale>
         <BrowserRouter>
           <AuthGate />
         </BrowserRouter>
         <RestoreScreen />
-      </I18nProvider>
+      </UserLocale>
     </QueryClientProvider>
   </StrictMode>,
 )

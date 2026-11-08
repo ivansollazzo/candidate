@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 2.0 (build 20261108.1322), by Ivan Sollazzo.
+Version 2.0 (build 20261108.1346), by Ivan Sollazzo.
 
 ## Features
 
@@ -372,8 +372,8 @@ cd frontend && npm run check:imports
 ### Project structure
 
 ```
-backend/     FastAPI app (app/core, app/shared, app/api, app/services), SQLModel models, Alembic migrations, tests
-frontend/    React + TypeScript app (src/pages, src/components, src/lib)
+backend/     FastAPI app: app/core, app/shared, one folder per feature in app/features (models, repository, service, router), Alembic migrations, tests
+frontend/    React + TypeScript app: src/shared, one folder per feature in src/features, src/app (layout, overview, settings page)
 llm/         Service that detects the hardware and manages the Ollama container
 updater/     Service that installs new versions from the images on GitHub Container Registry
 backup/      Service that makes, cleans up and restores the backups

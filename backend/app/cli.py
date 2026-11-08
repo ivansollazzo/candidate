@@ -18,16 +18,19 @@ import sys
 from fastapi import HTTPException
 from sqlmodel import Session
 
-from app.services import app_settings, backups, security
+from app.features.auth import service as security
+from app.features.backups import service as backups
+from app.features.settings import repository as settings_repository
+from app.features.settings import service as app_settings
 from app.shared.database import engine
 
 
 def https_off() -> int:
     with Session(engine) as session:
-        settings = app_settings.load(session)
+        settings = app_settings.ensure(session)
         settings.https_mode = "off"
         security.end_all_sessions(settings)
-        session.add(settings)
+        settings_repository.add(session, settings)
         session.commit()
     print("HTTPS turned off: the app answers over plain HTTP within a few seconds. Everyone signs in again.")
     return 0

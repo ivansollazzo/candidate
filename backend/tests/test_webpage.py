@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from app.services import webpage
+from app.features.applications import posting as webpage
 
 DESCRIPTION = "<p>Cerchiamo uno sviluppatore backend.</p><ul><li>Python</li><li>PostgreSQL</li></ul>" + "<p>Dettagli.</p>" * 30
 POSTING = {

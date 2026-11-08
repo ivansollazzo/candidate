@@ -4,7 +4,7 @@ import pytest
 
 from app import __build__, __version__
 from app.core.config import get_settings
-from app.services.updates import release_key
+from app.features.updates.service import release_key
 from app.shared import maintenance
 
 

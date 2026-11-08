@@ -1,34 +1,29 @@
-/** Import rules for src/, checked with `npm run check:imports`. They describe the current layout; each migration phase tightens them. */
+/** Import rules for src/, checked with `npm run check:imports`. Layers: shared < features < app (main.tsx). */
 module.exports = {
   forbidden: [
-    {
-      name: "no-circular",
-      comment: "warning until phase 5: lib/i18n ↔ lib/auth and lib/api → lib/status → lib/i18n → lib/auth → lib/api",
-      severity: "warn",
-      from: {},
-      to: { circular: true },
-    },
+    { name: "no-circular", severity: "error", from: {}, to: { circular: true } },
     { name: "no-unresolvable", severity: "error", from: {}, to: { couldNotResolve: true } },
     { name: "no-orphans", severity: "error", from: { orphan: true, pathNot: "\\.d\\.ts$|^src/main\\.tsx$" }, to: {} },
     {
-      name: "lib-without-ui",
-      comment: "lib/ holds logic and data access, never components or pages",
+      name: "shared-without-features",
+      comment: "shared/ holds what every feature uses and knows no feature or app page",
       severity: "error",
-      from: { path: "^src/lib/" },
-      to: { path: "^src/(components|pages)/" },
+      from: { path: "^src/shared/" },
+      to: { path: "^src/(features|app)/|^src/main\\.tsx$" },
     },
     {
-      name: "components-without-pages",
+      name: "features-without-app",
+      comment: "app/ and main.tsx put the features together; features never import them",
       severity: "error",
-      from: { path: "^src/components/" },
-      to: { path: "^src/pages/" },
+      from: { path: "^src/features/" },
+      to: { path: "^src/app/|^src/main\\.tsx$" },
     },
     {
       name: "ui-primitives-stay-generic",
-      comment: "components/ui/ only uses itself and lib/utils",
+      comment: "shared/ui/ only uses itself and shared/lib/utils",
       severity: "error",
-      from: { path: "^src/components/ui/" },
-      to: { path: "^src/", pathNot: "^src/components/ui/|^src/lib/utils\\.ts$" },
+      from: { path: "^src/shared/ui/" },
+      to: { path: "^src/", pathNot: "^src/shared/ui/|^src/shared/lib/utils\\.ts$" },
     },
   ],
   options: {

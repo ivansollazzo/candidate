@@ -18,6 +18,9 @@ from app.core.i18n import t
 
 log = logging.getLogger(__name__)
 
+# Longest input text (job posting, CV) sent to the model
+MAX_INPUT_CHARS = 16_000
+
 T = TypeVar("T", bound=BaseModel)
 
 
