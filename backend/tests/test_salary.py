@@ -62,7 +62,7 @@ def test_period_and_basis_synonyms_are_normalized():
 
 
 def test_salary_text_follows_language():
-    from app.i18n import current_language
+    from app.core.i18n import current_language
 
     token = current_language.set("en")
     try:

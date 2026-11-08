@@ -18,8 +18,8 @@ import sys
 from fastapi import HTTPException
 from sqlmodel import Session
 
-from app.db import engine
 from app.services import app_settings, backups, security
+from app.shared.database import engine
 
 
 def https_off() -> int:

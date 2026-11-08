@@ -43,8 +43,8 @@ def test_setup_only_once(anon):
 def test_setup_claims_existing_data(anon):
     from sqlmodel import Session
 
-    from app.db import engine
     from app.models import Application, Profile
+    from app.shared.database import engine
 
     with Session(engine) as session:
         session.add(Application(title="Prima degli utenti"))
@@ -184,8 +184,8 @@ def test_deleting_user_removes_data(client, tmp_path):
 
     from sqlmodel import Session, select
 
-    from app.db import engine
     from app.models import Application
+    from app.shared.database import engine
 
     with Session(engine) as session:
         assert session.exec(select(Application)).all() == []

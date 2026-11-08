@@ -12,8 +12,8 @@ from app.schemas import (
     SkillsExtraction,
 )
 from app.services.cv import apply_contact_fallbacks, total_experience_years
-from app.services.llm import generate_structured
 from app.services.salary import SalaryHint, parse_salary
+from app.shared.llm import generate_structured
 
 log = logging.getLogger(__name__)
 

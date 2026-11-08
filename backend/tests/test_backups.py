@@ -6,8 +6,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from app.config import get_settings
+from app.core.config import get_settings
 from app.services import backups
+from app.shared import maintenance
 
 BACKUP = {"name": "candidate-20261102-030000-auto.tar.gz", "kind": "auto", "note": "", "created_at": "2026-11-02T03:00:00Z",
           "version": "2.0", "build": "1", "revision": "0022", "size": 1234}
@@ -79,7 +80,7 @@ def service(monkeypatch):
 
 def wait_restored():
     for _ in range(100):
-        if not backups.restoring():
+        if not maintenance.restoring():
             return
         time.sleep(0.05)
     raise AssertionError("restore still running")

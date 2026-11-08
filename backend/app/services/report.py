@@ -6,11 +6,11 @@ from datetime import UTC, datetime
 from sqlalchemy import null, update
 from sqlmodel import Session
 
-from app.i18n import t
+from app.core.i18n import t
 from app.models import Application, Profile, TaskStatus
 from app.schemas import Report, ReportExtraction, ReportSkill
-from app.services.llm import generate_structured
 from app.services.users import find_profile
+from app.shared.llm import generate_structured
 
 # Score weight of required skills relative to nice-to-have ones
 WEIGHTS = {"required": 2.0, "nice_to_have": 1.0}

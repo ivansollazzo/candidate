@@ -6,7 +6,7 @@ from pathlib import Path
 import pdfplumber
 from docx import Document
 
-from app.i18n import t
+from app.core.i18n import t
 
 SUPPORTED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
 

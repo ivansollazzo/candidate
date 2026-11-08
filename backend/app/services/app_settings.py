@@ -7,8 +7,8 @@ import secrets
 from fastapi import HTTPException, status
 from sqlmodel import Session
 
-from app.config import get_settings
-from app.i18n import t
+from app.core.config import get_settings
+from app.core.i18n import t
 from app.models import AppSettings
 
 log = logging.getLogger(__name__)

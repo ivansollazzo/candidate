@@ -3,11 +3,11 @@ from fastapi.responses import PlainTextResponse, Response
 from sqlmodel import Session
 from starlette.requests import ClientDisconnect
 
-from app.db import get_session
-from app.i18n import t
+from app.core.i18n import t
 from app.models import AppSettings
 from app.schemas import HttpsRead, HttpsUpdate
 from app.services import app_settings, https, security
+from app.shared.database import get_session
 
 router = APIRouter(prefix="/api/https", tags=["https"])
 # Reached by the frontend container on the Compose network; Caddy doesn't forward /api/internal

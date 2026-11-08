@@ -14,19 +14,20 @@ from fastapi import (
 from fastapi.responses import FileResponse
 from sqlmodel import Session
 
-from app.api.uploads import read_upload
-from app.db import get_session, save
-from app.i18n import t
+from app.core.i18n import t
 from app.models import User, UserRole
 from app.schemas import MeUpdate, PasswordChange, PasswordConfirm, UserRead
 from app.services import app_settings, security
 from app.services.users import ensure_unique, remove_avatar, save_avatar
+from app.shared.database import get_session, save
+from app.shared.security import hash_secret, verify_secret
+from app.shared.storage import read_upload
 
 router = APIRouter(prefix="/api/me", tags=["me"])
 
 
 def _confirm_password(user: User, password: str) -> None:
-    if not security.verify_secret(password, user.password_hash):
+    if not verify_secret(password, user.password_hash):
         raise HTTPException(status.HTTP_403_FORBIDDEN, t("wrong_password"))
 
 
@@ -55,7 +56,7 @@ def change_password(payload: PasswordChange, response: Response, user: User = De
     _confirm_password(user, payload.current_password)
     settings = app_settings.load(session)
     security.check_password(payload.new_password, settings)
-    user.password_hash = security.hash_secret(payload.new_password)
+    user.password_hash = hash_secret(payload.new_password)
     # Other open sessions are invalidated; this one continues with a new cookie
     user.session_version += 1
     save(session, user)

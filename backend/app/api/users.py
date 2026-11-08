@@ -4,12 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlmodel import Session, select
 
 from app.api.me import avatar_response
-from app.db import get_session, save
-from app.i18n import t
+from app.core.i18n import t
 from app.models import User, UserRole
 from app.schemas import UserCreate, UserRead, UserUpdate, UserWithKey
 from app.services import app_settings, security
 from app.services.users import admin_count, ensure_unique, remove_files
+from app.shared.database import get_session, save
+from app.shared.security import hash_secret
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
@@ -39,7 +40,7 @@ def create_user(payload: UserCreate, response: Response, session: Session = Depe
     ensure_unique(session, username, email)
     security.check_password(payload.password, app_settings.load(session))
     user = User(username=username, email=email, role=payload.role, language=payload.language,
-                password_hash=security.hash_secret(payload.password), recovery_key_hash="")
+                password_hash=hash_secret(payload.password), recovery_key_hash="")
     key = security.rotate_recovery_key(user)
     session.add(user)
     session.commit()
@@ -60,7 +61,7 @@ def update_user(user_id: int, payload: UserUpdate, session: Session = Depends(ge
         raise HTTPException(status.HTTP_409_CONFLICT, t("last_admin"))
     if password := changes.pop("password", None):
         security.check_password(password, app_settings.load(session))
-        user.password_hash = security.hash_secret(password)
+        user.password_hash = hash_secret(password)
         user.session_version += 1
         security.register_success(user)  # also unlocks the account
     for field, value in changes.items():

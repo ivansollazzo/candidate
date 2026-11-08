@@ -4,11 +4,11 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlmodel import Session, select
 
 from app.api.applications import get_owned
-from app.db import get_session, save
-from app.i18n import t
+from app.core.i18n import t
 from app.models import Application, ApplicationEvent, EventType, User
 from app.schemas import AgendaEvent, EventCreate, EventRead, EventUpdate
 from app.services import security
+from app.shared.database import get_session, save
 
 router = APIRouter(prefix="/api/events", tags=["events"])
 

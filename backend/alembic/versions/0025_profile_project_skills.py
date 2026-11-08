@@ -18,7 +18,7 @@ down_revision: str | None = "0024"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-# Same texts as app.i18n (skill_from_project, skill_from_experience)
+# Same texts as app.core.i18n (skill_from_project, skill_from_experience)
 EVIDENCE = {"it": ("Progetto {name}", "Esperienza {name}"), "en": ("Project {name}", "Experience {name}")}
 
 

@@ -14,15 +14,16 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import delete
 from sqlmodel import Session, col, select
 
-from app.db import engine
-from app.i18n import current_language, t
+from app.core.i18n import current_language, t
 from app.models import Application, Job, JobKind, TaskStatus, User
-from app.services import app_settings, backups, report, updates
+from app.services import app_settings, report
 from app.services.applications import apply_changes, delete_applications
 from app.services.extraction import extract_cv_fields, extract_job_fields
-from app.services.llm import Cancelled, CancelToken, LLMError, cancel_token, check_llm
 from app.services.profiles import apply_profile_changes
 from app.services.users import find_profile
+from app.shared import maintenance
+from app.shared.database import engine
+from app.shared.llm import Cancelled, CancelToken, LLMError, cancel_token, check_llm
 
 log = logging.getLogger(__name__)
 
@@ -303,7 +304,7 @@ def _loop() -> None:
         _wake.clear()
         try:
             # No job starts while an update is installed or a backup restored
-            if updates.installing() or backups.restoring():
+            if maintenance.installing() or maintenance.restoring():
                 _stop.wait(2)
                 continue
             if not _has_pending() or not _llm_ready():

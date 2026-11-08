@@ -5,9 +5,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
 
-from app.config import get_settings
+from app.core.config import get_settings
 from app.schemas import JobCoreExtraction
-from app.services import llm
+from app.shared import llm
 
 
 class FakeOllama(BaseHTTPRequestHandler):

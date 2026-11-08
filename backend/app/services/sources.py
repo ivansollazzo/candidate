@@ -2,10 +2,10 @@
 
 from fastapi import HTTPException, UploadFile, status
 
-from app.api.uploads import read_upload
-from app.i18n import t
-from app.services.documents import UnsupportedDocument, extract_text
+from app.core.i18n import t
 from app.services.webpage import FetchError, fetch_job_posting
+from app.shared.documents import UnsupportedDocument, extract_text
+from app.shared.storage import read_upload
 
 MIN_CHARS = 20
 

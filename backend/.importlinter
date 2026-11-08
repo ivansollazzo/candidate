@@ -3,13 +3,25 @@
 [importlinter]
 root_package = app
 
-[importlinter:contract:base]
-name = Configuration, database and messages depend on nothing else
+[importlinter:contract:core]
+name = Configuration and messages depend on nothing else
 type = forbidden
 source_modules =
-    app.config
-    app.db
-    app.i18n
+    app.core
+forbidden_modules =
+    app.shared
+    app.api
+    app.services
+    app.models
+    app.schemas
+    app.main
+    app.cli
+
+[importlinter:contract:shared]
+name = Shared infrastructure knows no feature, model or route
+type = forbidden
+source_modules =
+    app.shared
 forbidden_modules =
     app.api
     app.services
@@ -38,10 +50,6 @@ source_modules =
 forbidden_modules =
     app.api
     app.main
-ignore_imports =
-    # read_upload moves to shared/storage in phase 1
-    app.services.attachments -> app.api.uploads
-    app.services.sources -> app.api.uploads
 
 [importlinter:contract:routers]
 name = Routers do not import each other

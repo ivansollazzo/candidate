@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from app.services.documents import extract_text
+from app.shared.documents import extract_text
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

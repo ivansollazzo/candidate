@@ -1,7 +1,7 @@
-"""Passwords, recovery keys and sessions.
+"""Password policy, lockout and sessions.
 
-Passwords and recovery keys are stored as Argon2 hashes (pwdlib); the session is a signed JWT (PyJWT)
-in an HttpOnly cookie, invalidated when the password changes.
+The session is a signed token in an HttpOnly cookie, invalidated when the password changes; hashes, recovery
+keys and token signing are in app.shared.security.
 """
 
 import re
@@ -9,43 +9,25 @@ import secrets
 from contextvars import ContextVar
 from datetime import UTC, datetime, timedelta
 
-import jwt
 from fastapi import Depends, HTTPException, Request, Response, status
-from pwdlib import PasswordHash
 from sqlmodel import Session
 
-from app.db import get_session
-from app.i18n import t
+from app.core.i18n import t
 from app.models import AppSettings, User, UserRole
 from app.services import app_settings
+from app.shared.database import get_session
+from app.shared.security import hash_secret, new_recovery_key, read_token, sign_token
 
 # One cookie per protocol. A browser keeps a cookie set over HTTPS with the Secure flag and doesn't let plain
 # HTTP replace it: with the same name, after turning HTTPS off the new session cookie would be thrown away and
 # every sign-in would end at once. The __Secure- prefix makes browsers accept that one only over HTTPS.
 COOKIE_NAME = "candidate_session"
 SECURE_COOKIE_NAME = "__Secure-candidate_session"
-ALGORITHM = "HS256"
-# Alphabet without ambiguous characters (0/O, 1/I/L)
-KEY_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
-KEY_GROUPS, KEY_GROUP_SIZE = 6, 4
 # A session in use is renewed when its token is older than this
 RENEW_MINUTES = 10
 
 # The request came over HTTPS (X-Forwarded-Proto set by Caddy), set by a middleware in main.py
 secure_request: ContextVar[bool] = ContextVar("secure_request", default=False)
-
-password_hash = PasswordHash.recommended()
-# Used when the username doesn't exist, so response time stays the same
-_DUMMY_HASH = password_hash.hash(secrets.token_hex(16))
-
-
-def hash_secret(value: str) -> str:
-    return password_hash.hash(value)
-
-
-def verify_secret(value: str, hashed: str | None) -> bool:
-    return password_hash.verify(value, hashed or _DUMMY_HASH) and hashed is not None
-
 
 def password_problems(password: str, settings: AppSettings) -> list[str]:
     problems = []
@@ -63,17 +45,6 @@ def password_problems(password: str, settings: AppSettings) -> list[str]:
 def check_password(password: str, settings: AppSettings) -> None:
     if problems := password_problems(password, settings):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, t("password_invalid", rules=", ".join(problems)))
-
-
-def new_recovery_key() -> str:
-    """Key like "ABCD-EFGH-…": 24 random characters, about 119 bits."""
-    chars = "".join(secrets.choice(KEY_ALPHABET) for _ in range(KEY_GROUPS * KEY_GROUP_SIZE))
-    return "-".join(chars[i:i + KEY_GROUP_SIZE] for i in range(0, len(chars), KEY_GROUP_SIZE))
-
-
-def normalize_recovery_key(value: str) -> str:
-    chars = re.sub(r"[^A-Z0-9]", "", value.upper())
-    return "-".join(chars[i:i + KEY_GROUP_SIZE] for i in range(0, len(chars), KEY_GROUP_SIZE))
 
 
 def rotate_recovery_key(user: User) -> str:
@@ -120,8 +91,8 @@ def _cookie_names() -> tuple[str, str]:
 def start_session(response: Response, user: User, settings: AppSettings) -> None:
     expires = _now() + timedelta(hours=settings.session_hours)
     # The protocol is part of the token: a session opened over HTTP isn't valid over HTTPS and vice versa
-    token = jwt.encode({"sub": str(user.id), "sv": user.session_version, "exp": expires, "scheme": _scheme()},
-                       settings.secret_key, algorithm=ALGORITHM)
+    token = sign_token({"sub": str(user.id), "sv": user.session_version, "exp": expires, "scheme": _scheme()},
+                       settings.secret_key)
     name, other = _cookie_names()
     # HttpOnly: page JavaScript can't read it; SameSite=Strict: no cross-site requests; Secure (sent only
     # over HTTPS) when the app is served over HTTPS (Settings › Security › HTTPS)
@@ -150,10 +121,10 @@ def current_user(request: Request, response: Response, session: Session = Depend
     if not token:
         raise _unauthorized()
     settings = app_settings.load(session)
+    payload = read_token(token, settings.secret_key)
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
-        user = session.get(User, int(payload["sub"]))
-    except (jwt.PyJWTError, KeyError, ValueError):
+        user = session.get(User, int(payload["sub"])) if payload else None
+    except (KeyError, ValueError):
         user = None
     if user is None or user.session_version != payload.get("sv") or payload.get("scheme", "http") != _scheme():
         raise _unauthorized()

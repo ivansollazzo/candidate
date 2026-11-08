@@ -6,8 +6,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel
 
-from app.db import engine
 from app.main import app
+from app.shared.database import engine
 
 
 @pytest.fixture(autouse=True)
@@ -23,7 +23,7 @@ ADMIN = {"username": "admin", "email": "admin@example.com", "password": "Passwor
 @pytest.fixture
 def anon(tmp_path, monkeypatch):
     """Client without a session."""
-    from app.config import get_settings
+    from app.core.config import get_settings
 
     monkeypatch.setattr(get_settings(), "upload_dir", tmp_path)
     return TestClient(app)

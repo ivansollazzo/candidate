@@ -8,9 +8,10 @@ from fastapi import HTTPException, status
 from PIL import Image, UnidentifiedImageError
 from sqlmodel import Session, func, select
 
-from app.config import get_settings
-from app.i18n import t
+from app.core.config import get_settings
+from app.core.i18n import t
 from app.models import Profile, User, UserRole
+from app.shared.storage import user_dir
 
 AVATAR_SIZE = 256
 # Larger images are rejected ("decompression bomb" protection)
@@ -52,13 +53,6 @@ def add_project_skills(profile: Profile) -> bool:
     if added:
         profile.skills = [*profile.skills, *added]
     return bool(added)
-
-
-def user_dir(user_id: int) -> Path:
-    """User's file directory (CV, profile photo)."""
-    folder = get_settings().upload_dir / f"user_{user_id}"
-    folder.mkdir(parents=True, exist_ok=True)
-    return folder
 
 
 def save_avatar(user: User, data: bytes) -> None:

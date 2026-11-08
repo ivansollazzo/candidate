@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
-from app.db import get_session
-from app.i18n import t
+from app.core.i18n import t
 from app.schemas import UpdatesRead, UpdateStatus
-from app.services import app_settings, backups, jobs, security, updates
+from app.services import app_settings, jobs, security, updates
+from app.shared import maintenance
+from app.shared.database import get_session
 
 router = APIRouter(prefix="/api/updates", tags=["updates"])
 
@@ -34,6 +35,6 @@ def install(selected: str | None = Depends(selected_branch), session: Session = 
     """Install the newer release of the selected branch, once no AI job of any user is waiting or running."""
     if jobs.count_active(session):
         raise HTTPException(status.HTTP_409_CONFLICT, t("update_jobs_active"))
-    if backups.restoring():
+    if maintenance.restoring():
         raise HTTPException(status.HTTP_409_CONFLICT, t("restoring"))
     updates.request("install", selected)

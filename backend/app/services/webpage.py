@@ -9,8 +9,8 @@ import httpx
 import lxml.html
 import trafilatura
 
-from app.i18n import t
-from app.services.documents import UnsupportedDocument, extract_text
+from app.core.i18n import t
+from app.shared.documents import UnsupportedDocument, extract_text
 
 MAX_BYTES = 5 * 1024 * 1024
 MIN_CHARS = 200

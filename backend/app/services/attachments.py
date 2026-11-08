@@ -4,9 +4,9 @@ from pathlib import Path
 
 from fastapi import UploadFile
 
-from app.api.uploads import read_upload
-from app.config import get_settings
+from app.core.config import get_settings
 from app.models import Application, ApplicationAttachment
+from app.shared.storage import read_upload
 
 
 def attachments_dir(app: Application) -> Path:

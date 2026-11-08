@@ -33,10 +33,10 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 from fastapi import HTTPException, status
 from sqlmodel import Session
 
-from app.db import engine
-from app.i18n import t
+from app.core.i18n import t
 from app.models import AppSettings
 from app.services import app_settings
+from app.shared.database import engine
 
 log = logging.getLogger(__name__)
 

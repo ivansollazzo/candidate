@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session
 
-from app.db import get_session
 from app.schemas import SettingsRead, SettingsUpdate
 from app.services import app_settings, jobs, security
 from app.services.report import clear_reports
+from app.shared.database import get_session
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 

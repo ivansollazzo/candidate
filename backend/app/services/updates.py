@@ -9,8 +9,8 @@ import json
 from fastapi import HTTPException, status
 
 from app import __build__, __version__
-from app.config import get_settings
-from app.i18n import t
+from app.core.i18n import t
+from app.shared.maintenance import pending_action, read_state, updater_file
 
 DEFAULT_BRANCH = "stable"
 
@@ -29,32 +29,6 @@ INSTALLED = release_key(__version__, __build__)
 
 def is_newer(version: str, build: str) -> bool:
     return bool(version) and release_key(version, build) > INSTALLED
-
-
-def _file(name: str):
-    return get_settings().updates_dir / name
-
-
-def _read(name: str) -> dict | None:
-    try:
-        return json.loads(_file(name).read_text())
-    except (OSError, ValueError):
-        return None
-
-
-def read_state() -> dict | None:
-    """State written by the updater; None when it is not running (e.g. backend outside Docker)."""
-    return _read("state.json")
-
-
-def pending_action() -> str | None:
-    """Request written but not yet picked up by the updater (it looks every few seconds)."""
-    return (_read("request.json") or {}).get("action")
-
-
-def installing() -> bool:
-    """An install is requested or running: no AI job starts meanwhile (see services/jobs.py)."""
-    return (read_state() or {}).get("status") == "updating" or pending_action() == "install"
 
 
 def branches(state: dict) -> list[dict]:
@@ -107,6 +81,6 @@ def request(action: str, selected: str | None = None) -> None:
         if not branch["published"]:
             raise HTTPException(status.HTTP_409_CONFLICT, t("update_not_published"))
         fields["branch"] = name
-    tmp = _file("request.tmp")
+    tmp = updater_file("request.tmp")
     tmp.write_text(json.dumps({"action": action, **fields}))
-    tmp.replace(_file("request.json"))
+    tmp.replace(updater_file("request.json"))

@@ -12,9 +12,9 @@ from importlinter.cli import lint_imports
 from sqlalchemy import create_engine
 from sqlmodel import SQLModel
 
-from app.config import get_settings
-from app.db import engine
+from app.core.config import get_settings
 from app.main import app
+from app.shared.database import engine
 
 BACKEND = Path(__file__).resolve().parents[1]
 OPENAPI = Path(__file__).with_name("openapi.json")

@@ -4,8 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import update
 from sqlmodel import Session, func, select
 
-from app.db import get_session
-from app.i18n import t
+from app.core.i18n import t
 from app.models import Application, Profile, User, UserRole
 from app.schemas import (
     AuthStatus,
@@ -17,6 +16,8 @@ from app.schemas import (
     UserWithKey,
 )
 from app.services import app_settings, security
+from app.shared.database import get_session
+from app.shared.security import hash_secret, normalize_recovery_key, verify_secret
 
 router = APIRouter(prefix="/api", tags=["auth"])
 
@@ -44,7 +45,7 @@ def setup(payload: SetupRequest, response: Response, session: Session = Depends(
     settings = app_settings.load(session)
     security.check_password(payload.password, settings)
     user = User(username=payload.username.lower(), email=payload.email.lower(), role=UserRole.ADMIN,
-                language=payload.language, password_hash=security.hash_secret(payload.password), recovery_key_hash="")
+                language=payload.language, password_hash=hash_secret(payload.password), recovery_key_hash="")
     key = security.rotate_recovery_key(user)
     session.add(user)
     session.flush()
@@ -65,7 +66,7 @@ def login(payload: LoginRequest, response: Response, session: Session = Depends(
     user = _find(session, payload.username)
     if user is not None:
         security.ensure_not_locked(user)
-    if not security.verify_secret(payload.password, user.password_hash if user else None):
+    if not verify_secret(payload.password, user.password_hash if user else None):
         if user is not None:
             security.register_failure(user, settings)
             session.add(user)
@@ -91,15 +92,15 @@ def reset_password(payload: ResetRequest, response: Response, session: Session =
     user = _find(session, payload.username)
     if user is not None:
         security.ensure_not_locked(user)
-    key = security.normalize_recovery_key(payload.recovery_key)
-    if not security.verify_secret(key, user.recovery_key_hash if user else None):
+    key = normalize_recovery_key(payload.recovery_key)
+    if not verify_secret(key, user.recovery_key_hash if user else None):
         if user is not None:
             security.register_failure(user, settings)
             session.add(user)
             session.commit()
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, t("invalid_recovery_key"))
     security.check_password(payload.new_password, settings)
-    user.password_hash = security.hash_secret(payload.new_password)
+    user.password_hash = hash_secret(payload.new_password)
     user.session_version += 1
     new_key = security.rotate_recovery_key(user)
     security.register_success(user)

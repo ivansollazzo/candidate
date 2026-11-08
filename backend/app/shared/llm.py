@@ -13,8 +13,8 @@ from urllib.parse import urlsplit
 import httpx
 from pydantic import BaseModel, ValidationError
 
-from app.config import get_settings
-from app.i18n import t
+from app.core.config import get_settings
+from app.core.i18n import t
 
 log = logging.getLogger(__name__)
 

@@ -15,8 +15,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy import case
 from sqlmodel import Session, func, select
 
-from app.db import get_session, save
-from app.i18n import t
+from app.core.i18n import t
 from app.models import (
     Application,
     ApplicationAttachment,
@@ -41,6 +40,7 @@ from app.services.app_settings import require_llm
 from app.services.applications import apply_changes, change_status, delete_applications
 from app.services.attachments import attachment_path, save_attachments
 from app.services.sources import check_length, read_job_posting
+from app.shared.database import get_session, save
 
 router = APIRouter(prefix="/api/applications", tags=["applications"])
 

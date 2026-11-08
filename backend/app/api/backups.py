@@ -2,10 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session
 
-from app.db import get_session
-from app.i18n import t
+from app.core.i18n import t
 from app.schemas import BackupCreate, BackupSettings, BackupsRead
-from app.services import backups, jobs, security, updates
+from app.services import backups, jobs, security
+from app.shared import maintenance
+from app.shared.database import get_session
 
 router = APIRouter(prefix="/api/backups", tags=["backups"], dependencies=[Depends(security.admin_user)])
 
@@ -64,11 +65,11 @@ def download_backup(name: str):
 def restore_backup(name: str, session: Session = Depends(get_session)):
     """Put database and files back as in the backup. The current state is saved first; meanwhile the app is
     in maintenance."""
-    if updates.installing():
+    if maintenance.installing():
         raise HTTPException(status.HTTP_409_CONFLICT, t("restore_updating"))
     if jobs.count_active(session):
         raise HTTPException(status.HTTP_409_CONFLICT, t("restore_jobs_active"))
-    if backups.restoring():
+    if maintenance.restoring():
         raise HTTPException(status.HTTP_409_CONFLICT, t("backup_busy"))
     backup = next((item for item in backups.call("GET", "backups").json() if item["name"] == name), None)
     if backup is None:

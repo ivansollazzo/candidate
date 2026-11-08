@@ -23,14 +23,14 @@ from app.api import (
     updates,
     users,
 )
-from app.config import get_settings
-from app.db import engine
-from app.i18n import LanguageMiddleware, t
+from app.core.config import get_settings
+from app.core.i18n import LanguageMiddleware, t
 from app.services import app_settings, security
-from app.services import backups as backup_service
 from app.services import https as https_service
 from app.services import jobs as job_queue
-from app.services.llm import check_llm, hardware_support
+from app.shared import maintenance
+from app.shared.database import engine
+from app.shared.llm import check_llm, hardware_support
 
 logging.basicConfig(level=logging.INFO)
 
@@ -62,7 +62,7 @@ app.add_middleware(
 # Requests served at once. A request can hold a database connection while it waits for a worker thread, and its
 # connection goes back to the pool only on a worker thread: with more requests in flight than connections, threads
 # and connections end up waiting for each other and the app stops answering. Further requests wait here instead,
-# without a connection (the pool in app.db has room for all of these).
+# without a connection (the pool in app.shared.database has room for all of these).
 MAX_IN_FLIGHT = 30
 _in_flight = asyncio.Semaphore(MAX_IN_FLIGHT)
 
@@ -77,9 +77,9 @@ async def limit_in_flight(request: Request, call_next):
 
 
 @app.middleware("http")
-async def maintenance(request: Request, call_next):
+async def maintenance_mode(request: Request, call_next):
     """While a backup is restored the database is being replaced: only the health check answers."""
-    if backup_service.restoring() and request.url.path != "/api/health":
+    if maintenance.restoring() and request.url.path != "/api/health":
         return JSONResponse({"detail": t("restoring"), "code": "restoring"}, status_code=503)
     return await call_next(request)
 
@@ -113,7 +113,7 @@ app.include_router(https.internal)
 
 @app.get("/api/health")
 def health():
-    if backup_service.restoring():
+    if maintenance.restoring():
         return {"status": "restoring", "version": __version__, "build": __build__, "llm": None}
     with Session(engine) as session:
         enabled = app_settings.load(session).llm_enabled

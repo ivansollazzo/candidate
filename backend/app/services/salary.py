@@ -7,7 +7,7 @@ it detects the period (annual, monthly, daily, hourly) and whether it is gross o
 import re
 from dataclasses import dataclass
 
-from app.i18n import current_language, t
+from app.core.i18n import current_language, t
 
 STRONG_RE = re.compile(
     r"\b(r\.?a\.?l\.?|retribuzion\w*|stipendi\w*|compens\w*|remunerazion\w*|salar(?:y|io|i)|pay(?:\s+range)?|"

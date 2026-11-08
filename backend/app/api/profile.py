@@ -5,16 +5,16 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlmodel import Session
 
-from app.api.uploads import read_upload
-from app.db import get_session, save
-from app.i18n import t
+from app.core.i18n import t
 from app.models import Job, JobKind, Profile, User
 from app.schemas import JobRead, ProfileRead, ProfileUpdate
 from app.services import jobs, security
 from app.services.app_settings import require_llm
-from app.services.documents import UnsupportedDocument, extract_text
 from app.services.profiles import apply_profile_changes
-from app.services.users import find_profile, user_dir
+from app.services.users import find_profile
+from app.shared.database import get_session, save
+from app.shared.documents import UnsupportedDocument, extract_text
+from app.shared.storage import read_upload, user_dir
 
 router = APIRouter(prefix="/api/profile", tags=["profile"])
 

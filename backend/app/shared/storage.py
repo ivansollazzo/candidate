@@ -1,7 +1,11 @@
+"""Files: uploads read with the size limit, and each user's folder."""
+
+from pathlib import Path
+
 from fastapi import HTTPException, UploadFile, status
 
-from app.config import get_settings
-from app.i18n import t
+from app.core.config import get_settings
+from app.core.i18n import t
 
 
 async def read_upload(file: UploadFile) -> bytes:
@@ -12,3 +16,10 @@ async def read_upload(file: UploadFile) -> bytes:
     if not data:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, t("file_empty"))
     return data
+
+
+def user_dir(user_id: int) -> Path:
+    """User's file directory (CV, profile photo)."""
+    folder = get_settings().upload_dir / f"user_{user_id}"
+    folder.mkdir(parents=True, exist_ok=True)
+    return folder

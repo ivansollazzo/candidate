@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session, select
 
-from app.db import get_session
-from app.i18n import t
+from app.core.i18n import t
 from app.models import Application, Job, TaskStatus, User
 from app.schemas import JobRead
 from app.services import jobs, security
 from app.services.app_settings import require_llm
+from app.shared.database import get_session
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 

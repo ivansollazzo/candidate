@@ -3,8 +3,9 @@ import json
 import pytest
 
 from app import __build__, __version__
-from app.config import get_settings
+from app.core.config import get_settings
 from app.services.updates import release_key
+from app.shared import maintenance
 
 
 @pytest.fixture
@@ -116,7 +117,6 @@ def test_check_error_kept_apart_from_install_result(client, updates_dir):
 
 
 def test_install_needs_no_ai_jobs(client, updates_dir):
-    from app.services import updates
 
     write_state(updates_dir, branches=[branch("stable")])
     r = client.post("/api/applications/imports", data={"text": "Cerchiamo un Backend Developer Python a Milano."})
@@ -131,4 +131,4 @@ def test_install_needs_no_ai_jobs(client, updates_dir):
     assert client.get("/api/updates").json()["active_jobs"] == 0
     assert client.post("/api/updates/installations").status_code == 202
     # No job starts until the update is over
-    assert updates.installing() is True
+    assert maintenance.installing() is True

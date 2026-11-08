@@ -17,9 +17,10 @@ from alembic.script import ScriptDirectory
 from fastapi import HTTPException, status
 from sqlmodel import Session
 
-from app.config import get_settings
-from app.db import engine
-from app.i18n import t
+from app.core.config import get_settings
+from app.core.i18n import t
+from app.shared import maintenance
+from app.shared.database import engine
 
 log = logging.getLogger(__name__)
 
@@ -27,12 +28,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[2]
 # A backup or a restore can take a while with many attachments
 TIMEOUT = httpx.Timeout(10, read=3600)
 
-_restoring = threading.Event()
 _last_restore: dict | None = None
-
-
-def restoring() -> bool:
-    return _restoring.is_set()
 
 
 def last_restore() -> dict | None:
@@ -93,11 +89,10 @@ def _finish_restore(name: str) -> None:
     except Exception:
         log.exception("Unable to resume after the restore")
     _last_restore = {**result, "finished_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")}
-    _restoring.clear()
+    maintenance.restore_finished()
     log.info("restore of %s: %s", name, result["result"])
 
 
 def start_restore(name: str) -> None:
-    if not _restoring.is_set():
-        _restoring.set()
+    if maintenance.restore_started():
         threading.Thread(target=_finish_restore, args=(name,), name="restore", daemon=True).start()
