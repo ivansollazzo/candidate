@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.env
+backend/data/
+node_modules/
+dist/
+.DS_Store
+docker-compose.override.yml
+backups/
