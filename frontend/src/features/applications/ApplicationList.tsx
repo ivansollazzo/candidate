@@ -21,9 +21,9 @@ import { Button, buttonVariants } from "@/shared/ui/button"
 import { Input, Select } from "@/shared/ui/input"
 
 const SORTS: ApplicationSort[] = ["applied", "status", "name", "event"]
-// Most advanced first: completed > offer > interview > applied > inactive > rejected
+// Most advanced first: completed > offer > interview > paused > applied > inactive > rejected
 const STATUS_RANK: Record<ApplicationStatus, number> = {
-  completed: 0, offer: 1, interview: 2, applied: 3, inactive: 4, rejected: 5,
+  completed: 0, offer: 1, interview: 2, paused: 3, applied: 4, inactive: 5, rejected: 6,
 }
 
 // Newest first; missing dates go last

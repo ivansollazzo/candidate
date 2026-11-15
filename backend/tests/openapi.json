@@ -619,6 +619,7 @@
     "enum": [
      "applied",
      "interview",
+     "paused",
      "offer",
      "inactive",
      "rejected",
@@ -3924,7 +3925,7 @@
  "info": {
   "description": "Gestione delle candidature lavorative",
   "title": "Candidate",
-  "version": "2.0"
+  "version": "2.1"
  },
  "openapi": "3.1.0",
  "paths": {

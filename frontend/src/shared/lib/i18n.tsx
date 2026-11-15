@@ -64,6 +64,7 @@ const it = {
 
   "status.applied": "Candidatura inviata",
   "status.interview": "Colloquio",
+  "status.paused": "In pausa",
   "status.offer": "Offerta",
   "status.inactive": "Inattiva",
   "status.rejected": "Rigettata",
@@ -759,6 +760,7 @@ const en: Record<MessageKey, string> = {
 
   "status.applied": "Applied",
   "status.interview": "Interview",
+  "status.paused": "Paused",
   "status.offer": "Offer",
   "status.inactive": "Inactive",
   "status.rejected": "Rejected",

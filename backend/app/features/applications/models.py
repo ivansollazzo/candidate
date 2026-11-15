@@ -13,6 +13,7 @@ from app.shared.database import bool_field, json_list, json_object, timestamp
 class ApplicationStatus(StrEnum):
     APPLIED = "applied"
     INTERVIEW = "interview"
+    PAUSED = "paused"
     OFFER = "offer"
     INACTIVE = "inactive"
     REJECTED = "rejected"
