@@ -3,6 +3,7 @@ import { type MessageKey, t } from "@/shared/lib/i18n"
 export const STATUSES = [
   { value: "applied", color: "bg-blue-500" },
   { value: "interview", color: "bg-amber-500" },
+  { value: "paused", color: "bg-cyan-500" },
   { value: "offer", color: "bg-emerald-500" },
   { value: "inactive", color: "bg-slate-400" },
   { value: "rejected", color: "bg-red-500" },

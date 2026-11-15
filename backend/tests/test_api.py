@@ -290,7 +290,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("2.0", "20261114.1248")
+    assert (health["version"], health["build"]) == ("2.1", "20261115.1910")
 
     r = client.post("/api/applications/imports", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
@@ -560,6 +560,11 @@ def test_bulk_status_and_delete(client):
     # Same status again: no new history entry
     client.patch("/api/applications", json={"ids": [ids[0]], "status": "interview"})
     assert len(client.get(f"/api/applications/{ids[0]}").json()["events"]) == 1
+
+    # Paused sits between interview and inactive
+    client.patch("/api/applications", json={"ids": [ids[0]], "status": "paused"})
+    events = client.get(f"/api/applications/{ids[0]}").json()["events"]
+    assert [e["title"] for e in events] == ["applied>interview", "interview>paused"]
 
     assert client.patch("/api/applications", json={"ids": ids}).status_code == 422
     assert client.delete("/api/applications", params={"ids": []}).status_code == 422
