@@ -72,7 +72,7 @@ export function ReportPanel({ application }: { application: Application }) {
       <CardContent className="space-y-4">
         {done && application.report_stale && !running && (
           <p className="flex gap-2 rounded-md bg-amber-500/10 p-2.5 text-sm text-amber-700 dark:text-amber-300">
-            <TriangleAlert className="mt-0.5 size-4 shrink-0" />{t("report.stale")}
+            <TriangleAlert className="mt-0.5 size-4 shrink-0" />{t(`report.stale.${application.report_stale}`)}
           </p>
         )}
         {!done && !running && (

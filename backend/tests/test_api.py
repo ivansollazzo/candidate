@@ -173,7 +173,7 @@ def test_report_queued_after_fill(client):
     assert data["report_status"] == "done" and data["report"]["score"] > 0
     assert [j["kind"] for j in client.get("/api/jobs").json()] == ["application", "report"]
     item = next(a for a in client.get("/api/applications").json() if a["id"] == app["id"])
-    assert item["match_score"] == data["report"]["score"] and item["report_stale"] is False
+    assert item["match_score"] == data["report"]["score"] and item["report_stale"] is None
     assert item["last_event_on"] is None
     assert item["missing_skills"] == [s["skill"] for s in data["report"]["skills"]
                                       if s["status"] == "missing" and s["kind"] != "soft"]
@@ -290,7 +290,7 @@ def test_llm_disabled_blocks_ai_features(client):
     assert client.patch("/api/settings", json={"llm_enabled": False}).json()["llm_enabled"] is False
     health = client.get("/api/health").json()
     assert health["llm"] == {"enabled": False, "hardware": None}
-    assert (health["version"], health["build"]) == ("2.1", "20261115.1910")
+    assert (health["version"], health["build"]) == ("2.1", "20261116.1447")
 
     r = client.post("/api/applications/imports", data={"text": JOB_TEXT})
     assert r.status_code == 409 and "disattivate" in r.json()["detail"]
@@ -345,7 +345,7 @@ def test_cv_upload_ai_fill_and_match(client):
     assert client.get(f"/api/applications/{app_id}").json()["report"] is None
     request_report(client, app_id)
     data = client.get(f"/api/applications/{app_id}").json()
-    assert data["report_status"] == "done" and data["report_stale"] is False
+    assert data["report_status"] == "done" and data["report_stale"] is None and data["report_language"] == "it"
     result = data["report"]
     by_skill = {s["skill"]: s for s in result["skills"]}
     assert {k for k, s in by_skill.items() if s["status"] == "match"} == {"Python", "Postgres", "Docker"}
@@ -404,18 +404,24 @@ def test_report_goes_stale_and_is_cleared_without_ai(client):
     # Changes that don't touch skills leave the report as it is
     client.patch("/api/profile", json={"phone": "2"})
     client.patch(f"/api/applications/{app_id}", json={"notes": "x"})
-    assert stale(app_id) is False
+    assert stale(app_id) is None
+
+    # Generated in Italian: read in another language it asks to be regenerated
+    english = client.get(f"/api/applications/{app_id}", headers={"Accept-Language": "de"}).json()
+    assert english["report_stale"] == "language"
+    listed = client.get("/api/applications", headers={"Accept-Language": "de"}).json()
+    assert next(a["report_stale"] for a in listed if a["id"] == app_id) == "language"
 
     client.patch("/api/profile", json={"skills": [{"name": "Python", "level": 4}]})
-    assert stale(app_id) is True and stale(other_id) is False
+    assert stale(app_id) == "changed" and stale(other_id) is None
     request_report(client, app_id)
-    assert stale(app_id) is False
+    assert stale(app_id) is None
     client.patch(f"/api/applications/{app_id}", json={"requirements": ["Laurea"]})
-    assert stale(app_id) is True
+    assert stale(app_id) == "changed"
 
     client.patch("/api/settings", json={"llm_enabled": False})
     data = client.get(f"/api/applications/{app_id}").json()
-    assert (data["report"], data["report_status"], data["report_stale"]) == (None, None, False)
+    assert (data["report"], data["report_status"], data["report_stale"]) == (None, None, None)
 
 
 def test_profile_sections_editable(client):

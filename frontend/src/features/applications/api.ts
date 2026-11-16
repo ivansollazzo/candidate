@@ -5,6 +5,10 @@ import type { SkillLevel } from "@/shared/lib/skills"
 
 type JobSkill = { name: string; importance: "required" | "nice_to_have" | string }
 
+/** changed: skills or requirements changed; update: a Candidate update improved reports; language: generated in
+another language */
+export type StaleReason = "changed" | "update" | "language"
+
 export interface ApplicationSummary {
   id: number
   title: string | null
@@ -25,8 +29,8 @@ export interface ApplicationListItem extends ApplicationSummary {
   last_event_on: string | null
   /** Score of the compatibility report, when one has been generated */
   match_score: number | null
-  /** The report should be regenerated */
-  report_stale: boolean
+  /** Why the report should be regenerated, null when it is up to date */
+  report_stale: StaleReason | null
   /** Skills the report found missing from the profile, soft skills excluded */
   missing_skills: string[]
 }
@@ -102,8 +106,10 @@ export interface Application extends ApplicationSummary {
   has_description: boolean
   report: Report | null
   report_status: TaskStatus | null
-  /** The skills changed after the report was generated */
-  report_stale: boolean
+  /** Why the generated report should be regenerated, null when it is up to date */
+  report_stale: StaleReason | null
+  /** Language the report was generated in */
+  report_language: string | null
   events: ApplicationEvent[]
   attachments: Attachment[]
 }
