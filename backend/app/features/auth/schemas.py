@@ -22,7 +22,7 @@ Email = Annotated[str, Field(max_length=255, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+
 Role = Literal["admin", "user"]
 
 
-Language = Literal["it", "en"]
+Language = Literal["it", "en", "es", "fr", "de"]
 
 
 # Widgets the overview can show

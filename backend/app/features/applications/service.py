@@ -10,7 +10,7 @@ from app.core.i18n import t
 from app.features.applications import repository
 from app.features.applications.attachments import attachments_dir, remove_attachments
 from app.features.applications.models import Application, ApplicationEvent, EventType
-from app.features.applications.schemas import ApplicationListItem
+from app.features.applications.schemas import ApplicationListItem, stale_reason
 from app.features.background_jobs import service as jobs
 from app.features.background_jobs.models import Job, TaskStatus
 
@@ -53,7 +53,7 @@ def list_items(session: Session, user_id: int) -> list[ApplicationListItem]:
         items.append(ApplicationListItem.model_validate(app).model_copy(update={
             "last_event_on": last_on,
             "match_score": report.get("score") if report else None,
-            "report_stale": bool(report) and app.report_stale,
+            "report_stale": stale_reason(app.report_stale, app.report_language) if report else None,
             "missing_skills": [s["skill"] for s in (report or {}).get("skills", [])
                                if s.get("status") == "missing" and s.get("kind") != "soft"],
         }))

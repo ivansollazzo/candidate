@@ -3,9 +3,19 @@
 from datetime import date, datetime, time
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.features.applications.models import ApplicationStatus, EventType
+from app.core.i18n import current_language
+from app.features.applications.models import ApplicationStatus, EventType, StaleReason
+
+
+def stale_reason(stored: str | None, language: str | None) -> StaleReason | None:
+    """Why a generated report should be regenerated: the stored reason, else a language other than the request's."""
+    if stored:
+        return StaleReason(stored)
+    if language and language != current_language.get():
+        return StaleReason.LANGUAGE
+    return None
 
 
 class ExtractedSkill(BaseModel):
@@ -179,8 +189,8 @@ class ApplicationListItem(ApplicationSummary):
     last_event_on: date | None = None
     # Score of the compatibility report, when one has been generated
     match_score: int | None = None
-    # The report should be regenerated
-    report_stale: bool = False
+    # Why the report should be regenerated, None when it is up to date
+    report_stale: StaleReason | None = None
     # Skills of the posting the report found missing from the profile (soft skills excluded)
     missing_skills: list[str] = []
 
@@ -214,7 +224,15 @@ class ApplicationRead(ApplicationSummary):
     # Report, or {"error": ...} when the generation failed
     report: dict | None
     report_status: str | None
-    # The skills changed after the report was generated
-    report_stale: bool
+    # Why the generated report should be regenerated, None when it is up to date
+    report_stale: StaleReason | None
+    # Language the report was generated in
+    report_language: str | None
     events: list[EventRead]
     attachments: list[AttachmentRead]
+
+    @model_validator(mode="after")
+    def _stale(self):
+        done = self.report_status == "done" and self.report
+        self.report_stale = stale_reason(self.report_stale, self.report_language) if done else None
+        return self

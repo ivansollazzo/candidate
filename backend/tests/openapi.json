@@ -186,9 +186,14 @@
       "type": "array"
      },
      "report_stale": {
-      "default": false,
-      "title": "Report Stale",
-      "type": "boolean"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/StaleReason"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "salary": {
       "anyOf": [
@@ -435,9 +440,26 @@
       ],
       "title": "Report"
      },
+     "report_language": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Report Language"
+     },
      "report_stale": {
-      "title": "Report Stale",
-      "type": "boolean"
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/StaleReason"
+       },
+       {
+        "type": "null"
+       }
+      ]
      },
      "report_status": {
       "anyOf": [
@@ -590,6 +612,7 @@
      "report",
      "report_status",
      "report_stale",
+     "report_language",
      "events",
      "attachments"
     ],
@@ -2450,7 +2473,10 @@
        {
         "enum": [
          "it",
-         "en"
+         "en",
+         "es",
+         "fr",
+         "de"
         ],
         "type": "string"
        },
@@ -3441,7 +3467,10 @@
       "default": "it",
       "enum": [
        "it",
-       "en"
+       "en",
+       "es",
+       "fr",
+       "de"
       ],
       "title": "Language",
       "type": "string"
@@ -3466,6 +3495,16 @@
     ],
     "title": "SetupRequest",
     "type": "object"
+   },
+   "StaleReason": {
+    "description": "Why a generated report should be regenerated.",
+    "enum": [
+     "changed",
+     "update",
+     "language"
+    ],
+    "title": "StaleReason",
+    "type": "string"
    },
    "UpdateBranch": {
     "properties": {
@@ -3677,7 +3716,10 @@
       "default": "it",
       "enum": [
        "it",
-       "en"
+       "en",
+       "es",
+       "fr",
+       "de"
       ],
       "title": "Language",
       "type": "string"

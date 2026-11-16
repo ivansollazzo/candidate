@@ -3,7 +3,7 @@
 from sqlalchemy import null, update
 from sqlmodel import Session, col, select
 
-from app.features.applications.models import Application
+from app.features.applications.models import Application, StaleReason
 from app.features.background_jobs import repository as job_repository
 from app.features.background_jobs.models import JobKind, TaskStatus
 
@@ -11,11 +11,12 @@ from app.features.background_jobs.models import JobKind, TaskStatus
 def mark_stale(session: Session, user_id: int) -> None:
     session.exec(update(Application)
                  .where(Application.user_id == user_id, Application.report_status == TaskStatus.DONE)
-                 .values(report_stale=True))
+                 .values(report_stale=StaleReason.CHANGED))
 
 
 def clear_all(session: Session) -> None:
-    session.exec(update(Application).values(report=null(), report_status=None, report_stale=False))
+    session.exec(update(Application).values(report=null(), report_status=None, report_stale=None,
+                                                report_language=None))
 
 
 def waiting_without_job(session: Session) -> list[Application]:

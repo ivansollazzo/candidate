@@ -8,7 +8,7 @@ Forms can be filled in by hand or with a local language model (Qwen 3 4B served 
 your CV and fills in the fields for you. Everything runs on your machine: no data leaves it, and no external AI service
 is used.
 
-Version 2.1 (build 20261115.1910), by Ivan Sollazzo.
+Version 2.1 (build 20261116.1447), by Ivan Sollazzo.
 
 ## Features
 
@@ -33,7 +33,8 @@ Version 2.1 (build 20261115.1910), by Ivan Sollazzo.
 - **Profile match (AI)**: on request, the local model compares an application's skills with your profile and returns
   a score, matching, partial and missing skills with a short reason each, and advice on where to improve. It works for
   any job, not only tech. Soft skills are listed apart and don't count in the score. When the skills of the profile or
-  of the application change, the profile match suggests recalculating it. Profile matches exist only with AI on: turning
+  of the application change, when it was generated in another language, or after an update that improved profile
+  matches, it suggests recalculating it. Profile matches exist only with AI on: turning
   AI off deletes them.
 - **Agenda**: interviews, calls, emails, follow-ups and notes for each application, with an optional start and end
   time, and overdue and upcoming events at a glance.
@@ -51,7 +52,9 @@ Version 2.1 (build 20261115.1910), by Ivan Sollazzo.
   on or off signs everyone out, with a notice, so no session of the old protocol is left behind.
 - **Backups**: database, CV, photos and attachments, automatically (daily or weekly, with cleanup rules), by hand
   and before every update; restore, download or delete them from the settings.
-- **Italian and English** interface, light and dark theme.
+- **Italian, English, Spanish, French and German** interface (the first run starts from the browser language), light
+  and dark theme. The profile match is written in the user's language and asks to be recalculated when it was
+  generated in another one.
 
 ## Requirements
 

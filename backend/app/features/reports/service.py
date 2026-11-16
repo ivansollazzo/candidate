@@ -6,9 +6,9 @@ from datetime import UTC, datetime
 from fastapi import HTTPException, status
 from sqlmodel import Session
 
-from app.core.i18n import t
+from app.core.i18n import current_language, t
 from app.features.applications import repository as applications_repository
-from app.features.applications.models import Application
+from app.features.applications.models import Application, StaleReason
 from app.features.applications.service import get_owned
 from app.features.background_jobs import repository as jobs_repository
 from app.features.background_jobs import service as jobs
@@ -112,7 +112,7 @@ def mark_stale(session: Session, user_id: int) -> None:
 def mark_application_stale(session: Session, app: Application) -> None:
     """The position changed: its report should be regenerated."""
     if app.report_status == TaskStatus.DONE:
-        app.report_stale = True
+        app.report_stale = StaleReason.CHANGED
 
 
 def clear_all(session: Session) -> None:
@@ -224,7 +224,8 @@ def ask_model(system: str, prompt: str) -> ReportExtraction:
 
 def save_result(session: Session, app: Application, result: ReportExtraction) -> None:
     report = build_report(app, find_profile(session, app.user_id), result)
-    app.report, app.report_status, app.report_stale = report.model_dump(mode="json"), TaskStatus.DONE, False
+    app.report, app.report_status, app.report_stale = report.model_dump(mode="json"), TaskStatus.DONE, None
+    app.report_language = current_language.get()
     applications_repository.add(session, app)
 
 

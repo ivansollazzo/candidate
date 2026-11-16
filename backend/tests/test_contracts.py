@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 from pathlib import Path
 
 from alembic.autogenerate import compare_metadata
@@ -13,6 +14,7 @@ from sqlalchemy import create_engine
 from sqlmodel import SQLModel
 
 from app.core.config import get_settings
+from app.core.i18n import MESSAGES
 from app.main import app
 from app.shared.database import engine
 
@@ -56,3 +58,12 @@ def test_import_rules(monkeypatch):
     """The rules in backend/.importlinter."""
     monkeypatch.chdir(BACKEND)
     assert lint_imports(config_filename=str(BACKEND / ".importlinter"), no_cache=True, no_logo=True) == 0
+
+
+def test_languages_complete():
+    """Every language has exactly the Italian keys, with the same placeholders."""
+    placeholders = lambda text: sorted(re.findall(r"\{(\w+)\}", text))
+    for code, messages in MESSAGES.items():
+        assert messages.keys() == MESSAGES["it"].keys(), code
+        for key, text in messages.items():
+            assert placeholders(text) == placeholders(MESSAGES["it"][key]), (code, key)

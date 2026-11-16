@@ -7,7 +7,7 @@ import sqlalchemy as sa
 from sqlmodel import Field, Relationship, SQLModel
 
 from app.features.auth.models import owner_field
-from app.shared.database import bool_field, json_list, json_object, timestamp
+from app.shared.database import json_list, json_object, timestamp
 
 
 class ApplicationStatus(StrEnum):
@@ -18,6 +18,14 @@ class ApplicationStatus(StrEnum):
     INACTIVE = "inactive"
     REJECTED = "rejected"
     COMPLETED = "completed"
+
+
+class StaleReason(StrEnum):
+    """Why a generated report should be regenerated."""
+
+    CHANGED = "changed"  # profile skills or the position changed
+    UPDATE = "update"  # a Candidate update improved the report (set by a migration)
+    LANGUAGE = "language"  # generated in another language than the user's (computed, not stored)
 
 
 class EventType(StrEnum):
@@ -68,7 +76,8 @@ class Application(SQLModel, table=True):
     # LLM-generated compatibility report (schemas.Report), generated on request
     report: dict | None = json_object()
     report_status: str | None = Field(default=None, sa_type=sa.String(20))
-    report_stale: bool = bool_field(False)
+    report_stale: str | None = Field(default=None, sa_type=sa.String(20))  # StaleReason, stored ones only
+    report_language: str | None = Field(default=None, sa_type=sa.String(5))
 
     created_at: datetime = timestamp()
     updated_at: datetime = timestamp(onupdate=True)
